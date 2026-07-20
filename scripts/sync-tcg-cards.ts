@@ -21,7 +21,7 @@ interface TcgCard {
   id: string;
   name: string;
   nationalPokedexNumbers?: number[];
-  set: { id: string; name: string; releaseDate: string };
+  set: { id: string; name: string; series: string; releaseDate: string };
   number: string;
   rarity?: string;
   images: { small: string; large?: string };
@@ -74,6 +74,7 @@ function toRow(c: TcgCard) {
     image_small: c.images.small,
     image_large: c.images.large ?? null,
     release_date: c.set.releaseDate ?? null,
+    series: c.set.series ?? null,
     updated_at: new Date().toISOString(),
   };
 }
