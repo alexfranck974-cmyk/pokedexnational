@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
+import { colors } from '@/lib/theme';
 
 interface Props {
   owned: number;
@@ -22,8 +23,8 @@ export function ProgressCounter({ owned, total, cardCount, filterHint }: Props) 
 
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  main: { fontSize: 14, fontWeight: '600' },
-  pct: { color: '#666', fontWeight: '400' },
-  sub: { fontSize: 14, color: '#444' },
-  hint: { fontSize: 12, color: '#888' },
+  main: { fontSize: 14, fontWeight: '700', color: colors.text },
+  pct: { color: colors.textMuted, fontWeight: '400' },
+  sub: { fontSize: 14, color: colors.textMuted },
+  hint: { fontSize: 12, color: colors.textDim, fontStyle: 'italic' },
 });

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import type { TcgCardRow } from '@/lib/tcg';
+import { colors, radius, spacing } from '@/lib/theme';
 
 interface Props {
   cards: TcgCardRow[];
@@ -121,18 +122,18 @@ export function CardFilterTree({ cards, selectedSetIds, onChange }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { backgroundColor: 'white', borderRadius: 8, marginHorizontal: 12, marginBottom: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: '#e0e0e0' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10 },
-  title: { fontSize: 14, fontWeight: '700', flex: 1 },
-  hint: { fontSize: 11, color: '#555' },
-  reset: { fontSize: 12, color: '#c00' },
-  list: { maxHeight: 240, borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#eee' },
+  wrap: { backgroundColor: colors.surface, borderRadius: radius.md, marginHorizontal: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12 },
+  title: { fontSize: 14, fontWeight: '700', flex: 1, color: colors.text },
+  hint: { fontSize: 11, color: colors.textMuted },
+  reset: { fontSize: 12, color: colors.danger },
+  list: { maxHeight: 240, borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 8 },
-  subRow: { paddingLeft: 34, backgroundColor: '#fafafa' },
-  chevron: { fontSize: 10, color: '#666' },
-  innerChevron: { width: 12, fontSize: 10, color: '#666' },
-  check: { fontSize: 14 },
-  seriesName: { fontSize: 14, fontWeight: '600', flex: 1 },
-  setName: { fontSize: 13, flex: 1 },
-  count: { fontSize: 12, color: '#666' },
+  subRow: { paddingLeft: 34, backgroundColor: colors.surfaceAlt },
+  chevron: { fontSize: 10, color: colors.textMuted },
+  innerChevron: { width: 12, fontSize: 10, color: colors.textMuted },
+  check: { fontSize: 14, color: colors.text },
+  seriesName: { fontSize: 14, fontWeight: '600', flex: 1, color: colors.text },
+  setName: { fontSize: 13, flex: 1, color: colors.text },
+  count: { fontSize: 12, color: colors.textMuted },
 });
