@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet } from 'react-native';
 import type { PokemonType } from '@/lib/types';
 import { TYPE_COLORS, TYPE_LABEL_FR } from '@/lib/types-colors';
+import { radius } from '@/lib/theme';
 
 export function TypeBadge({ type }: { type: PokemonType }) {
   return (
@@ -11,6 +12,6 @@ export function TypeBadge({ type }: { type: PokemonType }) {
 }
 
 const styles = StyleSheet.create({
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-  text: { color: 'white', fontSize: 12, fontWeight: '700' },
+  badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.sm },
+  text: { color: 'white', fontSize: 11, fontWeight: '700' },
 });
