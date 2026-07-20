@@ -5,7 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import { fetchPublicProfile } from '@/lib/auth';
-import { useUserDex } from '@/lib/collection';
+import { useUserDex, useOwnedCardImages } from '@/lib/collection';
 import { useTcgIndex, useTcgSets, useTcgRarities } from '@/lib/tcg-index';
 import { applyPokedexPipeline } from '@/lib/pokedex-list';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
@@ -31,6 +31,7 @@ export default function PublicProfile() {
 
   const userId = typeof profile === 'object' && profile !== null ? profile.id : undefined;
   const { data: owned = new Set<number>() } = useUserDex(userId);
+  const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
   const { data: tcgIndex = new Map() } = useTcgIndex();
   const { data: sets = [] } = useTcgSets();
   const { data: rarities = [] } = useTcgRarities();
@@ -80,7 +81,7 @@ export default function PublicProfile() {
         sets={sets} rarities={rarities}
         onReset={() => { setStatus('all'); setType(null); setSet(null); setRarity(null); }}
       />
-      <PokedexGrid items={items} onSelect={() => { /* V1: no detail from public view */ }} />
+      <PokedexGrid items={items} ownedImages={ownedImages} onSelect={() => { /* V1: no detail from public view */ }} />
     </SafeAreaView>
   );
 }
