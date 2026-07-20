@@ -37,7 +37,7 @@
     "web": "expo start --web",
     "test": "jest",
     "build:pokedex": "ts-node --project tsconfig.scripts.json scripts/build-pokemon-data.ts",
-    "sync:tcg": "ts-node scripts/sync-tcg-cards.ts"
+    "sync:tcg": "ts-node --project tsconfig.scripts.json scripts/sync-tcg-cards.ts"
   },
   "jest": {
     "preset": "jest-expo",
