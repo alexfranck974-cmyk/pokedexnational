@@ -7,10 +7,11 @@ interface Props {
   owned: boolean;
   ownedCardImage?: string;
   cardCount?: number;
+  wishedInDex?: boolean;
   onPress: () => void;
 }
 
-export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, onPress }: Props) {
+export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedInDex, onPress }: Props) {
   const useCard = owned && !!ownedCardImage;
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
@@ -21,6 +22,11 @@ export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, onPress
           resizeMode="contain"
         />
         {owned && <View style={styles.checkBadge}><Text style={styles.checkText}>✓</Text></View>}
+        {wishedInDex && (
+          <View style={styles.wishBadge}>
+            <Text style={styles.wishText}>♥</Text>
+          </View>
+        )}
       </View>
       <Text style={[styles.num, !owned && styles.textDim]}>
         #{String(pokemon.num).padStart(4, '0')}
@@ -46,6 +52,11 @@ const styles = StyleSheet.create({
     borderRadius: 999, width: 20, height: 20, alignItems: 'center', justifyContent: 'center',
   },
   checkText: { color: 'white', fontSize: 12, fontWeight: '700' },
+  wishBadge: {
+    position: 'absolute', top: 2, left: 2, backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 999, width: 20, height: 20, alignItems: 'center', justifyContent: 'center',
+  },
+  wishText: { color: '#ef4444', fontSize: 12, fontWeight: '700', lineHeight: 14 },
   num: { fontSize: 10, color: '#666', marginTop: 4 },
   name: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
   textDim: { color: '#999' },

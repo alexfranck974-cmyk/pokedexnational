@@ -6,6 +6,7 @@ import type { PokemonWithState } from '@/lib/pokedex-list';
 interface Props {
   items: PokemonWithState[];
   ownedImages?: Map<number, string>;
+  wishedInDexSet?: Set<number>;
   onSelect: (num: number) => void;
 }
 
@@ -15,7 +16,7 @@ function numColsFor(width: number): number {
   return 8;
 }
 
-export function PokedexGrid({ items, ownedImages, onSelect }: Props) {
+export function PokedexGrid({ items, ownedImages, wishedInDexSet, onSelect }: Props) {
   const { width } = useWindowDimensions();
   const cols = numColsFor(width);
   return (
@@ -29,6 +30,7 @@ export function PokedexGrid({ items, ownedImages, onSelect }: Props) {
           pokemon={item}
           owned={item.owned}
           ownedCardImage={ownedImages?.get(item.num)}
+          wishedInDex={wishedInDexSet?.has(item.num)}
           onPress={() => onSelect(item.num)}
         />
       )}
