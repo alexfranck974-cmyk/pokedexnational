@@ -1,6 +1,7 @@
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import type { TcgCardRow } from '@/lib/tcg';
 import { colors, radius, spacing, shadow } from '@/lib/theme';
+import { Pokeball } from '@/components/Pokeball';
 
 interface Props {
   card: TcgCardRow;
@@ -9,19 +10,25 @@ interface Props {
   readOnly?: boolean;
   onToggle: () => void;
   onToggleWish?: () => void;
+  onLongPress?: () => void;
 }
 
-export function CardTile({ card, owned, wished, readOnly, onToggle, onToggleWish }: Props) {
+export function CardTile({ card, owned, wished, readOnly, onToggle, onToggleWish, onLongPress }: Props) {
   return (
     <Pressable onPress={readOnly ? undefined : onToggle}
+      onLongPress={onLongPress}
       style={({ pressed }) => [
         styles.tile,
-        owned && styles.owned,
         !owned && styles.missing,
         pressed && !readOnly && { transform: [{ scale: 0.97 }] },
       ]}>
       <View style={styles.imgWrap}>
         <Image source={{ uri: card.image_small }} style={styles.img} resizeMode="contain" />
+        {owned && (
+          <View style={styles.pokeballOverlay}>
+            <Pokeball size={22} />
+          </View>
+        )}
         {!readOnly && onToggleWish && (
           <Pressable
             hitSlop={8}
@@ -38,13 +45,17 @@ export function CardTile({ card, owned, wished, readOnly, onToggle, onToggleWish
 }
 
 const styles = StyleSheet.create({
-  tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, borderWidth: 2, ...shadow.sm },
-  owned:   { borderColor: colors.success, backgroundColor: colors.successBg, borderWidth: 2 },
-  missing: { borderColor: 'transparent', opacity: 0.55 },
+  tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, ...shadow.sm },
+  missing: { opacity: 0.55 },
   imgWrap: { position: 'relative' },
   img: { width: '100%', aspectRatio: 0.72 },
   set: { fontSize: 11, fontWeight: '600', marginTop: 4, color: colors.text },
   rarity: { fontSize: 10, color: colors.textMuted },
+  pokeballOverlay: {
+    position: 'absolute', top: 4, left: 4,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: radius.pill, padding: 2,
+  },
   heartBtn: {
     position: 'absolute', top: 4, right: 4, width: 28, height: 28,
     borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.9)',

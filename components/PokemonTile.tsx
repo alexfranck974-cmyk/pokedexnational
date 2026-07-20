@@ -2,6 +2,7 @@ import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { colors, radius, shadow } from '@/lib/theme';
+import { Pokeball } from '@/components/Pokeball';
 
 interface Props {
   pokemon: Pokemon;
@@ -22,7 +23,7 @@ export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedI
           style={styles.sprite}
           resizeMode="contain"
         />
-        {owned && <View style={styles.checkBadge}><Text style={styles.checkText}>✓</Text></View>}
+        {owned && <View style={styles.ownedBadge}><Pokeball size={22} /></View>}
         {wishedInDex && (
           <View style={styles.wishBadge}>
             <Text style={styles.wishText}>♥</Text>
@@ -49,11 +50,7 @@ const styles = StyleSheet.create({
   spriteWrap: { width: '100%', aspectRatio: 1, position: 'relative', backgroundColor: colors.surfaceAlt, borderRadius: radius.md },
   spriteMissing: { opacity: 0.35 },
   sprite: { width: '100%', height: '100%' },
-  checkBadge: {
-    position: 'absolute', top: 2, right: 2, backgroundColor: colors.success,
-    borderRadius: radius.pill, width: 20, height: 20, alignItems: 'center', justifyContent: 'center',
-  },
-  checkText: { color: 'white', fontSize: 12, fontWeight: '700' },
+  ownedBadge: { position: 'absolute', top: 2, right: 2 },
   wishBadge: {
     position: 'absolute', top: 2, left: 2, backgroundColor: colors.surface,
     borderRadius: radius.pill, width: 20, height: 20, alignItems: 'center', justifyContent: 'center',
