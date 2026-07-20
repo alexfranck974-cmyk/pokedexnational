@@ -29,13 +29,35 @@ interface TcgCard {
 
 const PAGE_SIZE = 250;
 
+const MAX_RETRIES = 5;
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
 async function fetchPage(page: number): Promise<{ data: TcgCard[]; totalCount: number }> {
-  const res = await fetch(
-    `https://api.pokemontcg.io/v2/cards?q=nationalPokedexNumbers:[1 TO 1025]&pageSize=${PAGE_SIZE}&page=${page}`,
-    { headers: { 'X-Api-Key': POKEMON_TCG_API_KEY! } },
-  );
-  if (!res.ok) throw new Error(`Fetch page ${page} → ${res.status}`);
-  return res.json();
+  let lastErr: unknown = null;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetch(
+        `https://api.pokemontcg.io/v2/cards?q=nationalPokedexNumbers:[1 TO 1025]&pageSize=${PAGE_SIZE}&page=${page}`,
+        { headers: { 'X-Api-Key': POKEMON_TCG_API_KEY! } },
+      );
+      if (res.ok) return res.json();
+      if (res.status >= 500 || res.status === 429) {
+        const backoff = 2 ** attempt * 500;
+        console.warn(`Page ${page} attempt ${attempt}: ${res.status}, retrying in ${backoff}ms`);
+        await sleep(backoff);
+        continue;
+      }
+      throw new Error(`Fetch page ${page} → ${res.status} (non-retriable)`);
+    } catch (err) {
+      lastErr = err;
+      if (attempt < MAX_RETRIES) {
+        const backoff = 2 ** attempt * 500;
+        console.warn(`Page ${page} attempt ${attempt} threw, retrying in ${backoff}ms:`, err);
+        await sleep(backoff);
+      }
+    }
+  }
+  throw lastErr ?? new Error(`Fetch page ${page} exhausted retries`);
 }
 
 function toRow(c: TcgCard) {
