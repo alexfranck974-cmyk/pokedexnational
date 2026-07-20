@@ -33,16 +33,18 @@ export default function PokedexScreen() {
   const [typeFilter, setType]       = useState<PokemonType | null>(null);
   const [setFilter, setSet]         = useState<string | null>(null);
   const [rarityFilter, setRarity]   = useState<string | null>(null);
+  const [generationFilter, setGeneration] = useState<number | null>(null);
   const [sort, setSort]             = useState<SortKey>('num-asc');
 
   const items = useMemo(
     () => applyPokedexPipeline(POKEDEX, owned, tcgIndex, {
-      search, statusFilter, typeFilter, setFilter, rarityFilter, sort,
+      search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort,
     }),
-    [owned, tcgIndex, search, statusFilter, typeFilter, setFilter, rarityFilter, sort],
+    [owned, tcgIndex, search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort],
   );
 
   const filterHintParts: string[] = [];
+  if (generationFilter) filterHintParts.push(`Gen ${generationFilter}`);
   if (typeFilter) filterHintParts.push(TYPE_LABEL_FR[typeFilter]);
   if (setFilter)  filterHintParts.push(sets.find(s => s.id === setFilter)?.name ?? setFilter);
   if (rarityFilter) filterHintParts.push(rarityFilter);
@@ -50,7 +52,7 @@ export default function PokedexScreen() {
 
   const ownedCount = items.filter(p => p.owned).length;
 
-  const reset = () => { setStatus('all'); setType(null); setSet(null); setRarity(null); };
+  const reset = () => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); };
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -60,6 +62,7 @@ export default function PokedexScreen() {
         typeFilter={typeFilter} onType={setType}
         setFilter={setFilter} onSet={setSet}
         rarityFilter={rarityFilter} onRarity={setRarity}
+        generationFilter={generationFilter} onGeneration={setGeneration}
         sort={sort} onSort={setSort}
         sets={sets} rarities={rarities}
         onReset={reset}

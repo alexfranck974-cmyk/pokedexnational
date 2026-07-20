@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Modal, FlatLi
 import type { PokemonType } from '@/lib/types';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
+import { GENERATIONS } from '@/lib/generations';
 import { colors, radius, spacing } from '@/lib/theme';
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
   typeFilter: PokemonType | null;       onType: (v: PokemonType | null) => void;
   setFilter: string | null;             onSet: (v: string | null) => void;
   rarityFilter: string | null;          onRarity: (v: string | null) => void;
+  generationFilter: number | null;      onGeneration: (v: number | null) => void;
   sort: SortKey;                        onSort: (v: SortKey) => void;
   sets: { id: string; name: string }[];
   rarities: string[];
@@ -74,17 +76,19 @@ function PickerModal({
 }
 
 export function SearchFilterBar(p: Props) {
-  const [openPicker, setOpenPicker] = useState<null | 'type' | 'set' | 'rarity'>(null);
-  const hasFilters = p.statusFilter !== 'all' || p.typeFilter || p.setFilter || p.rarityFilter;
+  const [openPicker, setOpenPicker] = useState<null | 'type' | 'set' | 'rarity' | 'gen'>(null);
+  const hasFilters = p.statusFilter !== 'all' || p.typeFilter || p.setFilter || p.rarityFilter || p.generationFilter !== null;
 
   const typeOptions: PickerOption[] = (Object.keys(TYPE_LABEL_FR) as PokemonType[])
     .map(t => ({ id: t, label: TYPE_LABEL_FR[t] }));
   const setOptions: PickerOption[]  = p.sets.map(s => ({ id: s.id, label: s.name }));
   const rarityOptions: PickerOption[] = p.rarities.map(r => ({ id: r, label: r }));
+  const genOptions: PickerOption[] = GENERATIONS.map(g => ({ id: String(g.gen), label: g.label }));
 
   const typeChipLabel   = p.typeFilter   ? `Type: ${TYPE_LABEL_FR[p.typeFilter]}` : 'Type';
   const setChipLabel    = p.setFilter    ? `Set: ${p.sets.find(s => s.id === p.setFilter)?.name ?? p.setFilter}` : 'Set';
   const rarityChipLabel = p.rarityFilter ? `Rareté: ${p.rarityFilter}` : 'Rareté';
+  const genChipLabel    = p.generationFilter ? `Gen ${p.generationFilter}` : 'Génération';
 
   return (
     <View style={styles.wrap}>
@@ -98,6 +102,7 @@ export function SearchFilterBar(p: Props) {
       </ScrollView>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+        <Chip label={genChipLabel}    active={p.generationFilter !== null} onPress={() => setOpenPicker('gen')} />
         <Chip label={typeChipLabel}   active={p.typeFilter !== null}   onPress={() => setOpenPicker('type')} />
         <Chip label={setChipLabel}    active={p.setFilter !== null}    onPress={() => setOpenPicker('set')} />
         <Chip label={rarityChipLabel} active={p.rarityFilter !== null} onPress={() => setOpenPicker('rarity')} />
@@ -138,6 +143,14 @@ export function SearchFilterBar(p: Props) {
         options={rarityOptions}
         selectedId={p.rarityFilter}
         onSelect={p.onRarity}
+        onClose={() => setOpenPicker(null)}
+      />
+      <PickerModal
+        visible={openPicker === 'gen'}
+        title="Génération"
+        options={genOptions}
+        selectedId={p.generationFilter !== null ? String(p.generationFilter) : null}
+        onSelect={(id) => p.onGeneration(id === null ? null : parseInt(id, 10))}
         onClose={() => setOpenPicker(null)}
       />
     </View>

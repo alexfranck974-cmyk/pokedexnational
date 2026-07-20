@@ -1,4 +1,5 @@
 import type { PokemonType } from './types';
+import { GENERATIONS } from './generations';
 
 export interface WishlistCard {
   id: string;
@@ -24,6 +25,7 @@ export interface WishlistPipelineOpts {
   typeFilter: PokemonType | null;
   setFilter: string | null;
   rarityFilter: string | null;
+  generationFilter?: number | null;
   sort: WishSortKey;
 }
 
@@ -48,6 +50,10 @@ export function applyWishlistPipeline(
     }
     if (opts.setFilter && c.set_id !== opts.setFilter) return false;
     if (opts.rarityFilter && c.rarity !== opts.rarityFilter) return false;
+    if (opts.generationFilter) {
+      const g = GENERATIONS.find(x => x.gen === opts.generationFilter);
+      if (!g || c.dex_num < g.min || c.dex_num > g.max) return false;
+    }
     if (searchN) {
       const nameMatch = normalize(c.name).includes(searchN);
       const setMatch = normalize(c.set_name).includes(searchN);

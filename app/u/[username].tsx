@@ -42,13 +42,14 @@ export default function PublicProfile() {
   const [typeFilter, setType]     = useState<PokemonType | null>(null);
   const [setFilter, setSet]       = useState<string | null>(null);
   const [rarityFilter, setRarity] = useState<string | null>(null);
+  const [generationFilter, setGeneration] = useState<number | null>(null);
   const [sort, setSort]           = useState<SortKey>('num-asc');
 
   const items = useMemo(
     () => applyPokedexPipeline(POKEDEX, owned, tcgIndex, {
-      search, statusFilter, typeFilter, setFilter, rarityFilter, sort,
+      search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort,
     }),
-    [owned, tcgIndex, search, statusFilter, typeFilter, setFilter, rarityFilter, sort],
+    [owned, tcgIndex, search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort],
   );
 
   if (checking) return <SafeAreaView style={styles.center}><ActivityIndicator /></SafeAreaView>;
@@ -78,9 +79,10 @@ export default function PublicProfile() {
         typeFilter={typeFilter} onType={setType}
         setFilter={setFilter} onSet={setSet}
         rarityFilter={rarityFilter} onRarity={setRarity}
+        generationFilter={generationFilter} onGeneration={setGeneration}
         sort={sort} onSort={setSort}
         sets={sets} rarities={rarities}
-        onReset={() => { setStatus('all'); setType(null); setSet(null); setRarity(null); }}
+        onReset={() => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); }}
       />
       <PokedexGrid items={items} ownedImages={ownedImages} onSelect={() => { /* V1: no detail from public view */ }} />
     </SafeAreaView>

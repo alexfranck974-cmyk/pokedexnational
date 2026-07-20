@@ -90,4 +90,28 @@ describe('applyPokedexPipeline', () => {
     });
     expect(desc.map(x => x.num)).toEqual([4, 25, 7, 1]);
   });
+
+  it('filters by generation (Gen 1 = dex 1..151)', () => {
+    const bigSample = [
+      ...sample,
+      { num: 152, name_fr: 'Germignon', name_en: 'Chikorita', types: ['grass'], sprite_url: '' },
+      { num: 906, name_fr: 'Poussacha', name_en: 'Sprigatito', types: ['grass'], sprite_url: '' },
+    ];
+    const r = applyPokedexPipeline(bigSample, owned, index, {
+      search: '', statusFilter: 'all', typeFilter: null, setFilter: null, rarityFilter: null, generationFilter: 1, sort: 'num-asc',
+    });
+    expect(r.map(x => x.num)).toEqual([1, 4, 7, 25]);
+  });
+
+  it('filters by generation (Gen 9 = dex 906..1025)', () => {
+    const bigSample = [
+      ...sample,
+      { num: 906, name_fr: 'Poussacha', name_en: 'Sprigatito', types: ['grass'], sprite_url: '' },
+      { num: 1025, name_fr: 'Pêchaminus', name_en: 'Pecharunt', types: ['poison'], sprite_url: '' },
+    ];
+    const r = applyPokedexPipeline(bigSample, owned, index, {
+      search: '', statusFilter: 'all', typeFilter: null, setFilter: null, rarityFilter: null, generationFilter: 9, sort: 'num-asc',
+    });
+    expect(r.map(x => x.num)).toEqual([906, 1025]);
+  });
 });

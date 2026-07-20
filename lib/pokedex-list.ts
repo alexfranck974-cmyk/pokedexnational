@@ -1,5 +1,6 @@
 import type { Pokemon, PokemonType } from './types';
 import { getName } from './i18n';
+import { GENERATIONS } from './generations';
 
 export type StatusFilter = 'all' | 'owned' | 'missing';
 export type SortKey = 'num-asc' | 'num-desc' | 'name-asc' | 'name-desc';
@@ -10,6 +11,7 @@ export interface PipelineOptions {
   typeFilter: PokemonType | null;
   setFilter: string | null;
   rarityFilter: string | null;
+  generationFilter?: number | null;
   sort: SortKey;
 }
 
@@ -45,6 +47,11 @@ export function applyPokedexPipeline(
     if (opts.rarityFilter) {
       const idx = tcgIndex.get(p.num);
       if (!idx || !idx.rarities.includes(opts.rarityFilter)) return false;
+    }
+
+    if (opts.generationFilter) {
+      const g = GENERATIONS.find(x => x.gen === opts.generationFilter);
+      if (!g || p.num < g.min || p.num > g.max) return false;
     }
 
     if (searchN) {

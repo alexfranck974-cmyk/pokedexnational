@@ -11,6 +11,7 @@ import { Pokeball } from '@/components/Pokeball';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import pokedexData from '@/data/pokedex.json';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
+import { GENERATIONS } from '@/lib/generations';
 
 const POKEDEX = pokedexData as Pokemon[];
 const TYPES_BY_DEX = new Map<number, PokemonType[]>(POKEDEX.map(p => [p.num, p.types]));
@@ -48,6 +49,7 @@ export default function WishlistScreen() {
   const [typeFilter, setType] = useState<PokemonType | null>(null);
   const [setFilter, setSet] = useState<string | null>(null);
   const [rarityFilter, setRarity] = useState<string | null>(null);
+  const [generationFilter, setGeneration] = useState<number | null>(null);
   const [sort, setSort] = useState<WishSortKey>('wished-desc');
 
   const availableSets = useMemo(() => {
@@ -64,9 +66,9 @@ export default function WishlistScreen() {
 
   const filtered = useMemo(
     () => applyWishlistPipeline(cards as WishlistCard[], ownedIds, TYPES_BY_DEX, {
-      search, statusFilter, typeFilter, setFilter, rarityFilter, sort,
+      search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort,
     }),
-    [cards, ownedIds, search, statusFilter, typeFilter, setFilter, rarityFilter, sort],
+    [cards, ownedIds, search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort],
   );
 
   const cycleType = () => {
@@ -82,8 +84,12 @@ export default function WishlistScreen() {
     const idx = rarityFilter ? availableRarities.indexOf(rarityFilter) : -1;
     setRarity(idx === availableRarities.length - 1 ? null : availableRarities[idx + 1] ?? null);
   };
-  const reset = () => { setStatus('all'); setType(null); setSet(null); setRarity(null); };
-  const hasFilters = statusFilter !== 'all' || typeFilter !== null || setFilter !== null || rarityFilter !== null;
+  const cycleGeneration = () => {
+    const idx = generationFilter ? GENERATIONS.findIndex(g => g.gen === generationFilter) : -1;
+    setGeneration(idx === GENERATIONS.length - 1 ? null : GENERATIONS[idx + 1]?.gen ?? null);
+  };
+  const reset = () => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); };
+  const hasFilters = statusFilter !== 'all' || typeFilter !== null || setFilter !== null || rarityFilter !== null || generationFilter !== null;
 
   if (isLoading) {
     return <SafeAreaView style={styles.center}><ActivityIndicator /></SafeAreaView>;
@@ -116,6 +122,7 @@ export default function WishlistScreen() {
         </ScrollView>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          <Chip label={generationFilter ? `Gen ${generationFilter}` : 'Génération'} active={generationFilter !== null} onPress={cycleGeneration} />
           <Chip label={typeFilter ? `Type: ${TYPE_LABEL_FR[typeFilter]}` : 'Type'} active={typeFilter !== null} onPress={cycleType} />
           <Chip label={setFilter ? `Set: ${availableSets.find(s => s.id === setFilter)?.name ?? setFilter}` : 'Set'} active={setFilter !== null} onPress={cycleSet} />
           <Chip label={rarityFilter ? `Rareté: ${rarityFilter}` : 'Rareté'} active={rarityFilter !== null} onPress={cycleRarity} />
