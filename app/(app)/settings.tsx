@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   rowInline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, ...shadow.sm },
   label: { fontSize: 13, color: colors.textMuted },
   readonly: { fontSize: 16, color: colors.text },
-  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12 },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, color: colors.text, backgroundColor: colors.surfaceAlt },
   btn: { backgroundColor: colors.primary, padding: spacing.md, borderRadius: radius.md, alignItems: 'center' },
   btnSecondary: { backgroundColor: colors.surfaceAlt, padding: spacing.sm, borderRadius: radius.sm, alignSelf: 'flex-start' },
   btnSecondaryText: { color: colors.text },

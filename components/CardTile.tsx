@@ -53,12 +53,12 @@ const styles = StyleSheet.create({
   rarity: { fontSize: 10, color: colors.textMuted },
   pokeballOverlay: {
     position: 'absolute', top: 4, left: 4,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: colors.overlay,
     borderRadius: radius.pill, padding: 2,
   },
   heartBtn: {
     position: 'absolute', top: 4, right: 4, width: 28, height: 28,
-    borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: radius.pill, backgroundColor: colors.overlay,
     alignItems: 'center', justifyContent: 'center',
   },
   heart: { fontSize: 18, color: colors.textDim, lineHeight: 22 },

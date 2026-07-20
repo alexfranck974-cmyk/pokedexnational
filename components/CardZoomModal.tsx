@@ -1,5 +1,6 @@
 import { Modal, Pressable, Image, StyleSheet, useWindowDimensions } from 'react-native';
 import type { TcgCardRow } from '@/lib/tcg';
+import { colors } from '@/lib/theme';
 
 interface Props {
   card: TcgCardRow | null;
@@ -26,5 +27,5 @@ export function CardZoomModal({ card, onClose }: Props) {
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center' },
+  backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center', justifyContent: 'center' },
 });

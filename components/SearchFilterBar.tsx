@@ -146,7 +146,7 @@ export function SearchFilterBar(p: Props) {
 
 const styles = StyleSheet.create({
   wrap: { padding: spacing.sm, gap: 6, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-  search: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, fontSize: 15 },
+  search: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, fontSize: 15, color: colors.text, backgroundColor: colors.surfaceAlt },
   chipRow: { gap: 6, alignItems: 'center' },
   chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
   chipActive: { backgroundColor: colors.primary },
@@ -155,14 +155,14 @@ const styles = StyleSheet.create({
   reset: { alignSelf: 'flex-end', padding: 4 },
   resetText: { fontSize: 12, color: colors.danger },
 
-  backdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'flex-end', alignItems: 'center' },
+  backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end', alignItems: 'center' },
   sheet: { width: '100%', maxHeight: '60%', backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
   sheetDesktop: { width: 400, height: 500, borderRadius: radius.xl, marginBottom: 40 },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-  sheetTitle: { fontSize: 16, fontWeight: '700' },
+  sheetTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
   close: { fontSize: 20, color: colors.textMuted },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 44 },
   rowPressed: { backgroundColor: colors.surfaceAlt },
-  rowLabel: { fontSize: 14 },
+  rowLabel: { fontSize: 14, color: colors.text },
   check: { color: colors.success, fontSize: 16, fontWeight: '700' },
 });
