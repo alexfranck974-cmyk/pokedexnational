@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { useSession } from './auth';
+import { toast } from './toast';
 
 export function useUserDex(userId?: string) {
   return useQuery({
@@ -66,6 +67,7 @@ export function useToggleCard() {
     onError: (_e, { dexNum }, ctx) => {
       if (ctx?.prevCards) qc.setQueryData(['user_cards', userId, dexNum], ctx.prevCards);
       if (ctx?.prevDex)   qc.setQueryData(['user_dex', userId], ctx.prevDex);
+      toast('Impossible de sauvegarder, réessaie.');
     },
     onSettled: (_r, _e, { dexNum }) => {
       qc.invalidateQueries({ queryKey: ['user_cards', userId, dexNum] });
