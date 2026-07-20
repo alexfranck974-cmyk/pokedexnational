@@ -38,6 +38,16 @@ export default function PokemonDetail() {
 
   const wishFiltered = onlyWishes ? filteredCards.filter(c => wishedSet.has(c.id)) : filteredCards;
 
+  const sortedCards = useMemo(() => {
+    const wished: typeof wishFiltered = [];
+    const rest: typeof wishFiltered = [];
+    for (const c of wishFiltered) {
+      if (wishedSet.has(c.id)) wished.push(c);
+      else rest.push(c);
+    }
+    return [...wished, ...rest];
+  }, [wishFiltered, wishedSet]);
+
   if (!p) return <SafeAreaView><Text>Pokémon inconnu</Text></SafeAreaView>;
 
   return (
@@ -86,7 +96,7 @@ export default function PokemonDetail() {
             <Text style={styles.empty}>Aucune carte dans les extensions sélectionnées.</Text>
           ) : (
             <CardGallery
-              cards={wishFiltered}
+              cards={sortedCards}
               ownedSet={ownedSet}
               wishedSet={wishedSet}
               viewMode={viewMode}
