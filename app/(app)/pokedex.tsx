@@ -13,6 +13,7 @@ import { PokedexGrid } from '@/components/PokedexGrid';
 import { SearchFilterBar } from '@/components/SearchFilterBar';
 import { ProgressCounter } from '@/components/ProgressCounter';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
+import { colors, spacing } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -77,6 +78,6 @@ export default function PokedexScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#fafafa' },
-  counter: { padding: 8, backgroundColor: 'white', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#eee' },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  counter: { padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
 });

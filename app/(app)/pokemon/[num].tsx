@@ -11,6 +11,7 @@ import { CardFilterTree } from '@/components/CardFilterTree';
 import { useCardsForPokemon } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
 import { useUserCards, useUserWishlist, useToggleCard, useToggleWish } from '@/lib/collection';
+import { colors, radius, spacing, shadow } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -92,7 +93,7 @@ export default function PokemonDetail() {
               <Text style={styles.wishBannerText}>♥ Filtre wish actif — tap pour tout voir</Text>
             </Pressable>
           )}
-          {wishFiltered.length === 0 ? (
+          {sortedCards.length === 0 ? (
             <Text style={styles.empty}>Aucune carte dans les extensions sélectionnées.</Text>
           ) : (
             <CardGallery
@@ -111,19 +112,19 @@ export default function PokemonDetail() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#fafafa' },
-  header: { padding: 8, backgroundColor: 'white', flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#eee' },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  header: { padding: spacing.md, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: 8, ...shadow.sm },
   back: { padding: 4 },
-  backText: { color: '#3b82f6', fontSize: 14 },
+  backText: { color: colors.primary, fontSize: 14 },
   miniSprite: { width: 40, height: 40 },
-  title: { fontSize: 16, fontWeight: '700' },
+  title: { fontSize: 17, fontWeight: '800', color: colors.text },
   typesRow: { marginTop: 2 },
-  count: { fontSize: 12, color: '#666', paddingLeft: 4 },
-  viewBtn: { width: 32, height: 32, borderRadius: 6, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#e0e0e0', backgroundColor: 'white' },
-  viewBtnActive: { backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
-  viewBtnText: { fontSize: 16, color: '#666' },
+  count: { fontSize: 12, color: colors.textMuted, paddingLeft: 4 },
+  viewBtn: { width: 32, height: 32, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt },
+  viewBtnActive: { backgroundColor: colors.primary },
+  viewBtnText: { fontSize: 16, color: colors.textMuted },
   viewBtnTextActive: { color: 'white' },
-  empty: { textAlign: 'center', color: '#666', padding: 24 },
-  wishBanner: { padding: 8, backgroundColor: '#fef2f2', marginHorizontal: 12, borderRadius: 6, marginBottom: 6 },
-  wishBannerText: { color: '#c00', fontSize: 12, textAlign: 'center', fontWeight: '600' },
+  empty: { textAlign: 'center', color: colors.textMuted, padding: 24, fontStyle: 'italic' },
+  wishBanner: { padding: spacing.sm, backgroundColor: colors.dangerBg, marginHorizontal: spacing.md, borderRadius: radius.md, marginBottom: 6 },
+  wishBannerText: { color: colors.danger, fontSize: 12, textAlign: 'center', fontWeight: '600' },
 });
