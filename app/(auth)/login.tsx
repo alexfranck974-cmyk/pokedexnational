@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { Link } from 'expo-router';
 import { signIn } from '@/lib/auth';
+import { colors, radius, spacing } from '@/lib/theme';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -34,11 +35,11 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, padding: 24, gap: 12, justifyContent: 'center' },
-  h1: { fontSize: 28, fontWeight: '700', marginBottom: 12 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16 },
-  err: { color: '#c00' },
-  btn: { backgroundColor: '#111', padding: 14, borderRadius: 8, alignItems: 'center' },
-  btnText: { color: 'white', fontSize: 16, fontWeight: '600' },
-  link: { textAlign: 'center', marginTop: 12, color: '#555' },
+  wrap: { flex: 1, padding: spacing.xl, gap: spacing.md, justifyContent: 'center', backgroundColor: colors.bg },
+  h1: { fontSize: 32, fontWeight: '800', color: colors.text, marginBottom: spacing.lg },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 14, fontSize: 16 },
+  err: { color: colors.danger },
+  btn: { backgroundColor: colors.primary, padding: 14, borderRadius: radius.md, alignItems: 'center' },
+  btnText: { color: 'white', fontSize: 16, fontWeight: '700' },
+  link: { textAlign: 'center', marginTop: spacing.md, color: colors.textMuted, fontSize: 14 },
 });

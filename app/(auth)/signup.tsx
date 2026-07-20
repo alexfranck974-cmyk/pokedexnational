@@ -4,6 +4,7 @@ import { Link } from 'expo-router';
 import { signUp } from '@/lib/auth';
 import { isValidUsername } from '@/lib/slug';
 import { supabase } from '@/lib/supabase';
+import { colors, radius, spacing } from '@/lib/theme';
 
 export default function SignUp() {
   const [email, setEmail] = useState('');
@@ -48,7 +49,7 @@ export default function SignUp() {
         onChangeText={setUsername} onBlur={onUsernameBlur}
         autoCapitalize="none" style={styles.input} />
       {usernameCheck === 'checking' && <Text style={styles.hint}>Vérification…</Text>}
-      {usernameCheck === 'ok'       && <Text style={[styles.hint, { color: 'green' }]}>Disponible ✓</Text>}
+      {usernameCheck === 'ok'       && <Text style={[styles.hint, { color: colors.success }]}>Disponible ✓</Text>}
       {usernameCheck === 'taken'    && <Text style={styles.err}>Déjà pris</Text>}
       {usernameCheck === 'invalid'  && <Text style={styles.err}>Format invalide</Text>}
       <TextInput placeholder="Nom affiché (public)" value={displayName}
@@ -63,12 +64,12 @@ export default function SignUp() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, padding: 24, gap: 12, justifyContent: 'center' },
-  h1: { fontSize: 28, fontWeight: '700', marginBottom: 12 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16 },
-  hint: { color: '#555', fontSize: 12 },
-  err: { color: '#c00' },
-  btn: { backgroundColor: '#111', padding: 14, borderRadius: 8, alignItems: 'center' },
-  btnText: { color: 'white', fontSize: 16, fontWeight: '600' },
-  link: { textAlign: 'center', marginTop: 12, color: '#555' },
+  wrap: { flex: 1, padding: spacing.xl, gap: spacing.md, justifyContent: 'center', backgroundColor: colors.bg },
+  h1: { fontSize: 32, fontWeight: '800', color: colors.text, marginBottom: spacing.lg },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 14, fontSize: 16 },
+  hint: { color: colors.textMuted, fontSize: 14 },
+  err: { color: colors.danger },
+  btn: { backgroundColor: colors.primary, padding: 14, borderRadius: radius.md, alignItems: 'center' },
+  btnText: { color: 'white', fontSize: 16, fontWeight: '700' },
+  link: { textAlign: 'center', marginTop: spacing.md, color: colors.textMuted, fontSize: 14 },
 });
