@@ -5,15 +5,21 @@ import { getName } from '@/lib/i18n';
 interface Props {
   pokemon: Pokemon;
   owned: boolean;
+  ownedCardImage?: string;
   cardCount?: number;
   onPress: () => void;
 }
 
-export function PokemonTile({ pokemon, owned, cardCount, onPress }: Props) {
+export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, onPress }: Props) {
+  const useCard = owned && !!ownedCardImage;
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
       <View style={[styles.spriteWrap, !owned && styles.spriteMissing]}>
-        <Image source={{ uri: pokemon.sprite_url }} style={styles.sprite} resizeMode="contain" />
+        <Image
+          source={{ uri: useCard ? ownedCardImage : pokemon.sprite_url }}
+          style={styles.sprite}
+          resizeMode="contain"
+        />
         {owned && <View style={styles.checkBadge}><Text style={styles.checkText}>✓</Text></View>}
       </View>
       <Text style={[styles.num, !owned && styles.textDim]}>

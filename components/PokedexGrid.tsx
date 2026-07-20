@@ -5,6 +5,7 @@ import type { PokemonWithState } from '@/lib/pokedex-list';
 
 interface Props {
   items: PokemonWithState[];
+  ownedImages?: Map<number, string>;
   onSelect: (num: number) => void;
 }
 
@@ -14,7 +15,7 @@ function numColsFor(width: number): number {
   return 8;
 }
 
-export function PokedexGrid({ items, onSelect }: Props) {
+export function PokedexGrid({ items, ownedImages, onSelect }: Props) {
   const { width } = useWindowDimensions();
   const cols = numColsFor(width);
   return (
@@ -24,7 +25,12 @@ export function PokedexGrid({ items, onSelect }: Props) {
       estimatedItemSize={120}
       keyExtractor={item => String(item.num)}
       renderItem={({ item }) => (
-        <PokemonTile pokemon={item} owned={item.owned} onPress={() => onSelect(item.num)} />
+        <PokemonTile
+          pokemon={item}
+          owned={item.owned}
+          ownedCardImage={ownedImages?.get(item.num)}
+          onPress={() => onSelect(item.num)}
+        />
       )}
     />
   );
