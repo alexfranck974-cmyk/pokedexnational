@@ -12,6 +12,7 @@ import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { PokedexGrid } from '@/components/PokedexGrid';
 import { SearchFilterBar } from '@/components/SearchFilterBar';
 import { ProgressCounter } from '@/components/ProgressCounter';
+import { colors, radius, spacing, shadow } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -55,7 +56,7 @@ export default function PublicProfile() {
   if (profile === 'notfound') {
     return (
       <SafeAreaView style={styles.center}>
-        <Text style={styles.title}>Ce Pokédex n'existe pas ou est privé</Text>
+        <Text style={styles.notFoundTitle}>Ce Pokédex n'existe pas ou est privé</Text>
         <Pressable style={styles.cta} onPress={() => router.push('/signup')}>
           <Text style={styles.ctaText}>Créer mon Pokédex TCG</Text>
         </Pressable>
@@ -87,11 +88,11 @@ export default function PublicProfile() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#fafafa' },
-  banner: { padding: 12, backgroundColor: 'white', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#eee' },
-  bannerTitle: { fontSize: 18, fontWeight: '700' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 16 },
-  title: { fontSize: 18, textAlign: 'center' },
-  cta: { backgroundColor: '#111', padding: 12, borderRadius: 8 },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  banner: { padding: spacing.md, backgroundColor: colors.surface, ...shadow.sm },
+  bannerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl, gap: spacing.lg, backgroundColor: colors.bg },
+  notFoundTitle: { fontSize: 18, textAlign: 'center', fontWeight: '700', color: colors.text },
+  cta: { backgroundColor: colors.primary, padding: 14, borderRadius: radius.md },
   ctaText: { color: 'white', fontWeight: '600' },
 });

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSession, signOut } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import * as Clipboard from 'expo-clipboard';
+import { colors, radius, spacing, shadow } from '@/lib/theme';
 
 export default function Settings() {
   const { session } = useSession();
@@ -67,7 +68,7 @@ export default function Settings() {
         <Text style={styles.label}>Lien de partage</Text>
         <Text style={styles.readonly}>{shareUrl}</Text>
         <Pressable onPress={copy} style={styles.btnSecondary}>
-          <Text>Copier</Text>
+          <Text style={styles.btnSecondaryText}>Copier</Text>
         </Pressable>
       </View>
 
@@ -83,15 +84,16 @@ export default function Settings() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 16, gap: 16, backgroundColor: '#fafafa' },
-  h1: { fontSize: 24, fontWeight: '700' },
-  row: { gap: 4 },
-  rowInline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  label: { fontSize: 14, color: '#555' },
-  readonly: { fontSize: 16, color: '#111' },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10 },
-  btn: { backgroundColor: '#111', padding: 12, borderRadius: 8, alignItems: 'center' },
-  btnSecondary: { backgroundColor: '#eee', padding: 8, borderRadius: 6, alignSelf: 'flex-start' },
-  btnDanger: { backgroundColor: '#c00', padding: 12, borderRadius: 8, alignItems: 'center' },
+  screen: { flex: 1, padding: spacing.lg, gap: spacing.lg, backgroundColor: colors.bg },
+  h1: { fontSize: 28, fontWeight: '800', color: colors.text },
+  row: { gap: 4, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, ...shadow.sm },
+  rowInline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, ...shadow.sm },
+  label: { fontSize: 13, color: colors.textMuted },
+  readonly: { fontSize: 16, color: colors.text },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12 },
+  btn: { backgroundColor: colors.primary, padding: spacing.md, borderRadius: radius.md, alignItems: 'center' },
+  btnSecondary: { backgroundColor: colors.surfaceAlt, padding: spacing.sm, borderRadius: radius.sm, alignSelf: 'flex-start' },
+  btnSecondaryText: { color: colors.text },
+  btnDanger: { backgroundColor: colors.danger, padding: spacing.md, borderRadius: radius.md, alignItems: 'center' },
   btnText: { color: 'white', fontWeight: '600' },
 });

@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useSession } from '@/lib/auth';
 import { useAllWishedCards, useToggleWish } from '@/lib/collection';
 import { useWindowDimensions } from 'react-native';
+import { colors, radius, spacing, shadow } from '@/lib/theme';
 
 interface WishedCard {
   id: string;
@@ -39,7 +40,7 @@ export default function WishlistScreen() {
 
   if (cards.length === 0) {
     return (
-      <SafeAreaView style={styles.center}>
+      <SafeAreaView style={[styles.center, { backgroundColor: colors.bg }]}>
         <Text style={styles.emptyTitle}>Aucune carte dans ta wishlist</Text>
         <Text style={styles.emptyHint}>Ajoute-en depuis la page détail d'un Pokémon (icône ♥).</Text>
       </SafeAreaView>
@@ -83,22 +84,22 @@ export default function WishlistScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#fafafa' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 8 },
-  header: { padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'white', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#eee' },
-  title: { fontSize: 20, fontWeight: '700' },
-  count: { fontSize: 12, color: '#666' },
-  emptyTitle: { fontSize: 18, fontWeight: '600', textAlign: 'center' },
-  emptyHint: { fontSize: 14, color: '#666', textAlign: 'center' },
-  tile: { flex: 1, padding: 6, borderRadius: 8, borderWidth: 2, borderColor: 'transparent' },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl, gap: spacing.md },
+  header: { padding: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, ...shadow.sm },
+  title: { fontSize: 22, fontWeight: '800', color: colors.text },
+  count: { fontSize: 12, color: colors.textMuted },
+  emptyTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center', color: colors.text },
+  emptyHint: { fontSize: 14, color: colors.textMuted, textAlign: 'center' },
+  tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, borderWidth: 2, borderColor: 'transparent', ...shadow.sm },
   imgWrap: { position: 'relative' },
   img: { width: '100%', aspectRatio: 0.72 },
-  set: { fontSize: 11, fontWeight: '600', marginTop: 4 },
-  rarity: { fontSize: 10, color: '#666' },
+  set: { fontSize: 11, fontWeight: '600', marginTop: 4, color: colors.text },
+  rarity: { fontSize: 10, color: colors.textMuted },
   heartBtn: {
     position: 'absolute', top: 4, right: 4, width: 28, height: 28,
-    borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.85)',
+    borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.85)',
     alignItems: 'center', justifyContent: 'center',
   },
-  heartFilled: { fontSize: 18, color: '#ef4444', lineHeight: 22 },
+  heartFilled: { fontSize: 18, color: colors.danger, lineHeight: 22 },
 });
