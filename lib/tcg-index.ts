@@ -27,18 +27,14 @@ export function useTcgSets() {
     staleTime: Infinity,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('tcg_cards')
+        .from('tcg_sets')
         .select('set_id, set_name, release_date')
-        .order('release_date', { ascending: false });
+        .order('release_date', { ascending: false, nullsFirst: false });
       if (error) throw error;
-      const seen = new Set<string>();
-      const out: { id: string; name: string }[] = [];
-      for (const row of data ?? []) {
-        if (seen.has(row.set_id as string)) continue;
-        seen.add(row.set_id as string);
-        out.push({ id: row.set_id as string, name: row.set_name as string });
-      }
-      return out;
+      return (data ?? []).map(row => ({
+        id: row.set_id as string,
+        name: row.set_name as string,
+      }));
     },
   });
 }
@@ -49,13 +45,11 @@ export function useTcgRarities() {
     staleTime: Infinity,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('tcg_cards')
+        .from('tcg_rarities')
         .select('rarity')
-        .not('rarity', 'is', null);
+        .order('rarity');
       if (error) throw error;
-      const set = new Set<string>();
-      for (const row of data ?? []) if (row.rarity) set.add(row.rarity as string);
-      return Array.from(set).sort();
+      return (data ?? []).map(r => r.rarity as string);
     },
   });
 }
