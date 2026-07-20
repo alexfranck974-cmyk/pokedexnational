@@ -174,9 +174,9 @@ Pokedexnational/
 ### 6.1 Signup
 
 1. Utilisateur saisit email, mot de passe, username souhaité
-2. Le client vérifie l'unicité du username via `SELECT id FROM profiles WHERE username = ?` (l'anon RLS le permet pour les profils publics — pour un check exhaustif on utilise une RPC `check_username_available` en `SECURITY DEFINER`)
+2. Le client appelle une fonction RPC Postgres `check_username_available(candidate text) RETURNS boolean` déclarée `SECURITY DEFINER` (contourne le RLS pour un check exhaustif y compris sur les profils privés). Affichage instantané "disponible / déjà pris".
 3. `supabase.auth.signUp({ email, password, options: { data: { username, display_name } } })`
-4. Le trigger `handle_new_user` crée la ligne `profiles`
+4. Le trigger `handle_new_user` crée la ligne `profiles`. Contrainte UNIQUE sur `username` : si course avec un autre signup simultané, l'insert échoue, la transaction rollback, et le signup renvoie une erreur que le client affiche.
 5. Session locale persistée, redirection vers `/pokedex`
 
 ### 6.2 Toggle d'un Pokémon (optimistic)
