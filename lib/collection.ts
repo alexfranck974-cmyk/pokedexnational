@@ -181,6 +181,27 @@ export function useToggleWish() {
     onSettled: (_r, _e, { dexNum }) => {
       qc.invalidateQueries({ queryKey: ['user_wishlist', userId, dexNum] });
       qc.invalidateQueries({ queryKey: ['user_wishlist_all', userId] });
+      qc.invalidateQueries({ queryKey: ['wished_dex_nums', userId] });
+    },
+  });
+}
+
+export function useWishedDexNums(userId?: string) {
+  return useQuery({
+    queryKey: ['wished_dex_nums', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_wishlist')
+        .select('tcg_cards!inner(dex_num)')
+        .eq('user_id', userId!);
+      if (error) throw error;
+      const set = new Set<number>();
+      for (const row of data ?? []) {
+        const dn = (row.tcg_cards as any)?.dex_num;
+        if (typeof dn === 'number') set.add(dn);
+      }
+      return set;
     },
   });
 }
