@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useMemo } from 'react';
 import { RootSiblingParent } from 'react-native-root-siblings';
+import { StatusBar } from 'expo-status-bar';
 
 export default function RootLayout() {
   const queryClient = useMemo(
@@ -16,6 +17,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
+      <StatusBar style="light" />
       <QueryClientProvider client={queryClient}>
         <RootSiblingParent>
           <Stack screenOptions={{ headerShown: false }} />
