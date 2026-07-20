@@ -23,9 +23,14 @@ La progression est individuelle par utilisateur, et partageable en lecture seule
 - Lien public de partage `/u/{username}` en lecture seule (aucun compte requis pour consulter)
 - Sync entre appareils au chargement / pull-to-refresh (pas de push temps réel)
 - Recherche par nom de Pokémon ou numéro (vue National)
-- Filtres sur la vue National : tous / possédés / manquants
+- Filtres sur la vue National :
+  - État : tous / possédés / manquants
+  - Type Pokémon (mono-sélection : `Feu`, `Eau`, etc. — matche sur type 1 OU type 2)
+  - Set TCG (mono-sélection : `Base`, `Jungle`, … — restreint la grille aux Pokémon ayant au moins une carte dans ce set)
+  - Rareté (mono-sélection : `Common`, `Rare Holo`, … — restreint la grille aux Pokémon ayant au moins une carte de cette rareté)
+  - Les filtres se combinent (ET logique)
 - Tri sur la vue National : numéro ↑↓, nom A→Z / Z→A
-- Compteur global `X / 1025 (Y%)` + compteur cartes `N cartes possédées`
+- Compteur global `X / 1025 (Y%)` + compteur cartes `N cartes possédées` — reflète les filtres actifs
 - Responsive : phone (3 col), tablet (5 col), desktop (8 col)
 - Support des trois plateformes (iOS, Android, Web) via Expo
 - Light mode uniquement
@@ -35,8 +40,6 @@ La progression est individuelle par utilisateur, et partageable en lecture seule
 - Quantités par carte (V1 est binaire : possédée ou non, pas de compteur "j'en ai 3")
 - Suivi de l'état de la carte (mint / near mint / played, etc.)
 - Recherche / filtres sur la page détail (parcours de toutes les cartes d'un Pokémon)
-- Filtres par set TCG ou par rareté au niveau global
-- Filtres par type Pokémon sur la vue National (les types sont récupérés dès V1 pour préparer)
 - Toggle multi-langue depuis les settings (FR forcé en V1 pour les noms de Pokémon ; les noms de cartes restent en EN — c'est ce que fournit Pokemon TCG API)
 - Dark mode
 - Sync temps réel via WebSocket
@@ -159,7 +162,24 @@ WHERE tc.dex_num BETWEEN 1 AND 1025;
 
 Le client interroge `user_dex` pour hydrater la grille National. Rapide car indexée via les PK/FK sous-jacents.
 
-### 4.5 Row Level Security
+### 4.5 Vue `pokemon_tcg_index` (dérivée)
+
+Index compact pour les filtres set / rareté de la vue National :
+
+```sql
+CREATE VIEW pokemon_tcg_index AS
+SELECT
+  dex_num,
+  array_agg(DISTINCT set_id) AS set_ids,
+  array_agg(DISTINCT rarity) FILTER (WHERE rarity IS NOT NULL) AS rarities
+FROM tcg_cards
+WHERE dex_num BETWEEN 1 AND 1025
+GROUP BY dex_num;
+```
+
+Lecture publique (RLS ouvert). Rafraîchie automatiquement quand `tcg_cards` est mis à jour par le script de sync.
+
+### 4.6 Row Level Security
 
 **Sur `profiles`** :
 
@@ -183,11 +203,15 @@ Le client interroge `user_dex` pour hydrater la grille National. Rapide car inde
 
 - Hérite des permissions de `user_cards` (RLS des tables sous-jacentes s'applique via `security_invoker = on`)
 
-### 4.6 Trigger d'onboarding
+**Sur `pokemon_tcg_index`** (vue) :
+
+- Lecture ouverte à tous (hérite de `tcg_cards` via `security_invoker = on`)
+
+### 4.7 Trigger d'onboarding
 
 Fonction `handle_new_user()` déclenchée `AFTER INSERT ON auth.users`. Elle lit `raw_user_meta_data.username` et `raw_user_meta_data.display_name` (envoyés au signup) et insère la ligne `profiles`. Contrainte UNIQUE + CHECK sur `username` = la validation ultime. Si course avec un signup concurrent qui gagnerait le username, la transaction rollback et le client affiche l'erreur.
 
-### 4.7 RPC `check_username_available(candidate text) RETURNS boolean`
+### 4.8 RPC `check_username_available(candidate text) RETURNS boolean`
 
 `SECURITY DEFINER`, permet au client de vérifier avant signup si le username est disponible, y compris contre des profils privés (que le RLS `SELECT` ne verrait pas depuis anon).
 
@@ -220,6 +244,7 @@ Pokedexnational/
 │   ├── auth.ts                       Hooks useSession, useSignIn, useSignUp
 │   ├── collection.ts                 Hooks useUserDex, useUserCards, useToggleCard
 │   ├── tcg.ts                        Hook useCardsForPokemon(dexNum)
+│   ├── tcg-index.ts                  Hooks useTcgIndex, useTcgSets (pour les filtres)
 │   ├── pokedex-list.ts               Pipeline search/filter/sort (usePokedexList)
 │   ├── types-colors.ts               type → HEX
 │   └── i18n.ts                       getName(pokemon, locale='fr')
@@ -279,29 +304,60 @@ Pokedexnational/
 
 ## 7. Pipeline search / filter / sort (vue National)
 
-Tout en mémoire côté client. Hook `usePokedexList(searchTerm, filter, sort)` :
+Tout en mémoire côté client. Hook `usePokedexList({ search, statusFilter, typeFilter, setFilter, rarityFilter, sort })`.
 
-```
-data/pokedex.json ─┐
-                   ├─► merge → [{ num, name_fr, name_en, types, sprite_url, owned }]
-Set<dex_num> ──────┘
-(depuis user_dex)
-                            │
-                            ▼
-              filter (all / owned / missing)
-                            │
-                            ▼
-     search (num "025" ou "25" ; nom substring, case-insensitive,
-             accent-insensitive via normalize NFD + strip diacritics)
-                            │
-                            ▼
-              sort (num asc/desc, name asc/desc)
-                            │
-                            ▼
-                       FlashList
+### 7.1 Index d'appartenance TCG (chargé une fois)
+
+Pour permettre les filtres "set" et "rareté" sans requêtes répétées, le client charge au démarrage un index compact :
+
+```sql
+CREATE VIEW pokemon_tcg_index AS
+SELECT
+  dex_num,
+  array_agg(DISTINCT set_id) AS set_ids,
+  array_agg(DISTINCT rarity) FILTER (WHERE rarity IS NOT NULL) AS rarities
+FROM tcg_cards
+WHERE dex_num BETWEEN 1 AND 1025
+GROUP BY dex_num;
 ```
 
-Enveloppé dans un `useMemo(..., [pokedexJson, ownedSet, searchTerm, filter, sort])`. À 1025 items, < 5 ms.
+Lecture publique (RLS ouvert comme `tcg_cards`). ~1025 lignes, ~30 KB en JSON compact. React Query avec `staleTime: Infinity` — cet index change uniquement quand un nouveau set est sync côté admin.
+
+Un second endpoint léger fournit la liste des sets connus (`SELECT id, name, release_date FROM tcg_cards GROUP BY id, name, release_date ORDER BY release_date DESC`) pour peupler le dropdown de filtre.
+
+### 7.2 Pipeline
+
+```
+data/pokedex.json ────┐    Set<dex_num> owned (user_dex)
+                      ├─► merge
+Set<dex_num> owned ───┘    → [{ num, name_fr, name_en, types, sprite_url, owned }]
+                                          │
+                                          ▼
+                              filter statusFilter (all / owned / missing)
+                                          │
+                                          ▼
+                              filter typeFilter (types.includes(selected))
+                                          │
+                                          ▼
+                              filter setFilter (pokemon_tcg_index[num].set_ids.includes(selected))
+                                          │
+                                          ▼
+                              filter rarityFilter (pokemon_tcg_index[num].rarities.includes(selected))
+                                          │
+                                          ▼
+                              search (num "025" ou "25" ; nom substring,
+                                      case-insensitive, accent-insensitive via NFD)
+                                          │
+                                          ▼
+                                        sort
+                                          │
+                                          ▼
+                                     FlashList
+```
+
+Enveloppé dans un `useMemo` sur toutes les entrées. À 1025 items × 4 filtres, < 10 ms.
+
+Le `ProgressCounter` recalcule ses totaux sur le résultat filtré : `342 / 1025 (33%)` devient `12 / 45 (26%) — filtre : Feu` quand un filtre est actif.
 
 ## 8. UI et responsive
 
@@ -323,14 +379,16 @@ Enveloppé dans un `useMemo(..., [pokedexJson, ownedSet, searchTerm, filter, sor
 
 ### 8.3 Barre supérieure (vue National)
 
-Sticky. Contient :
+Sticky. Contient sur deux lignes (une seule sur desktop) :
 
-- `SearchInput` (live, sans bouton)
-- Chips `Tous` / `Possédés` / `Manquants`
-- Dropdown de tri (4 options)
-- `ProgressCounter` : `342 / 1025 (33%) · 812 cartes`
+- Ligne 1 : `SearchInput` (live, sans bouton) + `ProgressCounter` (`342 / 1025 (33%) · 812 cartes`)
+- Ligne 2 : chips `Tous` / `Possédés` / `Manquants` + dropdowns `Type` / `Set` / `Rareté` (chaque dropdown a une option "Tous" pour désactiver) + dropdown de tri
 
-Mobile : collapse au scroll bas, réapparaît au scroll haut.
+Sur mobile, les dropdowns de filtres sont regroupés derrière un bouton `Filtres (N)` qui ouvre un bottom sheet — préserve l'espace vertical. `N` = nombre de filtres actifs.
+
+Un bouton `Réinitialiser les filtres` apparaît dès qu'au moins un filtre est actif.
+
+Mobile : la barre collapse au scroll bas, réapparaît au scroll haut.
 
 ### 8.4 Navigation
 
@@ -371,7 +429,14 @@ Mobile : collapse au scroll bas, réapparaît au scroll haut.
 
 ### 10.1 Tests unitaires
 
-- Pipeline `usePokedexList` : search accent-insensitive, filtre owned/missing, tris
+- Pipeline `usePokedexList` :
+  - search accent-insensitive et recherche par numéro
+  - filtre `statusFilter` (owned/missing/all)
+  - filtre `typeFilter` sur mono-type et bi-type
+  - filtre `setFilter` (Pokémon appartenant au set sélectionné)
+  - filtre `rarityFilter`
+  - combinaison de filtres (ET logique)
+  - tris (num asc/desc, name asc/desc, insensible aux accents)
 - Logique de dérivation `user_dex` (côté client si on la calcule aussi en mémoire pour l'optimistic)
 - `lib/i18n.ts` : fallback FR → EN
 - Slug validator du username
@@ -413,7 +478,7 @@ Ajout de Maestro envisageable en V1.x si besoin.
 - Quantités par carte (`qty` sur `user_cards`)
 - État de chaque carte (mint / played / etc.)
 - Recherche et filtres sur la page détail (par set, par rareté)
-- Filtres globaux : par set, par rareté, par type Pokémon
+- Filtres multi-sélection sur la vue National (ex: `Feu OU Eau`)
 - Toggle multi-langue dans les settings
 - Dark mode
 - Sync temps réel (Supabase Realtime channels sur `user_cards`)
