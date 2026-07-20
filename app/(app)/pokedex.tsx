@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import { useSession } from '@/lib/auth';
-import { useUserDex, useOwnedCardImages } from '@/lib/collection';
+import { useUserDex, useOwnedCardImages, useWishedDexNums } from '@/lib/collection';
 import { useTcgIndex, useTcgSets, useTcgRarities } from '@/lib/tcg-index';
 import { applyPokedexPipeline } from '@/lib/pokedex-list';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
@@ -19,8 +19,10 @@ const POKEDEX = pokedexData as Pokemon[];
 export default function PokedexScreen() {
   const router = useRouter();
   const { session } = useSession();
-  const { data: owned = new Set<number>() } = useUserDex(session?.user.id);
-  const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(session?.user.id);
+  const userId = session?.user.id;
+  const { data: owned = new Set<number>() } = useUserDex(userId);
+  const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
+  const { data: wishedInDexSet = new Set<number>() } = useWishedDexNums(userId);
   const { data: tcgIndex = new Map() } = useTcgIndex();
   const { data: sets = [] } = useTcgSets();
   const { data: rarities = [] } = useTcgRarities();
@@ -64,7 +66,12 @@ export default function PokedexScreen() {
       <View style={styles.counter}>
         <ProgressCounter owned={ownedCount} total={items.length} filterHint={filterHint} />
       </View>
-      <PokedexGrid items={items} ownedImages={ownedImages} onSelect={num => router.push(`/pokemon/${num}`)} />
+      <PokedexGrid
+        items={items}
+        ownedImages={ownedImages}
+        wishedInDexSet={wishedInDexSet}
+        onSelect={num => router.push(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`)}
+      />
     </SafeAreaView>
   );
 }
