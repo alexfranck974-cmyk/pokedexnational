@@ -53,7 +53,7 @@ export default function PokemonDetail() {
           cards={cards}
           ownedSet={ownedSet}
           wishedSet={wishedSet}
-          onToggle={c => toggle.mutate({ cardId: c.id, currentlyOwned: ownedSet.has(c.id), dexNum: num })}
+          onToggle={c => toggle.mutate({ cardId: c.id, currentlyOwned: ownedSet.has(c.id), dexNum: num, imageSmall: c.image_small })}
           onToggleWish={c => toggleWish.mutate({ cardId: c.id, currentlyWished: wishedSet.has(c.id), dexNum: num })}
         />
       )}
