@@ -11,6 +11,7 @@ export default function AppLayout() {
   return (
     <Tabs screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="pokedex" options={{ title: 'Pokédex' }} />
+      <Tabs.Screen name="wishlist" options={{ title: 'Wishlist' }} />
       <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
       <Tabs.Screen name="pokemon/[num]" options={{ href: null }} />
     </Tabs>
