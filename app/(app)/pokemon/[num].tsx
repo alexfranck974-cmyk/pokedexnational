@@ -8,6 +8,8 @@ import { getName } from '@/lib/i18n';
 import { TypeBadge } from '@/components/TypeBadge';
 import { CardGallery } from '@/components/CardGallery';
 import { CardFilterTree } from '@/components/CardFilterTree';
+import { CardZoomModal } from '@/components/CardZoomModal';
+import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForPokemon } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
 import { useUserCards, useUserWishlist, useToggleCard, useToggleWish } from '@/lib/collection';
@@ -31,6 +33,7 @@ export default function PokemonDetail() {
   const [selectedSetIds, setSelectedSetIds] = useState<Set<string> | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [onlyWishes, setOnlyWishes] = useState(wishes === '1');
+  const [zoomCard, setZoomCard] = useState<TcgCardRow | null>(null);
 
   const filteredCards = useMemo(
     () => selectedSetIds === null ? cards : cards.filter(c => selectedSetIds.has(c.set_id)),
@@ -103,10 +106,12 @@ export default function PokemonDetail() {
               viewMode={viewMode}
               onToggle={c => toggle.mutate({ cardId: c.id, currentlyOwned: ownedSet.has(c.id), dexNum: num, imageSmall: c.image_small })}
               onToggleWish={c => toggleWish.mutate({ cardId: c.id, currentlyWished: wishedSet.has(c.id), dexNum: num })}
+              onLongPress={c => setZoomCard(c)}
             />
           )}
         </>
       )}
+      <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
     </SafeAreaView>
   );
 }

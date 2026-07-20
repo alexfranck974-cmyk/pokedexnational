@@ -12,6 +12,7 @@ interface Props {
   viewMode?: 'grid' | 'list';
   onToggle: (card: TcgCardRow) => void;
   onToggleWish?: (card: TcgCardRow) => void;
+  onLongPress?: (card: TcgCardRow) => void;
 }
 
 function numColsFor(width: number): number {
@@ -20,7 +21,7 @@ function numColsFor(width: number): number {
   return 6;
 }
 
-export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = 'grid', onToggle, onToggleWish }: Props) {
+export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = 'grid', onToggle, onToggleWish, onLongPress }: Props) {
   const { width } = useWindowDimensions();
   if (viewMode === 'list') {
     return (
@@ -36,6 +37,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = '
             readOnly={readOnly}
             onToggle={() => onToggle(item)}
             onToggleWish={onToggleWish ? () => onToggleWish(item) : undefined}
+            onLongPress={onLongPress ? () => onLongPress(item) : undefined}
           />
         )}
       />
@@ -55,6 +57,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = '
           readOnly={readOnly}
           onToggle={() => onToggle(item)}
           onToggleWish={onToggleWish ? () => onToggleWish(item) : undefined}
+          onLongPress={onLongPress ? () => onLongPress(item) : undefined}
         />
       )}
     />
