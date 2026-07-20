@@ -1,6 +1,7 @@
 import { FlashList } from '@shopify/flash-list';
 import { useWindowDimensions } from 'react-native';
 import { CardTile } from './CardTile';
+import { CardListRow } from './CardListRow';
 import type { TcgCardRow } from '@/lib/tcg';
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
   ownedSet: Set<string>;
   wishedSet?: Set<string>;
   readOnly?: boolean;
+  viewMode?: 'grid' | 'list';
   onToggle: (card: TcgCardRow) => void;
   onToggleWish?: (card: TcgCardRow) => void;
 }
@@ -18,8 +20,27 @@ function numColsFor(width: number): number {
   return 6;
 }
 
-export function CardGallery({ cards, ownedSet, wishedSet, readOnly, onToggle, onToggleWish }: Props) {
+export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = 'grid', onToggle, onToggleWish }: Props) {
   const { width } = useWindowDimensions();
+  if (viewMode === 'list') {
+    return (
+      <FlashList
+        data={cards}
+        estimatedItemSize={100}
+        keyExtractor={c => c.id}
+        renderItem={({ item }) => (
+          <CardListRow
+            card={item}
+            owned={ownedSet.has(item.id)}
+            wished={wishedSet?.has(item.id)}
+            readOnly={readOnly}
+            onToggle={() => onToggle(item)}
+            onToggleWish={onToggleWish ? () => onToggleWish(item) : undefined}
+          />
+        )}
+      />
+    );
+  }
   return (
     <FlashList
       data={cards}
