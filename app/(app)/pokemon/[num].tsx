@@ -15,7 +15,7 @@ import { useUserCards, useUserWishlist, useToggleCard, useToggleWish } from '@/l
 const POKEDEX = pokedexData as Pokemon[];
 
 export default function PokemonDetail() {
-  const { num: numStr } = useLocalSearchParams<{ num: string }>();
+  const { num: numStr, wishes } = useLocalSearchParams<{ num: string; wishes?: string }>();
   const router = useRouter();
   const num = parseInt(numStr as string, 10);
   const p = POKEDEX.find(x => x.num === num);
@@ -28,10 +28,15 @@ export default function PokemonDetail() {
   const toggleWish = useToggleWish();
 
   const [selectedSetIds, setSelectedSetIds] = useState<Set<string> | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [onlyWishes, setOnlyWishes] = useState(wishes === '1');
+
   const filteredCards = useMemo(
     () => selectedSetIds === null ? cards : cards.filter(c => selectedSetIds.has(c.set_id)),
     [cards, selectedSetIds],
   );
+
+  const wishFiltered = onlyWishes ? filteredCards.filter(c => wishedSet.has(c.id)) : filteredCards;
 
   if (!p) return <SafeAreaView><Text>Pokémon inconnu</Text></SafeAreaView>;
 
@@ -49,6 +54,16 @@ export default function PokemonDetail() {
           </ScrollView>
         </View>
         <Text style={styles.count}>{ownedSet.size} / {filteredCards.length}</Text>
+        <Pressable
+          onPress={() => setViewMode('grid')}
+          style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>
+          <Text style={[styles.viewBtnText, viewMode === 'grid' && styles.viewBtnTextActive]}>⊞</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setViewMode('list')}
+          style={[styles.viewBtn, viewMode === 'list' && styles.viewBtnActive]}>
+          <Text style={[styles.viewBtnText, viewMode === 'list' && styles.viewBtnTextActive]}>☰</Text>
+        </Pressable>
       </View>
 
       {cardsLoading ? (
@@ -62,13 +77,19 @@ export default function PokemonDetail() {
             selectedSetIds={selectedSetIds}
             onChange={setSelectedSetIds}
           />
-          {filteredCards.length === 0 ? (
+          {onlyWishes && (
+            <Pressable onPress={() => setOnlyWishes(false)} style={styles.wishBanner}>
+              <Text style={styles.wishBannerText}>♥ Filtre wish actif — tap pour tout voir</Text>
+            </Pressable>
+          )}
+          {wishFiltered.length === 0 ? (
             <Text style={styles.empty}>Aucune carte dans les extensions sélectionnées.</Text>
           ) : (
             <CardGallery
-              cards={filteredCards}
+              cards={wishFiltered}
               ownedSet={ownedSet}
               wishedSet={wishedSet}
+              viewMode={viewMode}
               onToggle={c => toggle.mutate({ cardId: c.id, currentlyOwned: ownedSet.has(c.id), dexNum: num, imageSmall: c.image_small })}
               onToggleWish={c => toggleWish.mutate({ cardId: c.id, currentlyWished: wishedSet.has(c.id), dexNum: num })}
             />
@@ -88,5 +109,11 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '700' },
   typesRow: { marginTop: 2 },
   count: { fontSize: 12, color: '#666', paddingLeft: 4 },
+  viewBtn: { width: 32, height: 32, borderRadius: 6, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#e0e0e0', backgroundColor: 'white' },
+  viewBtnActive: { backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
+  viewBtnText: { fontSize: 16, color: '#666' },
+  viewBtnTextActive: { color: 'white' },
   empty: { textAlign: 'center', color: '#666', padding: 24 },
+  wishBanner: { padding: 8, backgroundColor: '#fef2f2', marginHorizontal: 12, borderRadius: 6, marginBottom: 6 },
+  wishBannerText: { color: '#c00', fontSize: 12, textAlign: 'center', fontWeight: '600' },
 });
