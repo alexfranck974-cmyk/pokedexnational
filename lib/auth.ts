@@ -39,3 +39,14 @@ export async function signUp(email: string, password: string, username: string, 
 export async function signOut() {
   await supabase.auth.signOut();
 }
+
+export async function fetchPublicProfile(username: string) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, username, display_name, is_public')
+    .eq('username', username.toLowerCase())
+    .maybeSingle();
+  if (error) throw error;
+  if (!data || !data.is_public) return null;
+  return data as { id: string; username: string; display_name: string; is_public: boolean };
+}
