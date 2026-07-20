@@ -75,3 +75,73 @@ export function useToggleCard() {
     },
   });
 }
+
+export function useUserWishlist(userId: string | undefined, dexNum: number | undefined) {
+  return useQuery({
+    queryKey: ['user_wishlist', userId, dexNum],
+    enabled: !!userId && !!dexNum,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_wishlist')
+        .select('card_id, tcg_cards!inner(dex_num)')
+        .eq('user_id', userId!)
+        .eq('tcg_cards.dex_num', dexNum!);
+      if (error) throw error;
+      return new Set<string>((data ?? []).map(r => r.card_id as string));
+    },
+  });
+}
+
+export function useAllWishedCards(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['user_wishlist_all', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_wishlist')
+        .select('card_id, wished_at, tcg_cards(id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date)')
+        .eq('user_id', userId!)
+        .order('wished_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? [])
+        .map(r => r.tcg_cards)
+        .filter((c): c is NonNullable<typeof c> => c != null);
+    },
+  });
+}
+
+export function useToggleWish() {
+  const qc = useQueryClient();
+  const { session } = useSession();
+  const userId = session?.user.id;
+
+  return useMutation({
+    mutationFn: async ({ cardId, currentlyWished }: { cardId: string; currentlyWished: boolean; dexNum: number }) => {
+      if (!userId) throw new Error('Not signed in');
+      if (currentlyWished) {
+        const { error } = await supabase.from('user_wishlist').delete().eq('user_id', userId).eq('card_id', cardId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('user_wishlist').insert({ user_id: userId, card_id: cardId });
+        if (error) throw error;
+      }
+    },
+    onMutate: async ({ cardId, currentlyWished, dexNum }) => {
+      await qc.cancelQueries({ queryKey: ['user_wishlist', userId, dexNum] });
+      await qc.cancelQueries({ queryKey: ['user_wishlist_all', userId] });
+      const prev = qc.getQueryData<Set<string>>(['user_wishlist', userId, dexNum]);
+      const next = new Set(prev ?? []);
+      if (currentlyWished) next.delete(cardId); else next.add(cardId);
+      qc.setQueryData(['user_wishlist', userId, dexNum], next);
+      return { prev };
+    },
+    onError: (_e, { dexNum }, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['user_wishlist', userId, dexNum], ctx.prev);
+      toast('Impossible de sauvegarder la wishlist, réessaie.');
+    },
+    onSettled: (_r, _e, { dexNum }) => {
+      qc.invalidateQueries({ queryKey: ['user_wishlist', userId, dexNum] });
+      qc.invalidateQueries({ queryKey: ['user_wishlist_all', userId] });
+    },
+  });
+}
