@@ -8,7 +8,7 @@ import { TypeBadge } from '@/components/TypeBadge';
 import { CardGallery } from '@/components/CardGallery';
 import { useCardsForPokemon } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
-import { useUserCards, useToggleCard } from '@/lib/collection';
+import { useUserCards, useUserWishlist, useToggleCard, useToggleWish } from '@/lib/collection';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -21,7 +21,9 @@ export default function PokemonDetail() {
   const userId = session?.user.id;
   const { data: cards = [], isLoading: cardsLoading } = useCardsForPokemon(num);
   const { data: ownedSet = new Set<string>() } = useUserCards(userId, num);
+  const { data: wishedSet = new Set<string>() } = useUserWishlist(userId, num);
   const toggle = useToggleCard();
+  const toggleWish = useToggleWish();
 
   if (!p) return <SafeAreaView><Text>Pokémon inconnu</Text></SafeAreaView>;
 
@@ -50,7 +52,9 @@ export default function PokemonDetail() {
         <CardGallery
           cards={cards}
           ownedSet={ownedSet}
+          wishedSet={wishedSet}
           onToggle={c => toggle.mutate({ cardId: c.id, currentlyOwned: ownedSet.has(c.id), dexNum: num })}
+          onToggleWish={c => toggleWish.mutate({ cardId: c.id, currentlyWished: wishedSet.has(c.id), dexNum: num })}
         />
       )}
     </SafeAreaView>
