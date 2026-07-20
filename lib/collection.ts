@@ -37,41 +37,80 @@ export function useToggleCard() {
   const userId = session?.user.id;
 
   return useMutation({
-    mutationFn: async ({ cardId, currentlyOwned }: { cardId: string; currentlyOwned: boolean; dexNum: number }) => {
+    mutationFn: async ({
+      cardId, currentlyOwned,
+    }: { cardId: string; currentlyOwned: boolean; dexNum: number; imageSmall: string }) => {
       if (!userId) throw new Error('Not signed in');
       if (currentlyOwned) {
         const { error } = await supabase.from('user_cards').delete().eq('user_id', userId).eq('card_id', cardId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('user_cards').insert({ user_id: userId, card_id: cardId });
+        // Upsert replaces any existing card for the same (user_id, dex_num) via trigger + PK.
+        const { error } = await supabase
+          .from('user_cards')
+          .upsert({ user_id: userId, card_id: cardId }, { onConflict: 'user_id,dex_num' });
         if (error) throw error;
       }
     },
-    onMutate: async ({ cardId, currentlyOwned, dexNum }) => {
+    onMutate: async ({ cardId, currentlyOwned, dexNum, imageSmall }) => {
       await qc.cancelQueries({ queryKey: ['user_cards', userId, dexNum] });
       await qc.cancelQueries({ queryKey: ['user_dex', userId] });
+      await qc.cancelQueries({ queryKey: ['owned_card_images', userId] });
 
       const prevCards = qc.getQueryData<Set<string>>(['user_cards', userId, dexNum]);
-      const prevDex   = qc.getQueryData<Set<number>>(['user_dex', userId]);
+      const prevDex = qc.getQueryData<Set<number>>(['user_dex', userId]);
+      const prevImages = qc.getQueryData<Map<number, string>>(['owned_card_images', userId]);
 
       const nextCards = new Set(prevCards ?? []);
-      if (currentlyOwned) nextCards.delete(cardId); else nextCards.add(cardId);
+      if (currentlyOwned) {
+        nextCards.delete(cardId);
+      } else {
+        nextCards.clear();
+        nextCards.add(cardId);
+      }
       qc.setQueryData(['user_cards', userId, dexNum], nextCards);
 
       const nextDex = new Set(prevDex ?? []);
       if (nextCards.size > 0) nextDex.add(dexNum); else nextDex.delete(dexNum);
       qc.setQueryData(['user_dex', userId], nextDex);
 
-      return { prevCards, prevDex };
+      const nextImages = new Map(prevImages ?? []);
+      if (nextCards.size > 0) nextImages.set(dexNum, imageSmall);
+      else nextImages.delete(dexNum);
+      qc.setQueryData(['owned_card_images', userId], nextImages);
+
+      return { prevCards, prevDex, prevImages };
     },
     onError: (_e, { dexNum }, ctx) => {
       if (ctx?.prevCards) qc.setQueryData(['user_cards', userId, dexNum], ctx.prevCards);
-      if (ctx?.prevDex)   qc.setQueryData(['user_dex', userId], ctx.prevDex);
+      if (ctx?.prevDex) qc.setQueryData(['user_dex', userId], ctx.prevDex);
+      if (ctx?.prevImages) qc.setQueryData(['owned_card_images', userId], ctx.prevImages);
       toast('Impossible de sauvegarder, réessaie.');
     },
     onSettled: (_r, _e, { dexNum }) => {
       qc.invalidateQueries({ queryKey: ['user_cards', userId, dexNum] });
       qc.invalidateQueries({ queryKey: ['user_dex', userId] });
+      qc.invalidateQueries({ queryKey: ['owned_card_images', userId] });
+    },
+  });
+}
+
+export function useOwnedCardImages(userId?: string) {
+  return useQuery({
+    queryKey: ['owned_card_images', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_cards')
+        .select('dex_num, card_id, tcg_cards!inner(image_small)')
+        .eq('user_id', userId!);
+      if (error) throw error;
+      const map = new Map<number, string>();
+      for (const row of data ?? []) {
+        const img = (row.tcg_cards as any)?.image_small as string | undefined;
+        if (img) map.set(row.dex_num as number, img);
+      }
+      return map;
     },
   });
 }
