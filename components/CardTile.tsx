@@ -1,5 +1,6 @@
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import type { TcgCardRow } from '@/lib/tcg';
+import { colors, radius, spacing, shadow } from '@/lib/theme';
 
 interface Props {
   card: TcgCardRow;
@@ -37,18 +38,18 @@ export function CardTile({ card, owned, wished, readOnly, onToggle, onToggleWish
 }
 
 const styles = StyleSheet.create({
-  tile: { flex: 1, padding: 6, borderRadius: 8, borderWidth: 2 },
-  owned:   { borderColor: '#22c55e', backgroundColor: '#f0fdf4' },
+  tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, borderWidth: 2, ...shadow.sm },
+  owned:   { borderColor: colors.success, backgroundColor: colors.successBg, borderWidth: 2 },
   missing: { borderColor: 'transparent', opacity: 0.55 },
   imgWrap: { position: 'relative' },
   img: { width: '100%', aspectRatio: 0.72 },
-  set: { fontSize: 11, fontWeight: '600', marginTop: 4 },
-  rarity: { fontSize: 10, color: '#666' },
+  set: { fontSize: 11, fontWeight: '600', marginTop: 4, color: colors.text },
+  rarity: { fontSize: 10, color: colors.textMuted },
   heartBtn: {
     position: 'absolute', top: 4, right: 4, width: 28, height: 28,
-    borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.85)',
+    borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.9)',
     alignItems: 'center', justifyContent: 'center',
   },
-  heart: { fontSize: 18, color: '#888', lineHeight: 22 },
-  heartFilled: { color: '#ef4444' },
+  heart: { fontSize: 18, color: colors.textDim, lineHeight: 22 },
+  heartFilled: { color: colors.danger },
 });
