@@ -91,6 +91,7 @@ export function useToggleCard() {
       qc.invalidateQueries({ queryKey: ['user_cards', userId, dexNum] });
       qc.invalidateQueries({ queryKey: ['user_dex', userId] });
       qc.invalidateQueries({ queryKey: ['owned_card_images', userId] });
+      qc.invalidateQueries({ queryKey: ['all_owned_card_ids', userId] });
     },
   });
 }
@@ -143,8 +144,8 @@ export function useAllWishedCards(userId: string | undefined) {
         .order('wished_at', { ascending: false });
       if (error) throw error;
       return (data ?? [])
-        .map(r => r.tcg_cards)
-        .filter((c): c is NonNullable<typeof c> => c != null);
+        .filter(r => r.tcg_cards != null)
+        .map(r => ({ ...(r.tcg_cards as any), wished_at: r.wished_at as string }));
     },
   });
 }
@@ -202,6 +203,21 @@ export function useWishedDexNums(userId?: string) {
         if (typeof dn === 'number') set.add(dn);
       }
       return set;
+    },
+  });
+}
+
+export function useAllOwnedCardIds(userId?: string) {
+  return useQuery({
+    queryKey: ['all_owned_card_ids', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_cards')
+        .select('card_id')
+        .eq('user_id', userId!);
+      if (error) throw error;
+      return new Set<string>((data ?? []).map(r => r.card_id as string));
     },
   });
 }
