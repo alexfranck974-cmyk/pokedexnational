@@ -6,8 +6,10 @@ import type { TcgCardRow } from '@/lib/tcg';
 interface Props {
   cards: TcgCardRow[];
   ownedSet: Set<string>;
+  wishedSet?: Set<string>;
   readOnly?: boolean;
   onToggle: (card: TcgCardRow) => void;
+  onToggleWish?: (card: TcgCardRow) => void;
 }
 
 function numColsFor(width: number): number {
@@ -16,7 +18,7 @@ function numColsFor(width: number): number {
   return 6;
 }
 
-export function CardGallery({ cards, ownedSet, readOnly, onToggle }: Props) {
+export function CardGallery({ cards, ownedSet, wishedSet, readOnly, onToggle, onToggleWish }: Props) {
   const { width } = useWindowDimensions();
   return (
     <FlashList
@@ -25,8 +27,14 @@ export function CardGallery({ cards, ownedSet, readOnly, onToggle }: Props) {
       estimatedItemSize={200}
       keyExtractor={c => c.id}
       renderItem={({ item }) => (
-        <CardTile card={item} owned={ownedSet.has(item.id)} readOnly={readOnly}
-          onToggle={() => onToggle(item)} />
+        <CardTile
+          card={item}
+          owned={ownedSet.has(item.id)}
+          wished={wishedSet?.has(item.id)}
+          readOnly={readOnly}
+          onToggle={() => onToggle(item)}
+          onToggleWish={onToggleWish ? () => onToggleWish(item) : undefined}
+        />
       )}
     />
   );
