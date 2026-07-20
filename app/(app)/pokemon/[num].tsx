@@ -1,4 +1,5 @@
-import { View, Text, Image, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
+import { useMemo, useState } from 'react';
+import { View, Text, Image, StyleSheet, ActivityIndicator, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import pokedexData from '@/data/pokedex.json';
@@ -6,6 +7,7 @@ import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { TypeBadge } from '@/components/TypeBadge';
 import { CardGallery } from '@/components/CardGallery';
+import { CardFilterTree } from '@/components/CardFilterTree';
 import { useCardsForPokemon } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
 import { useUserCards, useUserWishlist, useToggleCard, useToggleWish } from '@/lib/collection';
@@ -25,6 +27,12 @@ export default function PokemonDetail() {
   const toggle = useToggleCard();
   const toggleWish = useToggleWish();
 
+  const [selectedSetIds, setSelectedSetIds] = useState<Set<string> | null>(null);
+  const filteredCards = useMemo(
+    () => selectedSetIds === null ? cards : cards.filter(c => selectedSetIds.has(c.set_id)),
+    [cards, selectedSetIds],
+  );
+
   if (!p) return <SafeAreaView><Text>Pokémon inconnu</Text></SafeAreaView>;
 
   return (
@@ -33,15 +41,14 @@ export default function PokemonDetail() {
         <Pressable onPress={() => router.back()} style={styles.back}>
           <Text style={styles.backText}>← Retour</Text>
         </Pressable>
-        <Text style={styles.title}>#{String(p.num).padStart(4, '0')} · {getName(p)}</Text>
-        <Text style={styles.count}>{ownedSet.size} / {cards.length} cartes</Text>
-      </View>
-
-      <View style={styles.hero}>
-        <Image source={{ uri: p.sprite_url }} style={styles.sprite} resizeMode="contain" />
-        <View style={styles.types}>
-          {p.types.map(t => <TypeBadge key={t} type={t} />)}
+        <Image source={{ uri: p.sprite_url }} style={styles.miniSprite} resizeMode="contain" />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title}>#{String(p.num).padStart(4, '0')} · {getName(p)}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typesRow} contentContainerStyle={{ gap: 6 }}>
+            {p.types.map(t => <TypeBadge key={t} type={t} />)}
+          </ScrollView>
         </View>
+        <Text style={styles.count}>{ownedSet.size} / {filteredCards.length}</Text>
       </View>
 
       {cardsLoading ? (
@@ -49,13 +56,24 @@ export default function PokemonDetail() {
       ) : cards.length === 0 ? (
         <Text style={styles.empty}>Aucune carte TCG connue pour ce Pokémon dans la base.</Text>
       ) : (
-        <CardGallery
-          cards={cards}
-          ownedSet={ownedSet}
-          wishedSet={wishedSet}
-          onToggle={c => toggle.mutate({ cardId: c.id, currentlyOwned: ownedSet.has(c.id), dexNum: num, imageSmall: c.image_small })}
-          onToggleWish={c => toggleWish.mutate({ cardId: c.id, currentlyWished: wishedSet.has(c.id), dexNum: num })}
-        />
+        <>
+          <CardFilterTree
+            cards={cards}
+            selectedSetIds={selectedSetIds}
+            onChange={setSelectedSetIds}
+          />
+          {filteredCards.length === 0 ? (
+            <Text style={styles.empty}>Aucune carte dans les extensions sélectionnées.</Text>
+          ) : (
+            <CardGallery
+              cards={filteredCards}
+              ownedSet={ownedSet}
+              wishedSet={wishedSet}
+              onToggle={c => toggle.mutate({ cardId: c.id, currentlyOwned: ownedSet.has(c.id), dexNum: num, imageSmall: c.image_small })}
+              onToggleWish={c => toggleWish.mutate({ cardId: c.id, currentlyWished: wishedSet.has(c.id), dexNum: num })}
+            />
+          )}
+        </>
       )}
     </SafeAreaView>
   );
@@ -63,13 +81,12 @@ export default function PokemonDetail() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#fafafa' },
-  header: { padding: 12, backgroundColor: 'white', flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#eee' },
+  header: { padding: 8, backgroundColor: 'white', flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#eee' },
   back: { padding: 4 },
-  backText: { color: '#3b82f6' },
-  title: { fontSize: 18, fontWeight: '700', flex: 1 },
-  count: { fontSize: 12, color: '#666' },
-  hero: { alignItems: 'center', padding: 16, gap: 12 },
-  sprite: { width: 200, height: 200 },
-  types: { flexDirection: 'row', gap: 8 },
+  backText: { color: '#3b82f6', fontSize: 14 },
+  miniSprite: { width: 40, height: 40 },
+  title: { fontSize: 16, fontWeight: '700' },
+  typesRow: { marginTop: 2 },
+  count: { fontSize: 12, color: '#666', paddingLeft: 4 },
   empty: { textAlign: 'center', color: '#666', padding: 24 },
 });
