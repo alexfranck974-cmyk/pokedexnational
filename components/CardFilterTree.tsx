@@ -33,6 +33,7 @@ function buildGroups(cards: TcgCardRow[]): SeriesGroup[] {
 
 export function CardFilterTree({ cards, selectedSetIds, onChange }: Props) {
   const groups = useMemo(() => buildGroups(cards), [cards]);
+  const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const isSetSelected = (setId: string) =>
@@ -72,54 +73,64 @@ export function CardFilterTree({ cards, selectedSetIds, onChange }: Props) {
 
   if (groups.length === 0) return null;
 
+  const selectedCount = selectedSetIds !== null ? selectedSetIds.size : null;
+
   return (
     <View style={styles.wrap}>
-      <View style={styles.headerRow}>
+      <Pressable onPress={() => setOpen(v => !v)} style={styles.headerRow}>
+        <Text style={styles.chevron}>{open ? '▼' : '▶'}</Text>
         <Text style={styles.title}>Filtrer par extension</Text>
+        {selectedCount !== null && (
+          <Text style={styles.hint}>{selectedCount} set(s) sélectionné(s)</Text>
+        )}
         {selectedSetIds !== null && (
-          <Pressable onPress={() => onChange(null)}>
+          <Pressable onPress={(e) => { e.stopPropagation(); onChange(null); }}>
             <Text style={styles.reset}>Effacer</Text>
           </Pressable>
         )}
-      </View>
-      <ScrollView style={styles.list} nestedScrollEnabled>
-        {groups.map(g => {
-          const isOpen = expanded.has(g.series);
-          const seriesChecked = isSeriesFullySelected(g);
-          return (
-            <View key={g.series}>
-              <Pressable onPress={() => toggleExpanded(g.series)} style={styles.row}>
-                <Text style={styles.chevron}>{isOpen ? '▼' : '▶'}</Text>
-                <Pressable onPress={(e) => { e.stopPropagation(); toggleSeries(g); }} hitSlop={6}>
-                  <Text style={styles.check}>{seriesChecked ? '☑' : '☐'}</Text>
+      </Pressable>
+      {open && (
+        <ScrollView style={styles.list} nestedScrollEnabled>
+          {groups.map(g => {
+            const isOpen = expanded.has(g.series);
+            const seriesChecked = isSeriesFullySelected(g);
+            return (
+              <View key={g.series}>
+                <Pressable onPress={() => toggleExpanded(g.series)} style={styles.row}>
+                  <Text style={styles.innerChevron}>{isOpen ? '▼' : '▶'}</Text>
+                  <Pressable onPress={(e) => { e.stopPropagation(); toggleSeries(g); }} hitSlop={6}>
+                    <Text style={styles.check}>{seriesChecked ? '☑' : '☐'}</Text>
+                  </Pressable>
+                  <Text style={styles.seriesName}>{g.series}</Text>
+                  <Text style={styles.count}>({g.total})</Text>
                 </Pressable>
-                <Text style={styles.seriesName}>{g.series}</Text>
-                <Text style={styles.count}>({g.total})</Text>
-              </Pressable>
-              {isOpen && g.sets.map(s => (
-                <Pressable key={s.id} onPress={() => toggleSet(s.id)} style={[styles.row, styles.subRow]}>
-                  <Text style={styles.check}>{isSetSelected(s.id) ? '☑' : '☐'}</Text>
-                  <Text style={styles.setName}>{s.name}</Text>
-                  <Text style={styles.count}>({s.count})</Text>
-                </Pressable>
-              ))}
-            </View>
-          );
-        })}
-      </ScrollView>
+                {isOpen && g.sets.map(s => (
+                  <Pressable key={s.id} onPress={() => toggleSet(s.id)} style={[styles.row, styles.subRow]}>
+                    <Text style={styles.check}>{isSetSelected(s.id) ? '☑' : '☐'}</Text>
+                    <Text style={styles.setName}>{s.name}</Text>
+                    <Text style={styles.count}>({s.count})</Text>
+                  </Pressable>
+                ))}
+              </View>
+            );
+          })}
+        </ScrollView>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { backgroundColor: 'white', borderRadius: 8, marginHorizontal: 12, marginBottom: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: '#e0e0e0' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#eee' },
-  title: { fontSize: 14, fontWeight: '700' },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10 },
+  title: { fontSize: 14, fontWeight: '700', flex: 1 },
+  hint: { fontSize: 11, color: '#555' },
   reset: { fontSize: 12, color: '#c00' },
-  list: { maxHeight: 240 },
+  list: { maxHeight: 240, borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#eee' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 8 },
   subRow: { paddingLeft: 34, backgroundColor: '#fafafa' },
-  chevron: { width: 12, fontSize: 10, color: '#666' },
+  chevron: { fontSize: 10, color: '#666' },
+  innerChevron: { width: 12, fontSize: 10, color: '#666' },
   check: { fontSize: 14 },
   seriesName: { fontSize: 14, fontWeight: '600', flex: 1 },
   setName: { fontSize: 13, flex: 1 },
