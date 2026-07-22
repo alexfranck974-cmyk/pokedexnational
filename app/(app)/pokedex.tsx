@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon, PokemonType } from '@/lib/types';
@@ -11,9 +12,9 @@ import { applyPokedexPipeline } from '@/lib/pokedex-list';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { PokedexGrid } from '@/components/PokedexGrid';
 import { SearchFilterBar } from '@/components/SearchFilterBar';
-import { ProgressCounter } from '@/components/ProgressCounter';
+import { ProgressRing } from '@/components/ProgressRing';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
-import { colors, spacing } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -21,6 +22,18 @@ export default function PokedexScreen() {
   const router = useRouter();
   const { session } = useSession();
   const userId = session?.user.id;
+  const { colors } = useTheme();
+  const styles = useThemedStyles((colors, shadow) => ({
+    screen: { flex: 1, backgroundColor: colors.bg },
+    hero: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md,
+      padding: spacing.md, borderRadius: radius.lg, margin: spacing.md, marginBottom: spacing.sm, ...shadow.sm,
+    },
+    heroText: { flex: 1, gap: 2 },
+    heroTitle: { fontSize: 13, fontFamily: fonts.display, color: 'white' },
+    heroCount: { fontSize: 20, fontFamily: fonts.monoBold, color: 'white' },
+    heroFilter: { fontSize: 11, fontFamily: fonts.body, color: 'rgba(255,255,255,0.8)' },
+  }));
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
   const { data: wishedInDexSet = new Set<number>() } = useWishedDexNums(userId);
@@ -52,14 +65,25 @@ export default function PokedexScreen() {
   const filterHint = filterHintParts.length ? filterHintParts.join(' + ') : undefined;
 
   const ownedCount = items.filter(p => p.owned).length;
+  const pct = items.length > 0 ? Math.round((ownedCount / items.length) * 100) : 0;
 
   const reset = () => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); };
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.counter}>
-        <ProgressCounter owned={ownedCount} total={items.length} filterHint={filterHint} />
-      </View>
+      <Pressable onPress={() => router.push('/dashboard')}>
+        <LinearGradient
+          colors={[colors.primaryBg, colors.primaryDark, colors.primary]}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={styles.hero}>
+          <ProgressRing pct={pct} size={56} strokeWidth={7} color="white" trackColor="rgba(255,255,255,0.25)" centerLabel={`${pct}%`} />
+          <View style={styles.heroText}>
+            <Text style={styles.heroTitle}>Pokédex National</Text>
+            <Text style={styles.heroCount}>{ownedCount} / {items.length}</Text>
+            {filterHint && <Text style={styles.heroFilter}>Filtre : {filterHint}</Text>}
+          </View>
+        </LinearGradient>
+      </Pressable>
       <PokedexGrid
         items={items}
         ownedImages={ownedImages}
@@ -82,8 +106,3 @@ export default function PokedexScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  counter: { padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-});

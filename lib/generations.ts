@@ -21,3 +21,13 @@ export function getGeneration(dexNum: number): number {
   for (const g of GENERATIONS) if (dexNum >= g.min && dexNum <= g.max) return g.gen;
   return 0;
 }
+
+export const GEN_EMOJI: Record<number, string> = {
+  1: '🌾', 2: '🌸', 3: '🌋', 4: '🏔️', 5: '⚡', 6: '🍇', 7: '🌺', 8: '❄️', 9: '🫒',
+};
+
+// One accent color per region, themed to its emoji (wheat field, cherry blossom, volcano...).
+export const GEN_COLORS: Record<number, string> = {
+  1: '#84cc16', 2: '#f472b6', 3: '#f97316', 4: '#38bdf8', 5: '#facc15',
+  6: '#a855f7', 7: '#fb7185', 8: '#60a5fa', 9: '#65a30d',
+};

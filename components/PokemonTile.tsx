@@ -1,7 +1,8 @@
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Image, Pressable } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
-import { colors, radius, shadow } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
 
 interface Props {
@@ -15,21 +16,66 @@ interface Props {
 
 export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedInDex, onPress }: Props) {
   const useCard = owned && !!ownedCardImage;
+  const { colors } = useTheme();
+  const styles = useThemedStyles((colors, shadow) => ({
+    tile: { flex: 1, aspectRatio: 0.85, padding: 6, alignItems: 'center' as const, justifyContent: 'flex-start' as const },
+    tileOwned: { ...shadow.sm },
+    pressed: { transform: [{ scale: 0.95 }] },
+    spriteWrap: { width: '100%' as const, aspectRatio: 1, position: 'relative' as const, backgroundColor: colors.surfaceAlt, borderRadius: radius.md },
+    spriteMissing: { opacity: 0.55 },
+    holoBorder: { width: '100%' as const, aspectRatio: 1, borderRadius: radius.md, padding: 2 },
+    holoInner: {
+      flex: 1, borderRadius: radius.md - 2, backgroundColor: colors.surfaceAlt,
+      overflow: 'hidden' as const, position: 'relative' as const,
+    },
+    sprite: { width: '100%' as const, height: '100%' as const },
+    ownedBadge: { position: 'absolute' as const, top: 2, right: 2 },
+    wishBadge: {
+      position: 'absolute' as const, top: 2, left: 2, backgroundColor: colors.surface,
+      borderRadius: radius.pill, width: 20, height: 20, alignItems: 'center' as const, justifyContent: 'center' as const,
+      ...shadow.sm,
+    },
+    wishText: { color: colors.danger, fontSize: 12, fontWeight: '700' as const, lineHeight: 14 },
+    num: { fontSize: 10, fontFamily: fonts.mono, color: colors.textMuted, marginTop: 4 },
+    name: { fontSize: 12, fontFamily: fonts.bodyBold, textAlign: 'center' as const, color: colors.text },
+    textDim: { color: colors.textDim },
+    cardCount: { fontSize: 10, fontFamily: fonts.mono, color: colors.success },
+  }));
+
+  const badges = (
+    <>
+      {owned && <View style={styles.ownedBadge}><Pokeball size={22} /></View>}
+      {wishedInDex && (
+        <View style={styles.wishBadge}>
+          <Text style={styles.wishText}>♥</Text>
+        </View>
+      )}
+    </>
+  );
+
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, owned && styles.tileOwned, pressed && styles.pressed]}>
-      <View style={[styles.spriteWrap, !owned && styles.spriteMissing]}>
-        <Image
-          source={{ uri: useCard ? ownedCardImage : pokemon.sprite_url }}
-          style={styles.sprite}
-          resizeMode="contain"
-        />
-        {owned && <View style={styles.ownedBadge}><Pokeball size={22} /></View>}
-        {wishedInDex && (
-          <View style={styles.wishBadge}>
-            <Text style={styles.wishText}>♥</Text>
+      {useCard ? (
+        // Real owned card art gets a foil-style gradient edge — a sprite alone doesn't.
+        <LinearGradient
+          colors={[colors.primary, colors.warning, colors.primary]}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={styles.holoBorder}>
+          <View style={styles.holoInner}>
+            <Image source={{ uri: ownedCardImage }} style={styles.sprite} resizeMode="contain" />
+            {badges}
           </View>
-        )}
-      </View>
+        </LinearGradient>
+      ) : (
+        <View style={[styles.spriteWrap, !owned && styles.spriteMissing]}>
+          <Image
+            source={{ uri: pokemon.sprite_url }}
+            style={[styles.sprite, !owned && { tintColor: colors.textDim }]}
+            resizeMode="contain"
+          />
+          {badges}
+        </View>
+      )}
       <Text style={[styles.num, !owned && styles.textDim]}>
         #{String(pokemon.num).padStart(4, '0')}
       </Text>
@@ -42,23 +88,3 @@ export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedI
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  tile: { flex: 1, aspectRatio: 0.85, padding: 6, alignItems: 'center', justifyContent: 'flex-start' },
-  tileOwned: { ...shadow.sm },
-  pressed: { transform: [{ scale: 0.95 }] },
-  spriteWrap: { width: '100%', aspectRatio: 1, position: 'relative', backgroundColor: colors.surfaceAlt, borderRadius: radius.md },
-  spriteMissing: { opacity: 0.35 },
-  sprite: { width: '100%', height: '100%' },
-  ownedBadge: { position: 'absolute', top: 2, right: 2 },
-  wishBadge: {
-    position: 'absolute', top: 2, left: 2, backgroundColor: colors.surface,
-    borderRadius: radius.pill, width: 20, height: 20, alignItems: 'center', justifyContent: 'center',
-    ...shadow.sm,
-  },
-  wishText: { color: colors.danger, fontSize: 12, fontWeight: '700', lineHeight: 14 },
-  num: { fontSize: 10, color: colors.textMuted, marginTop: 4 },
-  name: { fontSize: 12, fontWeight: '700', textAlign: 'center', color: colors.text },
-  textDim: { color: colors.textDim },
-  cardCount: { fontSize: 10, color: colors.success, fontWeight: '600' },
-});
