@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -105,13 +106,17 @@ export default function WishlistScreen() {
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
     center: { flex: 1, justifyContent: 'center' as const, alignItems: 'center' as const, padding: spacing.xl, gap: spacing.sm },
-    header: { padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, gap: spacing.sm, ...shadow.sm },
-    headerTop: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
-    headerTopRight: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.xs },
-    title: { fontSize: 22, fontFamily: fonts.display, color: colors.text },
-    count: { fontSize: 13, fontFamily: fonts.mono, color: colors.textMuted, marginRight: 2 },
-    viewBtn: { width: 26, height: 26, borderRadius: radius.sm, alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: colors.surfaceAlt },
-    viewBtnActive: { backgroundColor: colors.primary },
+    hero: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
+      padding: spacing.md, gap: spacing.sm, ...shadow.sm,
+    },
+    heroTitle: { fontSize: 20, fontFamily: fonts.display, color: 'white' },
+    heroRight: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
+    heroCount: { fontSize: 14, fontFamily: fonts.monoBold, color: 'white' },
+    heroToggle: { flexDirection: 'row' as const, gap: 6 },
+    controls: { padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, gap: spacing.sm, ...shadow.sm },
+    viewBtn: { width: 30, height: 30, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: 'rgba(255,255,255,0.18)' },
+    viewBtnActive: { backgroundColor: 'white' },
     search: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, fontSize: 15, fontFamily: fonts.body, backgroundColor: colors.surfaceAlt, color: colors.text },
     chipRow: { gap: spacing.xs, alignItems: 'center' as const },
     resetBtn: { alignSelf: 'flex-end' as const, paddingVertical: 2 },
@@ -120,6 +125,9 @@ export default function WishlistScreen() {
     emptyHint: { fontSize: 14, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
     tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, ...shadow.sm, backgroundColor: colors.surface, margin: 4 },
     imgWrap: { position: 'relative' as const },
+    holoBorder: { borderRadius: radius.md, padding: 2 },
+    holoInner: { borderRadius: radius.md - 2, overflow: 'hidden' as const, backgroundColor: colors.surfaceAlt },
+    plainInner: { borderRadius: radius.md, overflow: 'hidden' as const, backgroundColor: colors.surfaceAlt },
     img: { width: '100%' as const, aspectRatio: 0.72 },
     set: { fontSize: 12, fontFamily: fonts.bodyBold, marginTop: 4, color: colors.text },
     rarity: { fontSize: 11, fontFamily: fonts.body, color: colors.textMuted },
@@ -166,24 +174,29 @@ export default function WishlistScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.title}>Wishlist</Text>
-          <View style={styles.headerTopRight}>
-            <Text style={styles.count}>{filtered.length} / {cards.length}</Text>
+      <LinearGradient
+        colors={[colors.primaryBg, colors.primaryDark, colors.primary]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={styles.hero}>
+        <Text style={styles.heroTitle}>Wishlist</Text>
+        <View style={styles.heroRight}>
+          <Text style={styles.heroCount}>{filtered.length} / {cards.length}</Text>
+          <View style={styles.heroToggle}>
             <Pressable
               onPress={() => setViewMode('cards')}
               style={[styles.viewBtn, viewMode === 'cards' && styles.viewBtnActive]}>
-              <Ionicons name="albums-outline" size={16} color={viewMode === 'cards' ? 'white' : colors.textMuted} />
+              <Ionicons name="albums" size={15} color={viewMode === 'cards' ? colors.primary : 'white'} />
             </Pressable>
             <Pressable
               onPress={() => setViewMode('pokemon')}
               style={[styles.viewBtn, viewMode === 'pokemon' && styles.viewBtnActive]}>
-              <Ionicons name="list-outline" size={16} color={viewMode === 'pokemon' ? 'white' : colors.textMuted} />
+              <Ionicons name="list" size={15} color={viewMode === 'pokemon' ? colors.primary : 'white'} />
             </Pressable>
           </View>
         </View>
+      </LinearGradient>
 
+      <View style={styles.controls}>
         <TextInput placeholder="Rechercher (nom, set, n°)" value={search} onChangeText={setSearch}
           style={styles.search} autoCapitalize="none" />
 
@@ -270,7 +283,20 @@ export default function WishlistScreen() {
                 onPress={() => router.push(`/pokemon/${item.dex_num}`)}
                 style={({ pressed }) => [styles.tile, pressed && { transform: [{ scale: 0.97 }] }]}>
                 <View style={styles.imgWrap}>
-                  <Image source={{ uri: item.image_small }} style={styles.img} resizeMode="contain" />
+                  {owned ? (
+                    <LinearGradient
+                      colors={[colors.primary, colors.warning, colors.primary]}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                      style={styles.holoBorder}>
+                      <View style={styles.holoInner}>
+                        <Image source={{ uri: item.image_small }} style={styles.img} resizeMode="contain" />
+                      </View>
+                    </LinearGradient>
+                  ) : (
+                    <View style={styles.plainInner}>
+                      <Image source={{ uri: item.image_small }} style={styles.img} resizeMode="contain" />
+                    </View>
+                  )}
                   {owned && (
                     <View style={styles.pokeballOverlay}>
                       <Pokeball size={22} />
