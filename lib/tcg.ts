@@ -12,6 +12,7 @@ export interface TcgCardRow {
   image_large: string | null;
   release_date: string | null;
   series: string | null;
+  region: 'global' | 'jp' | 'cn';
 }
 
 export function useCardsForPokemon(dexNum: number | undefined) {
@@ -22,7 +23,7 @@ export function useCardsForPokemon(dexNum: number | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tcg_cards')
-        .select('id, name, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series')
+        .select('id, name, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region')
         .eq('dex_num', dexNum!)
         .order('release_date', { ascending: true });
       if (error) throw error;

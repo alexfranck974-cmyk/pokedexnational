@@ -24,7 +24,12 @@ interface TcgCard {
   set: { id: string; name: string; series: string; releaseDate: string };
   number: string;
   rarity?: string;
+  artist?: string;
   images: { small: string; large?: string };
+  cardmarket?: {
+    updatedAt?: string;
+    prices?: { trendPrice?: number; averageSellPrice?: number; lowPrice?: number };
+  };
 }
 
 const PAGE_SIZE = 250;
@@ -71,31 +76,49 @@ function toRow(c: TcgCard) {
     set_name: c.set.name,
     card_number: c.number,
     rarity: c.rarity ?? null,
+    artist: c.artist ?? null,
     image_small: c.images.small,
     image_large: c.images.large ?? null,
     release_date: c.set.releaseDate ?? null,
     series: c.set.series ?? null,
+    cardmarket_trend_eur: c.cardmarket?.prices?.trendPrice ?? null,
+    cardmarket_avg_eur: c.cardmarket?.prices?.averageSellPrice ?? null,
+    cardmarket_low_eur: c.cardmarket?.prices?.lowPrice ?? null,
+    cardmarket_updated_at: c.cardmarket?.updatedAt ? new Date(c.cardmarket.updatedAt).toISOString() : null,
     updated_at: new Date().toISOString(),
   };
 }
 
 async function main() {
   let page = 1;
-  let total = 0;
+  let total = Infinity;
   let done = 0;
-  do {
-    const { data, totalCount } = await fetchPage(page);
-    total = totalCount;
-    const rows = data.map(toRow).filter((r): r is NonNullable<typeof r> => r !== null);
-    if (rows.length) {
-      const { error } = await supabase.from('tcg_cards').upsert(rows, { onConflict: 'id' });
-      if (error) throw error;
+  const failedPages: number[] = [];
+  while (done < total) {
+    try {
+      const { data, totalCount } = await fetchPage(page);
+      total = totalCount;
+      const rows = data.map(toRow).filter((r): r is NonNullable<typeof r> => r !== null);
+      if (rows.length) {
+        const { error } = await supabase.from('tcg_cards').upsert(rows, { onConflict: 'id' });
+        if (error) throw error;
+      }
+      done += data.length;
+      console.log(`Page ${page}: ${data.length} cards processed (${done}/${total})`);
+    } catch (err) {
+      // The upstream API is retried per-page already (see fetchPage); if a page still
+      // exhausts retries, skip it rather than aborting the whole sync — re-running the
+      // script is idempotent (upsert on id) and will pick up any skipped pages.
+      console.error(`Page ${page} failed after all retries, skipping:`, err instanceof Error ? err.message : err);
+      failedPages.push(page);
+      done += PAGE_SIZE;
     }
-    done += data.length;
-    console.log(`Page ${page}: ${data.length} cards processed (${done}/${total})`);
     page++;
-  } while (done < total);
-  console.log(`Done. Total processed: ${done}`);
+  }
+  console.log(`Done. Total processed: ~${done}.`);
+  if (failedPages.length) {
+    console.log(`Skipped pages (re-run the script to retry them): ${failedPages.join(', ')}`);
+  }
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

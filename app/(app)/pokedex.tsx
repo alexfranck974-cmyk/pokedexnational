@@ -35,6 +35,7 @@ export default function PokedexScreen() {
   const [rarityFilter, setRarity]   = useState<string | null>(null);
   const [generationFilter, setGeneration] = useState<number | null>(null);
   const [sort, setSort]             = useState<SortKey>('num-asc');
+  const [columns, setColumns]       = useState<2 | 3 | 4 | null>(null);
 
   const items = useMemo(
     () => applyPokedexPipeline(POKEDEX, owned, tcgIndex, {
@@ -56,6 +57,16 @@ export default function PokedexScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
+      <View style={styles.counter}>
+        <ProgressCounter owned={ownedCount} total={items.length} filterHint={filterHint} />
+      </View>
+      <PokedexGrid
+        items={items}
+        ownedImages={ownedImages}
+        wishedInDexSet={wishedInDexSet}
+        columnsOverride={columns}
+        onSelect={num => router.push(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`)}
+      />
       <SearchFilterBar
         search={search} onSearch={setSearch}
         statusFilter={statusFilter} onStatus={setStatus}
@@ -66,15 +77,7 @@ export default function PokedexScreen() {
         sort={sort} onSort={setSort}
         sets={sets} rarities={rarities}
         onReset={reset}
-      />
-      <View style={styles.counter}>
-        <ProgressCounter owned={ownedCount} total={items.length} filterHint={filterHint} />
-      </View>
-      <PokedexGrid
-        items={items}
-        ownedImages={ownedImages}
-        wishedInDexSet={wishedInDexSet}
-        onSelect={num => router.push(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`)}
+        columns={columns} onColumns={setColumns}
       />
     </SafeAreaView>
   );

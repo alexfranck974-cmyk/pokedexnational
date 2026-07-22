@@ -1,26 +1,39 @@
 import { useMemo, useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, Pressable } from 'react-native';
+import { View, Text, Image, ActivityIndicator, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import { fetchPublicProfile } from '@/lib/auth';
-import { useUserDex, useOwnedCardImages } from '@/lib/collection';
+import { useUserDex, useOwnedCardImages, useAllWishedCards, useAllOwnedCardIds } from '@/lib/collection';
 import { useTcgIndex, useTcgSets, useTcgRarities } from '@/lib/tcg-index';
 import { applyPokedexPipeline } from '@/lib/pokedex-list';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
+import { groupWishlistByPokemon, type WishlistCard } from '@/lib/wishlist-list';
 import { PokedexGrid } from '@/components/PokedexGrid';
 import { SearchFilterBar } from '@/components/SearchFilterBar';
 import { ProgressCounter } from '@/components/ProgressCounter';
+import { PokedexStatsSection } from '@/components/PokedexStatsSection';
+import { Pokeball } from '@/components/Pokeball';
+import { getName } from '@/lib/i18n';
 import { colors, radius, spacing, shadow } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
+const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
+
+type ProfileTab = 'pokedex' | 'stats' | 'wishlist';
+const TABS: { key: ProfileTab; label: string }[] = [
+  { key: 'pokedex', label: 'Pokédex' },
+  { key: 'stats', label: 'Statistiques' },
+  { key: 'wishlist', label: 'Wishlist' },
+];
 
 export default function PublicProfile() {
   const { username } = useLocalSearchParams<{ username: string }>();
   const router = useRouter();
-  const [profile, setProfile] = useState<{ id: string; display_name: string; username: string } | null | 'notfound'>('notfound');
+  const [profile, setProfile] = useState<{ id: string; display_name: string; username: string } | 'notfound'>('notfound');
   const [checking, setChecking] = useState(true);
+  const [tab, setTab] = useState<ProfileTab>('pokedex');
 
   useEffect(() => {
     let alive = true;
@@ -36,6 +49,8 @@ export default function PublicProfile() {
   const { data: tcgIndex = new Map() } = useTcgIndex();
   const { data: sets = [] } = useTcgSets();
   const { data: rarities = [] } = useTcgRarities();
+  const { data: wishedCards = [] } = useAllWishedCards(userId);
+  const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
 
   const [search, setSearch]       = useState('');
   const [statusFilter, setStatus] = useState<StatusFilter>('all');
@@ -44,12 +59,18 @@ export default function PublicProfile() {
   const [rarityFilter, setRarity] = useState<string | null>(null);
   const [generationFilter, setGeneration] = useState<number | null>(null);
   const [sort, setSort]           = useState<SortKey>('num-asc');
+  const [columns, setColumns]     = useState<2 | 3 | 4 | null>(null);
 
   const items = useMemo(
     () => applyPokedexPipeline(POKEDEX, owned, tcgIndex, {
       search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort,
     }),
     [owned, tcgIndex, search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort],
+  );
+
+  const wishlistGroups = useMemo(
+    () => groupWishlistByPokemon(wishedCards as WishlistCard[], ownedCardIds),
+    [wishedCards, ownedCardIds],
   );
 
   if (checking) return <SafeAreaView style={styles.center}><ActivityIndicator /></SafeAreaView>;
@@ -73,18 +94,75 @@ export default function PublicProfile() {
         <Text style={styles.bannerTitle}>Pokédex TCG de {profile.display_name}</Text>
         <ProgressCounter owned={ownedCount} total={items.length} />
       </View>
-      <SearchFilterBar
-        search={search} onSearch={setSearch}
-        statusFilter={statusFilter} onStatus={setStatus}
-        typeFilter={typeFilter} onType={setType}
-        setFilter={setFilter} onSet={setSet}
-        rarityFilter={rarityFilter} onRarity={setRarity}
-        generationFilter={generationFilter} onGeneration={setGeneration}
-        sort={sort} onSort={setSort}
-        sets={sets} rarities={rarities}
-        onReset={() => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); }}
-      />
-      <PokedexGrid items={items} ownedImages={ownedImages} onSelect={() => { /* V1: no detail from public view */ }} />
+
+      <View style={styles.tabRow}>
+        {TABS.map(t => (
+          <Pressable key={t.key} onPress={() => setTab(t.key)} style={[styles.tabBtn, tab === t.key && styles.tabBtnActive]}>
+            <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>{t.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {tab === 'pokedex' && (
+        <>
+          <PokedexGrid items={items} ownedImages={ownedImages} columnsOverride={columns} onSelect={() => { /* V1: no detail from public view */ }} />
+          <SearchFilterBar
+            search={search} onSearch={setSearch}
+            statusFilter={statusFilter} onStatus={setStatus}
+            typeFilter={typeFilter} onType={setType}
+            setFilter={setFilter} onSet={setSet}
+            rarityFilter={rarityFilter} onRarity={setRarity}
+            generationFilter={generationFilter} onGeneration={setGeneration}
+            sort={sort} onSort={setSort}
+            sets={sets} rarities={rarities}
+            onReset={() => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); }}
+            columns={columns} onColumns={setColumns}
+          />
+        </>
+      )}
+
+      {tab === 'stats' && (
+        <ScrollView contentContainerStyle={styles.statsScroll}>
+          <PokedexStatsSection userId={userId} showValueBadges={false} />
+        </ScrollView>
+      )}
+
+      {tab === 'wishlist' && (
+        <ScrollView contentContainerStyle={styles.wishlistScroll}>
+          {wishlistGroups.length === 0 ? (
+            <Text style={styles.empty}>Aucune carte dans la wishlist.</Text>
+          ) : (
+            wishlistGroups.map(group => {
+              const mon = POKEDEX_BY_DEX.get(group.dexNum);
+              const groupOwnedCount = group.cards.filter(c => ownedCardIds.has(c.id)).length;
+              return (
+                <View key={group.dexNum} style={[styles.pokemonRow, groupOwnedCount > 0 && styles.pokemonRowOwned]}>
+                  <View style={styles.pokemonSpriteWrap}>
+                    {mon && <Image source={{ uri: mon.sprite_url }} style={styles.pokemonSprite} resizeMode="contain" />}
+                    {groupOwnedCount > 0 && <View style={styles.pokemonOwnedBadge}><Pokeball size={13} /></View>}
+                  </View>
+                  <View style={styles.pokemonInfo}>
+                    <Text style={styles.pokemonName} numberOfLines={1}>
+                      #{String(group.dexNum).padStart(4, '0')} · {mon ? getName(mon) : group.dexNum}
+                    </Text>
+                    <Text style={styles.pokemonSub}>
+                      {group.cards.length} carte{group.cards.length > 1 ? 's' : ''} en wishlist
+                      {groupOwnedCount > 0 ? ` · ${groupOwnedCount} déjà possédée${groupOwnedCount > 1 ? 's' : ''}` : ''}
+                    </Text>
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pokemonThumbs}>
+                    {group.cards.slice(0, 4).map(c => (
+                      <View key={c.id} style={[styles.pokemonThumbWrap, ownedCardIds.has(c.id) && styles.pokemonThumbWrapOwned]}>
+                        <Image source={{ uri: c.image_small }} style={styles.pokemonThumb} resizeMode="contain" />
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -97,4 +175,37 @@ const styles = StyleSheet.create({
   notFoundTitle: { fontSize: 18, textAlign: 'center', fontWeight: '700', color: colors.text },
   cta: { backgroundColor: colors.primary, padding: 14, borderRadius: radius.md },
   ctaText: { color: 'white', fontWeight: '600' },
+
+  tabRow: {
+    flexDirection: 'row', gap: spacing.xs, padding: spacing.sm,
+    backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
+  },
+  tabBtn: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, alignItems: 'center' },
+  tabBtnActive: { backgroundColor: colors.primary },
+  tabText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
+  tabTextActive: { color: 'white' },
+
+  statsScroll: { padding: spacing.lg, gap: spacing.lg },
+  wishlistScroll: { padding: spacing.md },
+  empty: { fontSize: 14, color: colors.textDim, fontStyle: 'italic', textAlign: 'center', marginTop: spacing.xl },
+
+  pokemonRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, backgroundColor: colors.surface,
+    borderLeftWidth: 3, borderLeftColor: 'transparent',
+  },
+  pokemonRowOwned: { borderLeftColor: colors.success },
+  pokemonSpriteWrap: { width: 40, height: 40, position: 'relative' },
+  pokemonSprite: { width: 40, height: 40 },
+  pokemonOwnedBadge: {
+    position: 'absolute', bottom: -2, right: -2, backgroundColor: colors.surface,
+    borderRadius: radius.pill, padding: 1, ...shadow.sm,
+  },
+  pokemonInfo: { flex: 1, gap: 2 },
+  pokemonName: { fontSize: 14, fontWeight: '700', color: colors.text },
+  pokemonSub: { fontSize: 12, color: colors.textMuted },
+  pokemonThumbs: { maxWidth: 120, flexGrow: 0 },
+  pokemonThumbWrap: { borderRadius: radius.sm, marginRight: 4 },
+  pokemonThumbWrapOwned: { borderWidth: 1.5, borderColor: colors.success },
+  pokemonThumb: { width: 28, height: 40 },
 });

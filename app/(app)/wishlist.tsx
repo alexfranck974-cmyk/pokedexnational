@@ -2,12 +2,17 @@ import { useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSession } from '@/lib/auth';
 import { useAllWishedCards, useAllOwnedCardIds, useToggleWish } from '@/lib/collection';
-import { applyWishlistPipeline, type WishStatusFilter, type WishSortKey, type WishlistCard } from '@/lib/wishlist-list';
+import {
+  applyWishlistPipeline, groupWishlistByPokemon,
+  type WishStatusFilter, type WishSortKey, type WishlistCard, type WishlistGroup,
+} from '@/lib/wishlist-list';
 import { colors, radius, spacing, shadow } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
+import { getName } from '@/lib/i18n';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import pokedexData from '@/data/pokedex.json';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
@@ -15,6 +20,7 @@ import { GENERATIONS } from '@/lib/generations';
 
 const POKEDEX = pokedexData as Pokemon[];
 const TYPES_BY_DEX = new Map<number, PokemonType[]>(POKEDEX.map(p => [p.num, p.types]));
+const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
 
 function numColsFor(width: number): number {
   if (width < 600) return 2;
@@ -51,6 +57,7 @@ export default function WishlistScreen() {
   const [rarityFilter, setRarity] = useState<string | null>(null);
   const [generationFilter, setGeneration] = useState<number | null>(null);
   const [sort, setSort] = useState<WishSortKey>('wished-desc');
+  const [viewMode, setViewMode] = useState<'cards' | 'pokemon'>('pokemon');
 
   const availableSets = useMemo(() => {
     const seen = new Map<string, string>();
@@ -70,6 +77,8 @@ export default function WishlistScreen() {
     }),
     [cards, ownedIds, search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort],
   );
+
+  const grouped = useMemo(() => groupWishlistByPokemon(filtered, ownedIds), [filtered, ownedIds]);
 
   const cycleType = () => {
     const types = Object.keys(TYPE_LABEL_FR) as PokemonType[];
@@ -109,7 +118,19 @@ export default function WishlistScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Wishlist</Text>
-          <Text style={styles.count}>{filtered.length} / {cards.length}</Text>
+          <View style={styles.headerTopRight}>
+            <Text style={styles.count}>{filtered.length} / {cards.length}</Text>
+            <Pressable
+              onPress={() => setViewMode('cards')}
+              style={[styles.viewBtn, viewMode === 'cards' && styles.viewBtnActive]}>
+              <Ionicons name="albums-outline" size={16} color={viewMode === 'cards' ? 'white' : colors.textMuted} />
+            </Pressable>
+            <Pressable
+              onPress={() => setViewMode('pokemon')}
+              style={[styles.viewBtn, viewMode === 'pokemon' && styles.viewBtnActive]}>
+              <Ionicons name="list-outline" size={16} color={viewMode === 'pokemon' ? 'white' : colors.textMuted} />
+            </Pressable>
+          </View>
         </View>
 
         <TextInput placeholder="Rechercher (nom, set, n°)" value={search} onChangeText={setSearch}
@@ -148,6 +169,43 @@ export default function WishlistScreen() {
         <View style={styles.center}>
           <Text style={styles.emptyHint}>Aucun résultat avec ces filtres.</Text>
         </View>
+      ) : viewMode === 'pokemon' ? (
+        <FlashList
+          data={grouped}
+          estimatedItemSize={76}
+          keyExtractor={(g: WishlistGroup) => String(g.dexNum)}
+          renderItem={({ item }: { item: WishlistGroup }) => {
+            const mon = POKEDEX_BY_DEX.get(item.dexNum);
+            const ownedCount = item.cards.filter(c => ownedIds.has(c.id)).length;
+            return (
+              <Pressable
+                onPress={() => router.push(`/pokemon/${item.dexNum}?wishes=1`)}
+                style={({ pressed }) => [styles.pokemonRow, ownedCount > 0 && styles.pokemonRowOwned, pressed && { backgroundColor: colors.surfaceAlt }]}>
+                <View style={styles.pokemonSpriteWrap}>
+                  {mon && <Image source={{ uri: mon.sprite_url }} style={styles.pokemonSprite} resizeMode="contain" />}
+                  {ownedCount > 0 && <View style={styles.pokemonOwnedBadge}><Pokeball size={13} /></View>}
+                </View>
+                <View style={styles.pokemonInfo}>
+                  <Text style={styles.pokemonName} numberOfLines={1}>
+                    #{String(item.dexNum).padStart(4, '0')} · {mon ? getName(mon) : item.dexNum}
+                  </Text>
+                  <Text style={styles.pokemonSub}>
+                    {item.cards.length} carte{item.cards.length > 1 ? 's' : ''} en wishlist
+                    {ownedCount > 0 ? ` · ${ownedCount} déjà possédée${ownedCount > 1 ? 's' : ''}` : ''}
+                  </Text>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pokemonThumbs}>
+                  {item.cards.slice(0, 4).map(c => (
+                    <View key={c.id} style={[styles.pokemonThumbWrap, ownedIds.has(c.id) && styles.pokemonThumbWrapOwned]}>
+                      <Image source={{ uri: c.image_small }} style={styles.pokemonThumb} resizeMode="contain" />
+                    </View>
+                  ))}
+                </ScrollView>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </Pressable>
+            );
+          }}
+        />
       ) : (
         <FlashList
           data={filtered}
@@ -193,8 +251,11 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl, gap: spacing.sm },
   header: { padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, gap: spacing.sm, ...shadow.sm },
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerTopRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   title: { fontSize: 22, fontWeight: '800', color: colors.text },
-  count: { fontSize: 13, color: colors.textMuted },
+  count: { fontSize: 13, color: colors.textMuted, marginRight: 2 },
+  viewBtn: { width: 26, height: 26, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt },
+  viewBtnActive: { backgroundColor: colors.primary },
   search: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, fontSize: 15, backgroundColor: colors.surfaceAlt, color: colors.text },
   chipRow: { gap: spacing.xs, alignItems: 'center' },
   resetBtn: { alignSelf: 'flex-end', paddingVertical: 2 },
@@ -212,5 +273,24 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill, backgroundColor: colors.overlay,
     alignItems: 'center', justifyContent: 'center',
   },
+  pokemonRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, backgroundColor: colors.surface,
+    borderLeftWidth: 3, borderLeftColor: 'transparent',
+  },
+  pokemonRowOwned: { borderLeftColor: colors.success },
+  pokemonSpriteWrap: { width: 40, height: 40, position: 'relative' },
+  pokemonSprite: { width: 40, height: 40 },
+  pokemonOwnedBadge: {
+    position: 'absolute', bottom: -2, right: -2, backgroundColor: colors.surface,
+    borderRadius: radius.pill, padding: 1, ...shadow.sm,
+  },
+  pokemonInfo: { flex: 1, gap: 2 },
+  pokemonName: { fontSize: 14, fontWeight: '700', color: colors.text },
+  pokemonSub: { fontSize: 12, color: colors.textMuted },
+  pokemonThumbs: { maxWidth: 120, flexGrow: 0 },
+  pokemonThumbWrap: { borderRadius: radius.sm, marginRight: 4 },
+  pokemonThumbWrapOwned: { borderWidth: 1.5, borderColor: colors.success },
+  pokemonThumb: { width: 28, height: 40 },
   heartFilled: { fontSize: 18, color: colors.danger, lineHeight: 22 },
 });

@@ -75,3 +75,29 @@ export function applyWishlistPipeline(
   }
   return sorted;
 }
+
+export interface WishlistGroup {
+  dexNum: number;
+  cards: WishlistCard[];
+}
+
+// Preserves the order cards first appear in (i.e. whatever sort was already applied),
+// so switching to the grouped view keeps the same overall ordering, just clustered by Pokémon.
+// Within each group, owned cards are surfaced first when ownedIds is given, so a partially
+// completed Pokémon shows what's already in hand before what's still missing.
+export function groupWishlistByPokemon(cards: WishlistCard[], ownedIds?: Set<string>): WishlistGroup[] {
+  const order: number[] = [];
+  const byDex = new Map<number, WishlistCard[]>();
+  for (const c of cards) {
+    if (!byDex.has(c.dex_num)) {
+      byDex.set(c.dex_num, []);
+      order.push(c.dex_num);
+    }
+    byDex.get(c.dex_num)!.push(c);
+  }
+  return order.map(dexNum => {
+    const groupCards = byDex.get(dexNum)!;
+    if (ownedIds) groupCards.sort((a, b) => Number(ownedIds.has(b.id)) - Number(ownedIds.has(a.id)));
+    return { dexNum, cards: groupCards };
+  });
+}

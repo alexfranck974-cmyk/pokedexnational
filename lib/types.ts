@@ -9,4 +9,5 @@ export interface Pokemon {
   name_en: string;
   types: PokemonType[];
   sprite_url: string;
+  evolvesFromNum: number | null;
 }

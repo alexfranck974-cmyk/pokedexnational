@@ -1,9 +1,13 @@
 import { Modal, Pressable, Image, StyleSheet, useWindowDimensions } from 'react-native';
-import type { TcgCardRow } from '@/lib/tcg';
 import { colors } from '@/lib/theme';
 
+export interface ZoomableCard {
+  image_small: string;
+  image_large?: string | null;
+}
+
 interface Props {
-  card: TcgCardRow | null;
+  card: ZoomableCard | null;
   onClose: () => void;
 }
 

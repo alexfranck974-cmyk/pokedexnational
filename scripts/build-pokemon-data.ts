@@ -14,14 +14,21 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 interface SpeciesResponse {
+  name: string;
   names: { name: string; language: { name: string } }[];
+  evolves_from_species: { name: string } | null;
 }
 interface PokemonResponse {
   types: { type: { name: PokemonType } }[];
   sprites: { other?: { 'official-artwork'?: { front_default: string | null } } };
 }
 
-async function buildOne(num: number): Promise<Pokemon> {
+interface BuildRow extends Pokemon {
+  speciesName: string;
+  evolvesFromName: string | null;
+}
+
+async function buildOne(num: number): Promise<BuildRow> {
   const species = await fetchJson<SpeciesResponse>(
     `https://pokeapi.co/api/v2/pokemon-species/${num}`,
   );
@@ -34,12 +41,17 @@ async function buildOne(num: number): Promise<Pokemon> {
   const sprite =
     pokemon.sprites.other?.['official-artwork']?.front_default ??
     `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${num}.png`;
-  return { num, name_fr: nameFr, name_en: nameEn, types, sprite_url: sprite };
+  return {
+    num, name_fr: nameFr, name_en: nameEn, types, sprite_url: sprite,
+    evolvesFromNum: null,
+    speciesName: species.name,
+    evolvesFromName: species.evolves_from_species?.name ?? null,
+  };
 }
 
 async function main() {
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
-  const all: Pokemon[] = [];
+  const all: BuildRow[] = [];
   for (let num = 1; num <= 1025; num++) {
     try {
       const p = await buildOne(num);
@@ -51,8 +63,18 @@ async function main() {
     }
     await sleep(RATE_LIMIT_MS);
   }
-  fs.writeFileSync(OUT, JSON.stringify(all));
-  console.log(`Wrote ${all.length} entries to ${OUT}`);
+
+  // Second pass: resolve evolvesFromName -> evolvesFromNum. Two-pass because some
+  // pre-evolutions have a *higher* dex number than their evolution (e.g. Pichu #172
+  // was added after Pikachu #25), so this can't be resolved during the initial loop.
+  const numBySpeciesName = new Map(all.map(p => [p.speciesName, p.num]));
+  const result: Pokemon[] = all.map(({ speciesName, evolvesFromName, ...rest }) => ({
+    ...rest,
+    evolvesFromNum: evolvesFromName ? numBySpeciesName.get(evolvesFromName) ?? null : null,
+  }));
+
+  fs.writeFileSync(OUT, JSON.stringify(result));
+  console.log(`Wrote ${result.length} entries to ${OUT}`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Modal, FlatList, useWindowDimensions } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { PokemonType } from '@/lib/types';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
 import { GENERATIONS } from '@/lib/generations';
-import { colors, radius, spacing } from '@/lib/theme';
+import { colors, radius, spacing, shadow } from '@/lib/theme';
 
 interface Props {
   search: string;                       onSearch: (v: string) => void;
@@ -17,7 +18,10 @@ interface Props {
   sets: { id: string; name: string }[];
   rarities: string[];
   onReset: () => void;
+  columns: 2 | 3 | 4 | null;            onColumns: (v: 2 | 3 | 4 | null) => void;
 }
+
+const COLUMN_CYCLE: (2 | 3 | 4 | null)[] = [null, 2, 3, 4];
 
 const Chip = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => (
   <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
@@ -77,6 +81,10 @@ function PickerModal({
 
 export function SearchFilterBar(p: Props) {
   const [openPicker, setOpenPicker] = useState<null | 'type' | 'set' | 'rarity' | 'gen'>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
   const hasFilters = p.statusFilter !== 'all' || p.typeFilter || p.setFilter || p.rarityFilter || p.generationFilter !== null;
 
   const typeOptions: PickerOption[] = (Object.keys(TYPE_LABEL_FR) as PokemonType[])
@@ -91,35 +99,89 @@ export function SearchFilterBar(p: Props) {
   const genChipLabel    = p.generationFilter ? `Gen ${p.generationFilter}` : 'Génération';
 
   return (
-    <View style={styles.wrap}>
-      <TextInput placeholder="Rechercher (nom ou n°)" value={p.search} onChangeText={p.onSearch}
-        style={styles.search} autoCapitalize="none" />
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-        <Chip label="Tous"      active={p.statusFilter === 'all'}     onPress={() => p.onStatus('all')} />
-        <Chip label="Possédés"  active={p.statusFilter === 'owned'}   onPress={() => p.onStatus('owned')} />
-        <Chip label="Manquants" active={p.statusFilter === 'missing'} onPress={() => p.onStatus('missing')} />
-      </ScrollView>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-        <Chip label={genChipLabel}    active={p.generationFilter !== null} onPress={() => setOpenPicker('gen')} />
-        <Chip label={typeChipLabel}   active={p.typeFilter !== null}   onPress={() => setOpenPicker('type')} />
-        <Chip label={setChipLabel}    active={p.setFilter !== null}    onPress={() => setOpenPicker('set')} />
-        <Chip label={rarityChipLabel} active={p.rarityFilter !== null} onPress={() => setOpenPicker('rarity')} />
-      </ScrollView>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-        <Chip label="N° ↑"   active={p.sort === 'num-asc'}   onPress={() => p.onSort('num-asc')} />
-        <Chip label="N° ↓"   active={p.sort === 'num-desc'}  onPress={() => p.onSort('num-desc')} />
-        <Chip label="A → Z"  active={p.sort === 'name-asc'}  onPress={() => p.onSort('name-asc')} />
-        <Chip label="Z → A"  active={p.sort === 'name-desc'} onPress={() => p.onSort('name-desc')} />
-      </ScrollView>
-
-      {hasFilters && (
-        <Pressable onPress={p.onReset} style={styles.reset}>
-          <Text style={styles.resetText}>Réinitialiser les filtres</Text>
-        </Pressable>
+    <View style={styles.overlay} pointerEvents="box-none">
+      {searchOpen && (
+        <View style={styles.floatingSearch}>
+          <Ionicons name="search" size={18} color={colors.textMuted} />
+          <TextInput
+            placeholder="Rechercher (nom ou n°)"
+            value={p.search}
+            onChangeText={p.onSearch}
+            style={styles.floatingSearchInput}
+            autoCapitalize="none"
+            autoFocus
+            onBlur={() => { if (!p.search) setSearchOpen(false); }}
+          />
+          <Pressable onPress={() => { p.onSearch(''); setSearchOpen(false); }} hitSlop={8}>
+            <Ionicons name="close" size={20} color={colors.textMuted} />
+          </Pressable>
+        </View>
       )}
+
+      <View style={styles.fabStack}>
+        <Pressable onPress={() => setSearchOpen(o => !o)} style={styles.fab}>
+          <Ionicons name="search" size={22} color={p.search ? colors.primary : colors.text} />
+        </Pressable>
+        <Pressable onPress={() => setFilterSheetOpen(true)} style={styles.fab}>
+          <Ionicons name="filter" size={22} color={hasFilters ? colors.primary : colors.text} />
+          {hasFilters && <View style={styles.badgeDot} />}
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            const idx = COLUMN_CYCLE.indexOf(p.columns);
+            p.onColumns(COLUMN_CYCLE[(idx + 1) % COLUMN_CYCLE.length]);
+          }}
+          style={styles.fab}>
+          {p.columns === null ? (
+            <Ionicons name="grid-outline" size={22} color={colors.text} />
+          ) : (
+            <Text style={styles.columnsLabel}>×{p.columns}</Text>
+          )}
+        </Pressable>
+      </View>
+
+      <Modal visible={filterSheetOpen} transparent animationType="slide" onRequestClose={() => setFilterSheetOpen(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setFilterSheetOpen(false)}>
+          <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Filtres</Text>
+              <Pressable onPress={() => setFilterSheetOpen(false)} hitSlop={8}>
+                <Text style={styles.close}>✕</Text>
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={styles.filterSheetBody}>
+              <Text style={styles.sectionLabel}>Statut</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+                <Chip label="Tous"      active={p.statusFilter === 'all'}     onPress={() => p.onStatus('all')} />
+                <Chip label="Possédés"  active={p.statusFilter === 'owned'}   onPress={() => p.onStatus('owned')} />
+                <Chip label="Manquants" active={p.statusFilter === 'missing'} onPress={() => p.onStatus('missing')} />
+              </ScrollView>
+
+              <Text style={styles.sectionLabel}>Génération / Type / Set / Rareté</Text>
+              <View style={styles.chipRow}>
+                <Chip label={genChipLabel}    active={p.generationFilter !== null} onPress={() => setOpenPicker('gen')} />
+                <Chip label={typeChipLabel}   active={p.typeFilter !== null}   onPress={() => setOpenPicker('type')} />
+                <Chip label={setChipLabel}    active={p.setFilter !== null}    onPress={() => setOpenPicker('set')} />
+                <Chip label={rarityChipLabel} active={p.rarityFilter !== null} onPress={() => setOpenPicker('rarity')} />
+              </View>
+
+              <Text style={styles.sectionLabel}>Tri</Text>
+              <View style={styles.chipRow}>
+                <Chip label="N° ↑"   active={p.sort === 'num-asc'}   onPress={() => p.onSort('num-asc')} />
+                <Chip label="N° ↓"   active={p.sort === 'num-desc'}  onPress={() => p.onSort('num-desc')} />
+                <Chip label="A → Z"  active={p.sort === 'name-asc'}  onPress={() => p.onSort('name-asc')} />
+                <Chip label="Z → A"  active={p.sort === 'name-desc'} onPress={() => p.onSort('name-desc')} />
+              </View>
+
+              {hasFilters && (
+                <Pressable onPress={p.onReset} style={styles.reset}>
+                  <Text style={styles.resetText}>Réinitialiser les filtres</Text>
+                </Pressable>
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <PickerModal
         visible={openPicker === 'type'}
@@ -158,19 +220,29 @@ export function SearchFilterBar(p: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { padding: spacing.sm, gap: 6, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-  search: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, fontSize: 15, color: colors.text, backgroundColor: colors.surfaceAlt },
-  chipRow: { gap: 6, alignItems: 'center' },
+  overlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'flex-end', justifyContent: 'flex-end', padding: spacing.lg, gap: spacing.md },
+
+  floatingSearch: { alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, ...shadow.md },
+  floatingSearchInput: { flex: 1, fontSize: 15, color: colors.text, padding: 0 },
+
+  fabStack: { gap: spacing.md, alignItems: 'center' },
+  fab: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', ...shadow.md },
+  badgeDot: { position: 'absolute', top: 6, right: 6, width: 9, height: 9, borderRadius: 5, backgroundColor: colors.primary },
+  columnsLabel: { fontSize: 15, fontWeight: '800', color: colors.text },
+
+  filterSheetBody: { padding: spacing.md, gap: spacing.sm },
+  sectionLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', marginTop: spacing.sm },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
   chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
   chipActive: { backgroundColor: colors.primary },
   chipText: { fontSize: 12, color: colors.textMuted },
   chipTextActive: { color: 'white', fontWeight: '600' },
-  reset: { alignSelf: 'flex-end', padding: 4 },
+  reset: { alignSelf: 'flex-start', padding: 4, marginTop: spacing.sm },
   resetText: { fontSize: 12, color: colors.danger },
 
   backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end', alignItems: 'center' },
-  sheet: { width: '100%', maxHeight: '60%', backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
-  sheetDesktop: { width: 400, height: 500, borderRadius: radius.xl, marginBottom: 40 },
+  sheet: { width: '100%', maxHeight: '75%', backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
+  sheetDesktop: { width: 400, height: 560, borderRadius: radius.xl, marginBottom: 40 },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
   sheetTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
   close: { fontSize: 20, color: colors.textMuted },

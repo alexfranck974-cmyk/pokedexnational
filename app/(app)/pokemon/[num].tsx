@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View, Text, Image, StyleSheet, ActivityIndicator, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
@@ -12,10 +13,16 @@ import { CardZoomModal } from '@/components/CardZoomModal';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForPokemon } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
-import { useUserCards, useUserWishlist, useToggleCard, useToggleWish } from '@/lib/collection';
+import { useUserCards, useUserWishlist, useToggleCard, useToggleWish, useCardAcquiredAt } from '@/lib/collection';
 import { colors, radius, spacing, shadow } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
+
+const REGIONS: { id: 'global' | 'jp' | 'cn'; label: string }[] = [
+  { id: 'global', label: 'Global' },
+  { id: 'cn', label: 'Chinois' },
+  { id: 'jp', label: 'Japonais' },
+];
 
 export default function PokemonDetail() {
   const { num: numStr, wishes } = useLocalSearchParams<{ num: string; wishes?: string }>();
@@ -27,17 +34,37 @@ export default function PokemonDetail() {
   const { data: cards = [], isLoading: cardsLoading } = useCardsForPokemon(num);
   const { data: ownedSet = new Set<string>() } = useUserCards(userId, num);
   const { data: wishedSet = new Set<string>() } = useUserWishlist(userId, num);
+  const { data: acquiredAt } = useCardAcquiredAt(userId, num);
   const toggle = useToggleCard();
   const toggleWish = useToggleWish();
 
+  const [region, setRegion] = useState<'global' | 'jp' | 'cn'>('global');
   const [selectedSetIds, setSelectedSetIds] = useState<Set<string> | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [onlyWishes, setOnlyWishes] = useState(wishes === '1');
   const [zoomCard, setZoomCard] = useState<TcgCardRow | null>(null);
 
+  // Prev/next reuses this same route (router.replace), so reset per-Pokémon transient
+  // filters/state on num change — viewMode is kept as a persistent user preference.
+  useEffect(() => {
+    setSelectedSetIds(null);
+    setOnlyWishes(wishes === '1');
+    setZoomCard(null);
+  }, [num]);
+
+  // Sets differ per region — clear the set filter when switching region to avoid a
+  // stale selection silently hiding every card.
+  useEffect(() => { setSelectedSetIds(null); }, [region]);
+
+  const prevNum = num > 1 ? num - 1 : POKEDEX.length;
+  const nextNum = num < POKEDEX.length ? num + 1 : 1;
+  const goTo = (n: number) => router.replace(`/pokemon/${n}`);
+
+  const regionCards = useMemo(() => cards.filter(c => c.region === region), [cards, region]);
+
   const filteredCards = useMemo(
-    () => selectedSetIds === null ? cards : cards.filter(c => selectedSetIds.has(c.set_id)),
-    [cards, selectedSetIds],
+    () => selectedSetIds === null ? regionCards : regionCards.filter(c => selectedSetIds.has(c.set_id)),
+    [regionCards, selectedSetIds],
   );
 
   const wishFiltered = onlyWishes ? filteredCards.filter(c => wishedSet.has(c.id)) : filteredCards;
@@ -57,7 +84,7 @@ export default function PokemonDetail() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.back}>
+        <Pressable onPress={() => router.replace('/pokedex')} style={styles.back}>
           <Text style={styles.backText}>← Retour</Text>
         </Pressable>
         <Image source={{ uri: p.sprite_url }} style={styles.miniSprite} resizeMode="contain" />
@@ -67,7 +94,12 @@ export default function PokemonDetail() {
             {p.types.map(t => <TypeBadge key={t} type={t} />)}
           </ScrollView>
         </View>
-        <Text style={styles.count}>{ownedSet.size} / {filteredCards.length}</Text>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={styles.count}>{ownedSet.size} / {filteredCards.length}</Text>
+          {acquiredAt && (
+            <Text style={styles.acquiredAt}>Ajoutée le {new Date(acquiredAt).toLocaleDateString('fr-FR')}</Text>
+          )}
+        </View>
         <Pressable
           onPress={() => setViewMode('grid')}
           style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>
@@ -80,14 +112,27 @@ export default function PokemonDetail() {
         </Pressable>
       </View>
 
+      <View style={styles.regionRow}>
+        {REGIONS.map(r => (
+          <Pressable
+            key={r.id}
+            onPress={() => setRegion(r.id)}
+            style={[styles.regionChip, region === r.id && styles.regionChipActive]}>
+            <Text style={[styles.regionChipText, region === r.id && styles.regionChipTextActive]}>{r.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+
       {cardsLoading ? (
         <ActivityIndicator style={{ marginTop: 24 }} />
       ) : cards.length === 0 ? (
         <Text style={styles.empty}>Aucune carte TCG connue pour ce Pokémon dans la base.</Text>
+      ) : regionCards.length === 0 ? (
+        <Text style={styles.empty}>Aucune carte {REGIONS.find(r => r.id === region)?.label} connue pour ce Pokémon.</Text>
       ) : (
         <>
           <CardFilterTree
-            cards={cards}
+            cards={regionCards}
             selectedSetIds={selectedSetIds}
             onChange={setSelectedSetIds}
           />
@@ -112,6 +157,15 @@ export default function PokemonDetail() {
         </>
       )}
       <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
+
+      <View style={styles.navOverlay} pointerEvents="box-none">
+        <Pressable onPress={() => goTo(prevNum)} style={[styles.navBtn, styles.navBtnLeft]} hitSlop={8}>
+          <Ionicons name="chevron-back" size={22} color={colors.text} />
+        </Pressable>
+        <Pressable onPress={() => goTo(nextNum)} style={[styles.navBtn, styles.navBtnRight]} hitSlop={8}>
+          <Ionicons name="chevron-forward" size={22} color={colors.text} />
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
@@ -125,11 +179,25 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '800', color: colors.text },
   typesRow: { marginTop: 2 },
   count: { fontSize: 12, color: colors.textMuted, paddingLeft: 4 },
+  acquiredAt: { fontSize: 10, color: colors.textDim, paddingLeft: 4 },
   viewBtn: { width: 32, height: 32, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt },
   viewBtnActive: { backgroundColor: colors.primary },
   viewBtnText: { fontSize: 16, color: colors.textMuted },
   viewBtnTextActive: { color: 'white' },
   empty: { textAlign: 'center', color: colors.textMuted, padding: 24, fontStyle: 'italic' },
+  regionRow: { flexDirection: 'row', gap: spacing.xs, padding: spacing.sm, paddingBottom: 0 },
+  regionChip: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, alignItems: 'center' },
+  regionChipActive: { backgroundColor: colors.primary },
+  regionChipText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
+  regionChipTextActive: { color: 'white' },
   wishBanner: { padding: spacing.sm, backgroundColor: colors.dangerBg, marginHorizontal: spacing.md, borderRadius: radius.md, marginBottom: 6 },
   wishBannerText: { color: colors.danger, fontSize: 12, textAlign: 'center', fontWeight: '600' },
+
+  navOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
+  navBtn: {
+    position: 'absolute', top: '50%', marginTop: -22, width: 44, height: 44, borderRadius: 22,
+    backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', opacity: 0.92, ...shadow.md,
+  },
+  navBtnLeft: { left: spacing.sm },
+  navBtnRight: { right: spacing.sm },
 });

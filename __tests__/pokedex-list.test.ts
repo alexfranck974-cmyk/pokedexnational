@@ -2,10 +2,10 @@ import { applyPokedexPipeline } from '../lib/pokedex-list';
 import type { Pokemon } from '../lib/types';
 
 const sample: Pokemon[] = [
-  { num: 1, name_fr: 'Bulbizarre', name_en: 'Bulbasaur', types: ['grass', 'poison'], sprite_url: '' },
-  { num: 4, name_fr: 'Salamèche', name_en: 'Charmander', types: ['fire'], sprite_url: '' },
-  { num: 7, name_fr: 'Carapuce', name_en: 'Squirtle', types: ['water'], sprite_url: '' },
-  { num: 25, name_fr: 'Pikachu', name_en: 'Pikachu', types: ['electric'], sprite_url: '' },
+  { num: 1, name_fr: 'Bulbizarre', name_en: 'Bulbasaur', types: ['grass', 'poison'], sprite_url: '', evolvesFromNum: null },
+  { num: 4, name_fr: 'Salamèche', name_en: 'Charmander', types: ['fire'], sprite_url: '', evolvesFromNum: null },
+  { num: 7, name_fr: 'Carapuce', name_en: 'Squirtle', types: ['water'], sprite_url: '', evolvesFromNum: null },
+  { num: 25, name_fr: 'Pikachu', name_en: 'Pikachu', types: ['electric'], sprite_url: '', evolvesFromNum: null },
 ];
 
 const index = new Map<number, { set_ids: string[]; rarities: string[] }>([
@@ -94,8 +94,8 @@ describe('applyPokedexPipeline', () => {
   it('filters by generation (Gen 1 = dex 1..151)', () => {
     const bigSample = [
       ...sample,
-      { num: 152, name_fr: 'Germignon', name_en: 'Chikorita', types: ['grass'], sprite_url: '' },
-      { num: 906, name_fr: 'Poussacha', name_en: 'Sprigatito', types: ['grass'], sprite_url: '' },
+      { num: 152, name_fr: 'Germignon', name_en: 'Chikorita', types: ['grass'], sprite_url: '', evolvesFromNum: null },
+      { num: 906, name_fr: 'Poussacha', name_en: 'Sprigatito', types: ['grass'], sprite_url: '', evolvesFromNum: null },
     ];
     const r = applyPokedexPipeline(bigSample, owned, index, {
       search: '', statusFilter: 'all', typeFilter: null, setFilter: null, rarityFilter: null, generationFilter: 1, sort: 'num-asc',
@@ -106,8 +106,8 @@ describe('applyPokedexPipeline', () => {
   it('filters by generation (Gen 9 = dex 906..1025)', () => {
     const bigSample = [
       ...sample,
-      { num: 906, name_fr: 'Poussacha', name_en: 'Sprigatito', types: ['grass'], sprite_url: '' },
-      { num: 1025, name_fr: 'Pêchaminus', name_en: 'Pecharunt', types: ['poison'], sprite_url: '' },
+      { num: 906, name_fr: 'Poussacha', name_en: 'Sprigatito', types: ['grass'], sprite_url: '', evolvesFromNum: null },
+      { num: 1025, name_fr: 'Pêchaminus', name_en: 'Pecharunt', types: ['poison'], sprite_url: '', evolvesFromNum: null },
     ];
     const r = applyPokedexPipeline(bigSample, owned, index, {
       search: '', statusFilter: 'all', typeFilter: null, setFilter: null, rarityFilter: null, generationFilter: 9, sort: 'num-asc',
