@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, Image, StyleSheet, FlatList, Alert, useWindowDimensions,
+  View, Text, TextInput, Pressable, Image, StyleSheet, FlatList, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
@@ -23,6 +23,7 @@ import {
 import { FavoriteTile } from '@/components/FavoriteTile';
 import { TeamSlotPicker } from '@/components/TeamSlotPicker';
 import { CollectionCardPicker } from '@/components/CollectionCardPicker';
+import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
@@ -87,6 +88,7 @@ export default function FavoritesScreen() {
   const [collectionRenaming, setCollectionRenaming] = useState(false);
   const [collectionRenameValue, setCollectionRenameValue] = useState('');
   const [cardPickerOpen, setCardPickerOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ kind: 'team' | 'collection'; id: string; name: string } | null>(null);
 
   const ownedPokemon = useMemo(() => POKEDEX.filter(p => owned.has(p.num)), [owned]);
   const selectedTeam = teams.find(t => t.id === selectedTeamId) ?? null;
@@ -110,16 +112,6 @@ export default function FavoritesScreen() {
     setSelectedTeamId(id);
   };
 
-  const confirmDeleteTeam = (teamId: string, name: string) => {
-    Alert.alert('Supprimer l’équipe', `Supprimer "${name}" ?`, [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Supprimer', style: 'destructive',
-        onPress: () => { deleteTeam.mutate(teamId); if (selectedTeamId === teamId) setSelectedTeamId(null); },
-      },
-    ]);
-  };
-
   const handleCreateCollection = async () => {
     const name = newCollectionName.trim();
     if (!name) return;
@@ -128,15 +120,24 @@ export default function FavoritesScreen() {
     setSelectedCollectionId(id);
   };
 
-  const confirmDeleteCollection = (collectionId: string, name: string) => {
-    Alert.alert('Supprimer la collection', `Supprimer "${name}" ?`, [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Supprimer', style: 'destructive',
-        onPress: () => { deleteCollection.mutate(collectionId); if (selectedCollectionId === collectionId) setSelectedCollectionId(null); },
-      },
-    ]);
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.kind === 'team') {
+      deleteTeam.mutate(deleteTarget.id);
+      if (selectedTeamId === deleteTarget.id) setSelectedTeamId(null);
+    } else {
+      deleteCollection.mutate(deleteTarget.id);
+      if (selectedCollectionId === deleteTarget.id) setSelectedCollectionId(null);
+    }
+    setDeleteTarget(null);
   };
+
+  const confirmTarget: ConfirmTarget | null = deleteTarget
+    ? {
+        title: deleteTarget.kind === 'team' ? 'Supprimer l’équipe' : 'Supprimer la collection',
+        message: `Supprimer "${deleteTarget.name}" ?`,
+      }
+    : null;
 
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
@@ -251,7 +252,7 @@ export default function FavoritesScreen() {
                   <Text style={styles.teamEditorTitle} numberOfLines={1}>{selectedTeam.name}</Text>
                 </Pressable>
               )}
-              <Pressable onPress={() => confirmDeleteTeam(selectedTeam.id, selectedTeam.name)} hitSlop={8}>
+              <Pressable onPress={() => setDeleteTarget({ kind: 'team', id: selectedTeam.id, name: selectedTeam.name })} hitSlop={8}>
                 <Ionicons name="trash-outline" size={20} color={colors.danger} />
               </Pressable>
             </View>
@@ -337,7 +338,7 @@ export default function FavoritesScreen() {
                 <Text style={styles.teamEditorTitle} numberOfLines={1}>{selectedCollection.name}</Text>
               </Pressable>
             )}
-            <Pressable onPress={() => confirmDeleteCollection(selectedCollection.id, selectedCollection.name)} hitSlop={8}>
+            <Pressable onPress={() => setDeleteTarget({ kind: 'collection', id: selectedCollection.id, name: selectedCollection.name })} hitSlop={8}>
               <Ionicons name="trash-outline" size={20} color={colors.danger} />
             </Pressable>
           </View>
@@ -441,6 +442,12 @@ export default function FavoritesScreen() {
         collectionId={selectedCollectionId}
         cardIdsInCollection={collectionCardIds}
         onClose={() => setCardPickerOpen(false)}
+      />
+
+      <ConfirmDialog
+        target={confirmTarget}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteTarget(null)}
       />
     </SafeAreaView>
   );
