@@ -18,9 +18,12 @@ export default function SignUp() {
   const styles = useThemedStyles((colors) => ({
     wrap: { flex: 1, padding: spacing.xl, gap: spacing.md, justifyContent: 'center' as const, backgroundColor: colors.bg },
     h1: { fontSize: 32, fontFamily: fonts.display, color: colors.text, marginBottom: spacing.lg },
-    input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 14, fontSize: 16, fontFamily: fonts.body },
+    input: {
+      borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 14, fontSize: 16,
+      fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt,
+    },
     hint: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.body },
-    err: { color: colors.danger, fontFamily: fonts.body },
+    err: { color: colors.danger, fontFamily: fonts.bodyBold },
     btn: { backgroundColor: colors.primary, padding: 14, borderRadius: radius.md, alignItems: 'center' as const },
     btnText: { color: 'white', fontSize: 16, fontFamily: fonts.bodyBold },
     link: { textAlign: 'center' as const, marginTop: spacing.md, color: colors.textMuted, fontSize: 14, fontFamily: fonts.body },
@@ -52,18 +55,18 @@ export default function SignUp() {
   return (
     <View style={styles.wrap}>
       <Text style={styles.h1}>Créer un compte</Text>
-      <TextInput placeholder="Email" value={email} onChangeText={setEmail}
+      <TextInput placeholder="Email" placeholderTextColor={colors.textMuted} value={email} onChangeText={setEmail}
         autoCapitalize="none" keyboardType="email-address" style={styles.input} />
-      <TextInput placeholder="Mot de passe (min 6)" value={password} onChangeText={setPassword}
+      <TextInput placeholder="Mot de passe (min 6)" placeholderTextColor={colors.textMuted} value={password} onChangeText={setPassword}
         secureTextEntry style={styles.input} />
-      <TextInput placeholder="Username (immutable, ex: tristan-42)" value={username}
+      <TextInput placeholder="Username (immutable, ex: tristan-42)" placeholderTextColor={colors.textMuted} value={username}
         onChangeText={setUsername} onBlur={onUsernameBlur}
         autoCapitalize="none" style={styles.input} />
       {usernameCheck === 'checking' && <Text style={styles.hint}>Vérification…</Text>}
       {usernameCheck === 'ok'       && <Text style={[styles.hint, { color: colors.success }]}>Disponible ✓</Text>}
       {usernameCheck === 'taken'    && <Text style={styles.err}>Déjà pris</Text>}
       {usernameCheck === 'invalid'  && <Text style={styles.err}>Format invalide</Text>}
-      <TextInput placeholder="Nom affiché (public)" value={displayName}
+      <TextInput placeholder="Nom affiché (public)" placeholderTextColor={colors.textMuted} value={displayName}
         onChangeText={setDisplayName} style={styles.input} />
       {error && <Text style={styles.err}>{error}</Text>}
       <Pressable onPress={submit} disabled={pending} style={styles.btn}>

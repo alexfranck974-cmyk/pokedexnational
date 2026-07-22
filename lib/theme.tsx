@@ -72,9 +72,9 @@ const darkColors: ColorTokens = {
 
   text: '#f6f0ec',
   textMuted: '#b8a89e',
-  textDim: '#8a766c',
+  textDim: '#9a8579',
 
-  primary: '#e0475a',
+  primary: '#d33a4d',
   primaryDark: '#b8283a',
   primaryBg: '#3d1219',
   primarySoft: '#3a2026',
@@ -100,7 +100,7 @@ const lightColors: ColorTokens = {
 
   text: '#211613',
   textMuted: '#6d5c53',
-  textDim: '#93837a',
+  textDim: '#7d6c62',
 
   primary: '#c81f34',
   primaryDark: '#8a1424',
@@ -110,7 +110,7 @@ const lightColors: ColorTokens = {
   success: '#0f9d6e',
   successBg: '#dcf5ea',
 
-  danger: '#c2660f',
+  danger: '#a8560c',
   dangerBg: '#fbe9d6',
 
   warning: '#b8790a',
