@@ -1,6 +1,6 @@
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Image, Pressable } from 'react-native';
 import type { TcgCardRow } from '@/lib/tcg';
-import { colors, radius, spacing, shadow } from '@/lib/theme';
+import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
 
 interface Props {
@@ -14,6 +14,27 @@ interface Props {
 }
 
 export function CardTile({ card, owned, wished, readOnly, onToggle, onToggleWish, onLongPress }: Props) {
+  const styles = useThemedStyles((colors, shadow) => ({
+    tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, ...shadow.sm },
+    missing: { opacity: 0.55 },
+    imgWrap: { position: 'relative' as const },
+    img: { width: '100%' as const, aspectRatio: 0.72 },
+    set: { fontSize: 11, fontFamily: fonts.bodyBold, marginTop: 4, color: colors.text },
+    rarity: { fontSize: 10, fontFamily: fonts.body, color: colors.textMuted },
+    pokeballOverlay: {
+      position: 'absolute' as const, top: 4, left: 4,
+      backgroundColor: colors.overlay,
+      borderRadius: radius.pill, padding: 2,
+    },
+    heartBtn: {
+      position: 'absolute' as const, top: 4, right: 4, width: 28, height: 28,
+      borderRadius: radius.pill, backgroundColor: colors.overlay,
+      alignItems: 'center' as const, justifyContent: 'center' as const,
+    },
+    heart: { fontSize: 18, color: colors.textDim, lineHeight: 22 },
+    heartFilled: { color: colors.danger },
+  }));
+
   return (
     <Pressable onPress={readOnly ? undefined : onToggle}
       onLongPress={onLongPress}
@@ -43,24 +64,3 @@ export function CardTile({ card, owned, wished, readOnly, onToggle, onToggleWish
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, ...shadow.sm },
-  missing: { opacity: 0.55 },
-  imgWrap: { position: 'relative' },
-  img: { width: '100%', aspectRatio: 0.72 },
-  set: { fontSize: 11, fontWeight: '600', marginTop: 4, color: colors.text },
-  rarity: { fontSize: 10, color: colors.textMuted },
-  pokeballOverlay: {
-    position: 'absolute', top: 4, left: 4,
-    backgroundColor: colors.overlay,
-    borderRadius: radius.pill, padding: 2,
-  },
-  heartBtn: {
-    position: 'absolute', top: 4, right: 4, width: 28, height: 28,
-    borderRadius: radius.pill, backgroundColor: colors.overlay,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  heart: { fontSize: 18, color: colors.textDim, lineHeight: 22 },
-  heartFilled: { color: colors.danger },
-});

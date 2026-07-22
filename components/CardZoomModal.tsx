@@ -1,5 +1,5 @@
-import { Modal, Pressable, Image, StyleSheet, useWindowDimensions } from 'react-native';
-import { colors } from '@/lib/theme';
+import { Modal, Pressable, Image, useWindowDimensions } from 'react-native';
+import { useThemedStyles } from '@/lib/theme';
 
 export interface ZoomableCard {
   image_small: string;
@@ -13,6 +13,9 @@ interface Props {
 
 export function CardZoomModal({ card, onClose }: Props) {
   const { width, height } = useWindowDimensions();
+  const styles = useThemedStyles((colors) => ({
+    backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center' as const, justifyContent: 'center' as const },
+  }));
   if (!card) return null;
   const src = card.image_large ?? card.image_small;
   const maxW = Math.min(width * 0.9, 500);
@@ -29,7 +32,3 @@ export function CardZoomModal({ card, onClose }: Props) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center', justifyContent: 'center' },
-});

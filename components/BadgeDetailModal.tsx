@@ -1,7 +1,7 @@
-import { View, Text, Pressable, Modal, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, Modal, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { IoniconName } from '@/lib/badges';
-import { colors, radius, spacing, shadow } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 export interface BadgeDetailTarget {
   icon: IoniconName;
@@ -18,6 +18,28 @@ interface Props {
 export function BadgeDetailModal({ target, onClose }: Props) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
+  const { colors } = useTheme();
+  const styles = useThemedStyles((colors) => ({
+    backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' as const, alignItems: 'center' as const },
+    sheet: { width: '100%' as const, backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
+    sheetDesktop: { width: 400, borderRadius: radius.xl, marginBottom: 40 },
+    body: { padding: spacing.xl, alignItems: 'center' as const, gap: spacing.sm },
+    iconWrap: {
+      width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surfaceAlt,
+      alignItems: 'center' as const, justifyContent: 'center' as const, marginBottom: spacing.xs,
+    },
+    iconWrapUnlocked: { backgroundColor: colors.primarySoft },
+    label: { fontSize: 17, fontFamily: fonts.display, color: colors.text, textAlign: 'center' as const },
+    statusPill: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.pill },
+    statusUnlocked: { backgroundColor: colors.successBg },
+    statusLocked: { backgroundColor: colors.surfaceAlt },
+    statusText: { fontSize: 11, fontFamily: fonts.bodyBold },
+    statusTextUnlocked: { color: colors.success },
+    statusTextLocked: { color: colors.textMuted },
+    description: { fontSize: 14, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const, marginTop: spacing.xs },
+    closeBtn: { marginTop: spacing.md, backgroundColor: colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.sm, borderRadius: radius.md, alignSelf: 'stretch' as const, alignItems: 'center' as const },
+    closeBtnText: { color: 'white', fontFamily: fonts.bodyBold },
+  }));
 
   return (
     <Modal visible={target !== null} transparent animationType="slide" onRequestClose={onClose}>
@@ -45,25 +67,3 @@ export function BadgeDetailModal({ target, onClose }: Props) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end', alignItems: 'center' },
-  sheet: { width: '100%', backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
-  sheetDesktop: { width: 400, borderRadius: radius.xl, marginBottom: 40 },
-  body: { padding: spacing.xl, alignItems: 'center', gap: spacing.sm },
-  iconWrap: {
-    width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surfaceAlt,
-    alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs,
-  },
-  iconWrapUnlocked: { backgroundColor: colors.primaryBg },
-  label: { fontSize: 17, fontWeight: '800', color: colors.text, textAlign: 'center' },
-  statusPill: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.pill },
-  statusUnlocked: { backgroundColor: colors.successBg },
-  statusLocked: { backgroundColor: colors.surfaceAlt },
-  statusText: { fontSize: 11, fontWeight: '700' },
-  statusTextUnlocked: { color: colors.success },
-  statusTextLocked: { color: colors.textMuted },
-  description: { fontSize: 14, color: colors.textMuted, textAlign: 'center', marginTop: spacing.xs },
-  closeBtn: { marginTop: spacing.md, backgroundColor: colors.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.sm, borderRadius: radius.md, alignSelf: 'stretch', alignItems: 'center' },
-  closeBtnText: { color: 'white', fontWeight: '700' },
-});

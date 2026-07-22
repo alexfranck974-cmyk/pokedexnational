@@ -17,7 +17,7 @@ import {
 } from '@/lib/teams';
 import { FavoriteTile } from '@/components/FavoriteTile';
 import { TeamSlotPicker } from '@/components/TeamSlotPicker';
-import { colors, radius, spacing, shadow } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
@@ -29,24 +29,26 @@ function numColsFor(width: number): number {
   return 8;
 }
 
-const Chip = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => (
-  <Pressable onPress={onPress} style={[chipStyles.chip, active && chipStyles.active]}>
-    <Text style={[chipStyles.text, active && chipStyles.textActive]}>{label}</Text>
-  </Pressable>
-);
-
-const chipStyles = StyleSheet.create({
-  chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
-  active: { backgroundColor: colors.primary },
-  text: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
-  textActive: { color: 'white' },
-});
+const Chip = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => {
+  const chipStyles = useThemedStyles((colors) => ({
+    chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
+    active: { backgroundColor: colors.primary },
+    text: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
+    textActive: { color: 'white' },
+  }));
+  return (
+    <Pressable onPress={onPress} style={[chipStyles.chip, active && chipStyles.active]}>
+      <Text style={[chipStyles.text, active && chipStyles.textActive]}>{label}</Text>
+    </Pressable>
+  );
+};
 
 export default function FavoritesScreen() {
   const router = useRouter();
   const { session } = useSession();
   const userId = session?.user.id;
   const { width } = useWindowDimensions();
+  const { colors } = useTheme();
 
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
@@ -95,6 +97,46 @@ export default function FavoritesScreen() {
       },
     ]);
   };
+
+  const styles = useThemedStyles((colors, shadow) => ({
+    screen: { flex: 1, backgroundColor: colors.bg },
+    center: { flex: 1, justifyContent: 'center' as const, alignItems: 'center' as const, padding: spacing.xl, gap: spacing.sm },
+    header: { padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, gap: spacing.sm, ...shadow.sm },
+    title: { fontSize: 22, fontFamily: fonts.display, color: colors.text },
+    chipRow: { flexDirection: 'row' as const, gap: spacing.xs },
+    emptyTitle: { fontSize: 18, fontFamily: fonts.display, textAlign: 'center' as const, color: colors.text },
+    emptyHint: { fontSize: 14, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
+
+    teamList: { flex: 1, padding: spacing.md, gap: spacing.md },
+    newTeamRow: { flexDirection: 'row' as const, gap: spacing.sm },
+    newTeamInput: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, fontSize: 15, fontFamily: fonts.body, backgroundColor: colors.surfaceAlt, color: colors.text },
+    newTeamBtn: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: 'center' as const, justifyContent: 'center' as const },
+    teamRow: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, padding: spacing.md,
+      backgroundColor: colors.surface, borderRadius: radius.md, marginBottom: spacing.sm, ...shadow.sm,
+    },
+    teamRowPressed: { backgroundColor: colors.surfaceAlt },
+    teamRowName: { flex: 1, fontSize: 15, fontFamily: fonts.bodyBold, color: colors.text },
+    teamRowCount: { fontSize: 12, fontFamily: fonts.mono, color: colors.textMuted },
+
+    teamEditor: { flex: 1, padding: spacing.md, gap: spacing.md },
+    teamEditorHeader: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
+    teamEditorTitle: { fontSize: 18, fontFamily: fonts.display, color: colors.text },
+    renameInput: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, padding: 8, fontSize: 16, fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt },
+
+    slotGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm },
+    slot: {
+      width: '31%' as const, aspectRatio: 0.85, backgroundColor: colors.surface, borderRadius: radius.md,
+      alignItems: 'center' as const, justifyContent: 'center' as const, padding: spacing.xs, ...shadow.sm, position: 'relative' as const,
+    },
+    slotSprite: { width: '80%' as const, height: '60%' as const },
+    slotName: { fontSize: 11, fontFamily: fonts.bodyBold, color: colors.text, textAlign: 'center' as const, marginTop: 2 },
+    slotClear: { position: 'absolute' as const, top: 2, right: 2 },
+    slotEmpty: {
+      width: '100%' as const, height: '100%' as const, borderRadius: radius.md, borderWidth: 2, borderStyle: 'dashed' as const,
+      borderColor: colors.border, alignItems: 'center' as const, justifyContent: 'center' as const,
+    },
+  }));
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -230,43 +272,3 @@ export default function FavoritesScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl, gap: spacing.sm },
-  header: { padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, gap: spacing.sm, ...shadow.sm },
-  title: { fontSize: 22, fontWeight: '800', color: colors.text },
-  chipRow: { flexDirection: 'row', gap: spacing.xs },
-  emptyTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center', color: colors.text },
-  emptyHint: { fontSize: 14, color: colors.textMuted, textAlign: 'center' },
-
-  teamList: { flex: 1, padding: spacing.md, gap: spacing.md },
-  newTeamRow: { flexDirection: 'row', gap: spacing.sm },
-  newTeamInput: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, fontSize: 15, backgroundColor: colors.surfaceAlt, color: colors.text },
-  newTeamBtn: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  teamRow: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md,
-    backgroundColor: colors.surface, borderRadius: radius.md, marginBottom: spacing.sm, ...shadow.sm,
-  },
-  teamRowPressed: { backgroundColor: colors.surfaceAlt },
-  teamRowName: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.text },
-  teamRowCount: { fontSize: 12, color: colors.textMuted },
-
-  teamEditor: { flex: 1, padding: spacing.md, gap: spacing.md },
-  teamEditorHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  teamEditorTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
-  renameInput: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, padding: 8, fontSize: 16, color: colors.text, backgroundColor: colors.surfaceAlt },
-
-  slotGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  slot: {
-    width: '31%', aspectRatio: 0.85, backgroundColor: colors.surface, borderRadius: radius.md,
-    alignItems: 'center', justifyContent: 'center', padding: spacing.xs, ...shadow.sm, position: 'relative',
-  },
-  slotSprite: { width: '80%', height: '60%' },
-  slotName: { fontSize: 11, fontWeight: '600', color: colors.text, textAlign: 'center', marginTop: 2 },
-  slotClear: { position: 'absolute', top: 2, right: 2 },
-  slotEmpty: {
-    width: '100%', height: '100%', borderRadius: radius.md, borderWidth: 2, borderStyle: 'dashed',
-    borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
-  },
-});

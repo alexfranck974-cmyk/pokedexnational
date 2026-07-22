@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable } from 'react-native';
 import { Link } from 'expo-router';
 import { signUp } from '@/lib/auth';
 import { isValidUsername } from '@/lib/slug';
 import { supabase } from '@/lib/supabase';
-import { colors, radius, spacing } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 export default function SignUp() {
   const [email, setEmail] = useState('');
@@ -14,6 +14,17 @@ export default function SignUp() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [usernameCheck, setUsernameCheck] = useState<'idle' | 'checking' | 'ok' | 'taken' | 'invalid'>('idle');
+  const { colors } = useTheme();
+  const styles = useThemedStyles((colors) => ({
+    wrap: { flex: 1, padding: spacing.xl, gap: spacing.md, justifyContent: 'center' as const, backgroundColor: colors.bg },
+    h1: { fontSize: 32, fontFamily: fonts.display, color: colors.text, marginBottom: spacing.lg },
+    input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 14, fontSize: 16, fontFamily: fonts.body },
+    hint: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.body },
+    err: { color: colors.danger, fontFamily: fonts.body },
+    btn: { backgroundColor: colors.primary, padding: 14, borderRadius: radius.md, alignItems: 'center' as const },
+    btnText: { color: 'white', fontSize: 16, fontFamily: fonts.bodyBold },
+    link: { textAlign: 'center' as const, marginTop: spacing.md, color: colors.textMuted, fontSize: 14, fontFamily: fonts.body },
+  }));
 
   const onUsernameBlur = async () => {
     const u = username.trim().toLowerCase();
@@ -62,14 +73,3 @@ export default function SignUp() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { flex: 1, padding: spacing.xl, gap: spacing.md, justifyContent: 'center', backgroundColor: colors.bg },
-  h1: { fontSize: 32, fontWeight: '800', color: colors.text, marginBottom: spacing.lg },
-  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 14, fontSize: 16 },
-  hint: { color: colors.textMuted, fontSize: 14 },
-  err: { color: colors.danger },
-  btn: { backgroundColor: colors.primary, padding: 14, borderRadius: radius.md, alignItems: 'center' },
-  btnText: { color: 'white', fontSize: 16, fontWeight: '700' },
-  link: { textAlign: 'center', marginTop: spacing.md, color: colors.textMuted, fontSize: 14 },
-});

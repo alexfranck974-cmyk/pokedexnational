@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
@@ -11,7 +12,7 @@ import {
   bucketVariantCards, computeVariantProgress, totalCollectionValue, topArtists,
 } from '@/lib/dashboard-stats';
 import { computeBadges, type DashboardStats } from '@/lib/badges';
-import { getGeneration } from '@/lib/generations';
+import { getGeneration, GEN_EMOJI, GEN_COLORS } from '@/lib/generations';
 import { ProgressRing } from './ProgressRing';
 import { StatRingTile } from './StatRingTile';
 import { StatBreakdownModal, type BreakdownTarget, type BreakdownItem } from './StatBreakdownModal';
@@ -21,19 +22,9 @@ import { BadgeDetailModal, type BadgeDetailTarget } from './BadgeDetailModal';
 import { TypeIcon } from './TypeIcon';
 import { IconBubble } from './IconBubble';
 import { TYPE_COLORS, TYPE_LABEL_FR } from '@/lib/types-colors';
-import { colors, radius, spacing, shadow } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
-
-const GEN_EMOJI: Record<number, string> = {
-  1: '🌾', 2: '🌸', 3: '🌋', 4: '🏔️', 5: '⚡', 6: '🍇', 7: '🌺', 8: '❄️', 9: '🫒',
-};
-
-// One accent color per region, themed to its emoji (wheat field, cherry blossom, volcano...).
-const GEN_COLORS: Record<number, string> = {
-  1: '#84cc16', 2: '#f472b6', 3: '#f97316', 4: '#38bdf8', 5: '#facc15',
-  6: '#a855f7', 7: '#fb7185', 8: '#60a5fa', 9: '#65a30d',
-};
 
 const VARIANT_LABELS = {
   mega: '✨',
@@ -79,6 +70,7 @@ interface Props {
 export function PokedexStatsSection({
   userId, wishedCardIds = new Set(), wishlistCount = 0, showValueBadges = true, onSelectMissing,
 }: Props) {
+  const { colors } = useTheme();
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
   const { data: ownedCards = [] } = useAllOwnedCardsDetailed(userId);
@@ -125,6 +117,40 @@ export function PokedexStatsSection({
       label: c.name, owned: ownedCardIds.has(c.id),
     }));
 
+  const styles = useThemedStyles((colors, shadow) => ({
+    hero: {
+      borderRadius: radius.lg, padding: spacing.xl,
+      gap: spacing.sm, alignItems: 'center' as const, ...shadow.md,
+    },
+    heroTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6 },
+    heroLabel: { fontSize: 17, fontFamily: fonts.display, color: 'white' },
+    heroTeaser: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, marginTop: 2 },
+    heroTeaserText: { fontSize: 12, fontFamily: fonts.body, color: 'rgba(255,255,255,0.85)', fontWeight: '600' as const },
+    heroTeaserDot: { fontSize: 12, color: 'rgba(255,255,255,0.5)' },
+    heroHint: { fontSize: 11, fontFamily: fonts.body, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+
+    section: { gap: spacing.sm },
+    sectionTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
+    sectionTitle: { fontSize: 18, fontFamily: fonts.display, color: colors.text },
+    card: {
+      backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, ...shadow.sm,
+    },
+    empty: { fontSize: 13, fontFamily: fonts.body, color: colors.textDim, fontStyle: 'italic' as const },
+
+    grid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, justifyContent: 'center' as const, gap: spacing.xs },
+    badgeGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm },
+    bubbleEmoji: { fontSize: 22 },
+
+    artistRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, paddingVertical: spacing.sm },
+    artistRowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+    artistRowPressed: { backgroundColor: colors.surfaceAlt },
+    artistAvatarWrap: { position: 'relative' as const },
+    artistInitial: { fontSize: 15, fontFamily: fonts.display, color: 'white' },
+    artistMedal: { position: 'absolute' as const, bottom: -4, right: -6, fontSize: 14 },
+    artistName: { flex: 1, fontSize: 14, fontFamily: fonts.bodyBold, color: colors.text },
+    artistCount: { fontSize: 13, fontFamily: fonts.mono, color: colors.textMuted },
+  }));
+
   return (
     <>
       <Pressable onPress={() => { setStatsTab('generation'); setStatsOpen(true); }}>
@@ -136,11 +162,14 @@ export function PokedexStatsSection({
             pct={overall.pct} size={196} strokeWidth={20} color="white" trackColor="rgba(255,255,255,0.25)"
             centerLabel={`${overall.pct}%`} centerSub={`${overall.owned}/${overall.total}`}
           />
-          <Text style={styles.heroLabel}>🏆 Pokédex National</Text>
+          <View style={styles.heroTitleRow}>
+            <Ionicons name="trophy" size={16} color="white" />
+            <Text style={styles.heroLabel}>Pokédex National</Text>
+          </View>
           <View style={styles.heroTeaser}>
-            <Text style={styles.heroTeaserText}>🧬 {typesComplete}/18 types complets</Text>
+            <Text style={styles.heroTeaserText}>{typesComplete}/18 types complets</Text>
             <Text style={styles.heroTeaserDot}>·</Text>
-            <Text style={styles.heroTeaserText}>🗺️ {gensComplete}/9 générations complètes</Text>
+            <Text style={styles.heroTeaserText}>{gensComplete}/9 générations complètes</Text>
           </View>
           <Text style={styles.heroHint}>Touche pour voir le détail</Text>
         </LinearGradient>
@@ -148,8 +177,10 @@ export function PokedexStatsSection({
 
       <View style={styles.section}>
         <View style={styles.sectionTitleRow}>
-          <View style={[styles.accentBar, { backgroundColor: colors.danger }]} />
-          <Text style={styles.sectionTitle}>🏅 Badges</Text>
+          <IconBubble size={28} color={colors.dangerBg}>
+            <Ionicons name="ribbon" size={15} color={colors.danger} />
+          </IconBubble>
+          <Text style={styles.sectionTitle}>Badges</Text>
         </View>
         <View style={styles.badgeGrid}>
           {badges.map(b => (
@@ -279,39 +310,3 @@ export function PokedexStatsSection({
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  hero: {
-    borderRadius: radius.lg, padding: spacing.xl,
-    gap: spacing.sm, alignItems: 'center', ...shadow.md,
-  },
-  heroLabel: { fontSize: 16, color: 'white', fontWeight: '800' },
-  heroTeaser: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
-  heroTeaserText: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
-  heroTeaserDot: { fontSize: 12, color: 'rgba(255,255,255,0.5)' },
-  heroHint: { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
-
-  section: { gap: spacing.sm },
-  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  accentBar: { width: 4, height: 16, borderRadius: 2 },
-  sectionTitle: { fontSize: 14, fontWeight: '800', color: colors.text, textTransform: 'uppercase', letterSpacing: 0.3 },
-  card: {
-    backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, ...shadow.sm,
-  },
-  empty: { fontSize: 13, color: colors.textDim, fontStyle: 'italic' },
-
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: spacing.xs },
-  badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  bubbleEmoji: { fontSize: 22 },
-
-  artistRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
-  artistRowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-  artistRowPressed: { backgroundColor: colors.surfaceAlt },
-  artistAvatarWrap: { position: 'relative' },
-  artistInitial: { fontSize: 15, fontWeight: '800', color: 'white' },
-  artistMedal: {
-    position: 'absolute', bottom: -4, right: -6, fontSize: 14,
-  },
-  artistName: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text },
-  artistCount: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
-});

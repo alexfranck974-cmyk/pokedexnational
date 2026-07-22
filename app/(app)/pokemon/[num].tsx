@@ -14,7 +14,7 @@ import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForPokemon } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
 import { useUserCards, useUserWishlist, useToggleCard, useToggleWish, useCardAcquiredAt } from '@/lib/collection';
-import { colors, radius, spacing, shadow } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -78,6 +78,39 @@ export default function PokemonDetail() {
     }
     return [...wished, ...rest];
   }, [wishFiltered, wishedSet]);
+
+  const { colors } = useTheme();
+  const styles = useThemedStyles((colors, shadow) => ({
+    screen: { flex: 1, backgroundColor: colors.bg },
+    header: { padding: spacing.md, backgroundColor: colors.surface, flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, ...shadow.sm },
+    back: { padding: 4 },
+    backText: { color: colors.primary, fontSize: 14, fontFamily: fonts.body },
+    miniSprite: { width: 40, height: 40 },
+    title: { fontSize: 17, fontFamily: fonts.display, color: colors.text },
+    typesRow: { marginTop: 2 },
+    count: { fontSize: 12, fontFamily: fonts.mono, color: colors.textMuted, paddingLeft: 4 },
+    acquiredAt: { fontSize: 10, fontFamily: fonts.body, color: colors.textDim, paddingLeft: 4 },
+    viewBtn: { width: 32, height: 32, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: colors.surfaceAlt },
+    viewBtnActive: { backgroundColor: colors.primary },
+    viewBtnText: { fontSize: 16, color: colors.textMuted },
+    viewBtnTextActive: { color: 'white' },
+    empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: 24, fontStyle: 'italic' as const },
+    regionRow: { flexDirection: 'row' as const, gap: spacing.xs, padding: spacing.sm, paddingBottom: 0 },
+    regionChip: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, alignItems: 'center' as const },
+    regionChipActive: { backgroundColor: colors.primary },
+    regionChipText: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
+    regionChipTextActive: { color: 'white' },
+    wishBanner: { padding: spacing.sm, backgroundColor: colors.dangerBg, marginHorizontal: spacing.md, borderRadius: radius.md, marginBottom: 6 },
+    wishBannerText: { color: colors.danger, fontSize: 12, textAlign: 'center' as const, fontFamily: fonts.bodyBold },
+
+    navOverlay: { position: 'absolute' as const, left: 0, right: 0, top: 0, bottom: 0 },
+    navBtn: {
+      position: 'absolute' as const, top: '50%' as const, marginTop: -22, width: 44, height: 44, borderRadius: 22,
+      backgroundColor: colors.surface, alignItems: 'center' as const, justifyContent: 'center' as const, opacity: 0.92, ...shadow.md,
+    },
+    navBtnLeft: { left: spacing.sm },
+    navBtnRight: { right: spacing.sm },
+  }));
 
   if (!p) return <SafeAreaView><Text>Pokémon inconnu</Text></SafeAreaView>;
 
@@ -169,35 +202,3 @@ export default function PokemonDetail() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  header: { padding: spacing.md, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: 8, ...shadow.sm },
-  back: { padding: 4 },
-  backText: { color: colors.primary, fontSize: 14 },
-  miniSprite: { width: 40, height: 40 },
-  title: { fontSize: 17, fontWeight: '800', color: colors.text },
-  typesRow: { marginTop: 2 },
-  count: { fontSize: 12, color: colors.textMuted, paddingLeft: 4 },
-  acquiredAt: { fontSize: 10, color: colors.textDim, paddingLeft: 4 },
-  viewBtn: { width: 32, height: 32, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt },
-  viewBtnActive: { backgroundColor: colors.primary },
-  viewBtnText: { fontSize: 16, color: colors.textMuted },
-  viewBtnTextActive: { color: 'white' },
-  empty: { textAlign: 'center', color: colors.textMuted, padding: 24, fontStyle: 'italic' },
-  regionRow: { flexDirection: 'row', gap: spacing.xs, padding: spacing.sm, paddingBottom: 0 },
-  regionChip: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, alignItems: 'center' },
-  regionChipActive: { backgroundColor: colors.primary },
-  regionChipText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  regionChipTextActive: { color: 'white' },
-  wishBanner: { padding: spacing.sm, backgroundColor: colors.dangerBg, marginHorizontal: spacing.md, borderRadius: radius.md, marginBottom: 6 },
-  wishBannerText: { color: colors.danger, fontSize: 12, textAlign: 'center', fontWeight: '600' },
-
-  navOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
-  navBtn: {
-    position: 'absolute', top: '50%', marginTop: -22, width: 44, height: 44, borderRadius: 22,
-    backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', opacity: 0.92, ...shadow.md,
-  },
-  navBtnLeft: { left: spacing.sm },
-  navBtnRight: { right: spacing.sm },
-});

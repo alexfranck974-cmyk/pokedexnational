@@ -16,7 +16,7 @@ import { ProgressCounter } from '@/components/ProgressCounter';
 import { PokedexStatsSection } from '@/components/PokedexStatsSection';
 import { Pokeball } from '@/components/Pokeball';
 import { getName } from '@/lib/i18n';
-import { colors, radius, spacing, shadow } from '@/lib/theme';
+import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
@@ -72,6 +72,49 @@ export default function PublicProfile() {
     () => groupWishlistByPokemon(wishedCards as WishlistCard[], ownedCardIds),
     [wishedCards, ownedCardIds],
   );
+
+  const styles = useThemedStyles((colors, shadow) => ({
+    screen: { flex: 1, backgroundColor: colors.bg },
+    banner: { padding: spacing.md, backgroundColor: colors.surface, ...shadow.sm },
+    bannerTitle: { fontSize: 20, fontFamily: fonts.display, color: colors.text },
+    center: { flex: 1, justifyContent: 'center' as const, alignItems: 'center' as const, padding: spacing.xl, gap: spacing.lg, backgroundColor: colors.bg },
+    notFoundTitle: { fontSize: 18, textAlign: 'center' as const, fontFamily: fonts.display, color: colors.text },
+    cta: { backgroundColor: colors.primary, padding: 14, borderRadius: radius.md },
+    ctaText: { color: 'white', fontFamily: fonts.bodyBold },
+
+    tabRow: {
+      flexDirection: 'row' as const, gap: spacing.xs, padding: spacing.sm,
+      backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
+    },
+    tabBtn: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, alignItems: 'center' as const },
+    tabBtnActive: { backgroundColor: colors.primary },
+    tabText: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
+    tabTextActive: { color: 'white' },
+
+    statsScroll: { padding: spacing.lg, gap: spacing.lg },
+    wishlistScroll: { padding: spacing.md },
+    empty: { fontSize: 14, fontFamily: fonts.body, color: colors.textDim, fontStyle: 'italic' as const, textAlign: 'center' as const, marginTop: spacing.xl },
+
+    pokemonRow: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, padding: spacing.sm,
+      borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, backgroundColor: colors.surface,
+      borderLeftWidth: 3, borderLeftColor: 'transparent',
+    },
+    pokemonRowOwned: { borderLeftColor: colors.success },
+    pokemonSpriteWrap: { width: 40, height: 40, position: 'relative' as const },
+    pokemonSprite: { width: 40, height: 40 },
+    pokemonOwnedBadge: {
+      position: 'absolute' as const, bottom: -2, right: -2, backgroundColor: colors.surface,
+      borderRadius: radius.pill, padding: 1, ...shadow.sm,
+    },
+    pokemonInfo: { flex: 1, gap: 2 },
+    pokemonName: { fontSize: 14, fontFamily: fonts.bodyBold, color: colors.text },
+    pokemonSub: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
+    pokemonThumbs: { maxWidth: 120, flexGrow: 0 },
+    pokemonThumbWrap: { borderRadius: radius.sm, marginRight: 4 },
+    pokemonThumbWrapOwned: { borderWidth: 1.5, borderColor: colors.success },
+    pokemonThumb: { width: 28, height: 40 },
+  }));
 
   if (checking) return <SafeAreaView style={styles.center}><ActivityIndicator /></SafeAreaView>;
 
@@ -166,46 +209,3 @@ export default function PublicProfile() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  banner: { padding: spacing.md, backgroundColor: colors.surface, ...shadow.sm },
-  bannerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl, gap: spacing.lg, backgroundColor: colors.bg },
-  notFoundTitle: { fontSize: 18, textAlign: 'center', fontWeight: '700', color: colors.text },
-  cta: { backgroundColor: colors.primary, padding: 14, borderRadius: radius.md },
-  ctaText: { color: 'white', fontWeight: '600' },
-
-  tabRow: {
-    flexDirection: 'row', gap: spacing.xs, padding: spacing.sm,
-    backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
-  },
-  tabBtn: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, alignItems: 'center' },
-  tabBtnActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  tabTextActive: { color: 'white' },
-
-  statsScroll: { padding: spacing.lg, gap: spacing.lg },
-  wishlistScroll: { padding: spacing.md },
-  empty: { fontSize: 14, color: colors.textDim, fontStyle: 'italic', textAlign: 'center', marginTop: spacing.xl },
-
-  pokemonRow: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, backgroundColor: colors.surface,
-    borderLeftWidth: 3, borderLeftColor: 'transparent',
-  },
-  pokemonRowOwned: { borderLeftColor: colors.success },
-  pokemonSpriteWrap: { width: 40, height: 40, position: 'relative' },
-  pokemonSprite: { width: 40, height: 40 },
-  pokemonOwnedBadge: {
-    position: 'absolute', bottom: -2, right: -2, backgroundColor: colors.surface,
-    borderRadius: radius.pill, padding: 1, ...shadow.sm,
-  },
-  pokemonInfo: { flex: 1, gap: 2 },
-  pokemonName: { fontSize: 14, fontWeight: '700', color: colors.text },
-  pokemonSub: { fontSize: 12, color: colors.textMuted },
-  pokemonThumbs: { maxWidth: 120, flexGrow: 0 },
-  pokemonThumbWrap: { borderRadius: radius.sm, marginRight: 4 },
-  pokemonThumbWrapOwned: { borderWidth: 1.5, borderColor: colors.success },
-  pokemonThumb: { width: 28, height: 40 },
-});

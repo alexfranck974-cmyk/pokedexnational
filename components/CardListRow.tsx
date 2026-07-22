@@ -1,6 +1,6 @@
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Image, Pressable } from 'react-native';
 import type { TcgCardRow } from '@/lib/tcg';
-import { colors, radius, spacing, shadow } from '@/lib/theme';
+import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
 
 interface Props {
@@ -14,6 +14,23 @@ interface Props {
 }
 
 export function CardListRow({ card, owned, wished, readOnly, onToggle, onToggleWish, onLongPress }: Props) {
+  const styles = useThemedStyles((colors) => ({
+    row: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md,
+      padding: spacing.sm, borderRadius: radius.md,
+      backgroundColor: colors.surface,
+      marginHorizontal: spacing.xs, marginVertical: 3,
+    },
+    thumb: { width: 56, height: 78 },
+    info: { flex: 1, gap: 2 },
+    name: { fontSize: 15, fontFamily: fonts.bodyBold, color: colors.text },
+    meta: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
+    rarity: { fontSize: 11, fontFamily: fonts.body, color: colors.textDim },
+    actions: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
+    heart: { fontSize: 22, color: colors.textDim },
+    heartFilled: { color: colors.danger },
+  }));
+
   return (
     <Pressable onPress={readOnly ? undefined : onToggle}
       onLongPress={onLongPress}
@@ -38,20 +55,3 @@ export function CardListRow({ card, owned, wished, readOnly, onToggle, onToggleW
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
-    padding: spacing.sm, borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    marginHorizontal: spacing.xs, marginVertical: 3,
-  },
-  thumb: { width: 56, height: 78 },
-  info: { flex: 1, gap: 2 },
-  name: { fontSize: 15, fontWeight: '700', color: colors.text },
-  meta: { fontSize: 12, color: colors.textMuted },
-  rarity: { fontSize: 11, color: colors.textDim },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  heart: { fontSize: 22, color: colors.textDim },
-  heartFilled: { color: colors.danger },
-});

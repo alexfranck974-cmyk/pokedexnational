@@ -1,14 +1,29 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TextInput, Pressable, Switch, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, Pressable, Switch, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSession, signOut } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import * as Clipboard from 'expo-clipboard';
-import { colors, radius, spacing, shadow } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 export default function Settings() {
   const { session } = useSession();
   const userId = session?.user.id;
+  const { mode, toggleMode } = useTheme();
+  const styles = useThemedStyles((colors, shadow) => ({
+    screen: { flex: 1, padding: spacing.lg, gap: spacing.lg, backgroundColor: colors.bg },
+    h1: { fontSize: 28, fontFamily: fonts.display, color: colors.text },
+    row: { gap: 4, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, ...shadow.sm },
+    rowInline: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, ...shadow.sm },
+    label: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted },
+    readonly: { fontSize: 16, fontFamily: fonts.body, color: colors.text },
+    input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt },
+    btn: { backgroundColor: colors.primary, padding: spacing.md, borderRadius: radius.md, alignItems: 'center' as const },
+    btnSecondary: { backgroundColor: colors.surfaceAlt, padding: spacing.sm, borderRadius: radius.sm, alignSelf: 'flex-start' as const },
+    btnSecondaryText: { fontFamily: fonts.body, color: colors.text },
+    btnDanger: { backgroundColor: colors.danger, padding: spacing.md, borderRadius: radius.md, alignItems: 'center' as const },
+    btnText: { fontFamily: fonts.bodyBold, color: 'white' },
+  }));
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
   const [isPublic, setIsPublic] = useState(true);
@@ -64,6 +79,11 @@ export default function Settings() {
         <Switch value={isPublic} onValueChange={setIsPublic} />
       </View>
 
+      <View style={styles.rowInline}>
+        <Text style={styles.label}>Thème sombre</Text>
+        <Switch value={mode === 'dark'} onValueChange={toggleMode} />
+      </View>
+
       <View style={styles.row}>
         <Text style={styles.label}>Lien de partage</Text>
         <Text style={styles.readonly}>{shareUrl}</Text>
@@ -82,18 +102,3 @@ export default function Settings() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, padding: spacing.lg, gap: spacing.lg, backgroundColor: colors.bg },
-  h1: { fontSize: 28, fontWeight: '800', color: colors.text },
-  row: { gap: 4, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, ...shadow.sm },
-  rowInline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, ...shadow.sm },
-  label: { fontSize: 13, color: colors.textMuted },
-  readonly: { fontSize: 16, color: colors.text },
-  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, color: colors.text, backgroundColor: colors.surfaceAlt },
-  btn: { backgroundColor: colors.primary, padding: spacing.md, borderRadius: radius.md, alignItems: 'center' },
-  btnSecondary: { backgroundColor: colors.surfaceAlt, padding: spacing.sm, borderRadius: radius.sm, alignSelf: 'flex-start' },
-  btnSecondaryText: { color: colors.text },
-  btnDanger: { backgroundColor: colors.danger, padding: spacing.md, borderRadius: radius.md, alignItems: 'center' },
-  btnText: { color: 'white', fontWeight: '600' },
-});

@@ -1,7 +1,7 @@
 import { View, Text, Image, Pressable, Modal, FlatList, StyleSheet, useWindowDimensions } from 'react-native';
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
-import { colors, radius, spacing } from '@/lib/theme';
+import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 interface OwnedOption {
   pokemon: Pokemon;
@@ -18,6 +18,19 @@ interface Props {
 export function TeamSlotPicker({ visible, options, onSelect, onClose }: Props) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
+  const styles = useThemedStyles((colors) => ({
+    backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' as const, alignItems: 'center' as const },
+    sheet: { width: '100%' as const, maxHeight: '75%' as const, backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
+    sheetDesktop: { width: 400, height: 560, borderRadius: radius.xl, marginBottom: 40 },
+    sheetHeader: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+    sheetTitle: { fontSize: 16, fontFamily: fonts.display, color: colors.text },
+    close: { fontSize: 20, color: colors.textMuted },
+    empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: spacing.xl, fontStyle: 'italic' as const },
+    row: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, paddingHorizontal: 16, height: 56 },
+    rowPressed: { backgroundColor: colors.surfaceAlt },
+    thumb: { width: 32, height: 32 },
+    rowLabel: { fontSize: 14, fontFamily: fonts.body, color: colors.text },
+  }));
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -50,17 +63,3 @@ export function TeamSlotPicker({ visible, options, onSelect, onClose }: Props) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end', alignItems: 'center' },
-  sheet: { width: '100%', maxHeight: '75%', backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
-  sheetDesktop: { width: 400, height: 560, borderRadius: radius.xl, marginBottom: 40 },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-  sheetTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
-  close: { fontSize: 20, color: colors.textMuted },
-  empty: { textAlign: 'center', color: colors.textMuted, padding: spacing.xl, fontStyle: 'italic' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: 16, height: 56 },
-  rowPressed: { backgroundColor: colors.surfaceAlt },
-  thumb: { width: 32, height: 32 },
-  rowLabel: { fontSize: 14, color: colors.text },
-});

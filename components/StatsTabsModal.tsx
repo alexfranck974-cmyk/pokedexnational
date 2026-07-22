@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Modal, View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
-import { colors, radius, spacing } from '@/lib/theme';
+import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 export type StatsTab = 'generation' | 'type' | 'variants' | 'artists';
 
@@ -22,6 +22,20 @@ interface Props {
 export function StatsTabsModal({ visible, tab, onTabChange, onClose, children }: Props) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
+  const styles = useThemedStyles((colors) => ({
+    backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' as const, alignItems: 'center' as const },
+    sheet: { width: '100%' as const, maxHeight: '85%' as const, backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
+    sheetDesktop: { width: 480, maxHeight: 680, borderRadius: radius.xl, marginBottom: 40 },
+    header: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+    title: { fontSize: 16, fontFamily: fonts.display, color: colors.text },
+    close: { fontSize: 20, color: colors.textMuted },
+    tabRow: { gap: spacing.xs, padding: spacing.md, paddingBottom: spacing.sm },
+    tab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
+    tabActive: { backgroundColor: colors.primary },
+    tabText: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
+    tabTextActive: { color: 'white' },
+    body: { padding: spacing.md, paddingTop: 0, gap: spacing.md },
+  }));
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -51,18 +65,3 @@ export function StatsTabsModal({ visible, tab, onTabChange, onClose, children }:
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end', alignItems: 'center' },
-  sheet: { width: '100%', maxHeight: '85%', backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
-  sheetDesktop: { width: 480, maxHeight: 680, borderRadius: radius.xl, marginBottom: 40 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-  title: { fontSize: 16, fontWeight: '700', color: colors.text },
-  close: { fontSize: 20, color: colors.textMuted },
-  tabRow: { gap: spacing.xs, padding: spacing.md, paddingBottom: spacing.sm },
-  tab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
-  tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  tabTextActive: { color: 'white' },
-  body: { padding: spacing.md, paddingTop: 0, gap: spacing.md },
-});

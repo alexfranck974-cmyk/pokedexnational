@@ -3,7 +3,7 @@ import { View, Text, Image, Pressable, Modal, FlatList, StyleSheet, useWindowDim
 import { Ionicons } from '@expo/vector-icons';
 import { ProgressRing } from './ProgressRing';
 import { CardZoomModal, type ZoomableCard } from './CardZoomModal';
-import { colors, radius, spacing, shadow } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 export interface BreakdownItem {
   key: string;
@@ -34,6 +34,30 @@ export function StatBreakdownModal({ target, onClose, onSelectItem }: Props) {
   const isDesktop = width >= 768;
   const pct = target && target.total > 0 ? Math.round((target.owned / target.total) * 100) : 0;
   const [zoomCard, setZoomCard] = useState<ZoomableCard | null>(null);
+  const { colors } = useTheme();
+  const styles = useThemedStyles((colors, shadow) => ({
+    backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' as const, alignItems: 'center' as const },
+    sheet: { width: '100%' as const, maxHeight: '80%' as const, backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
+    sheetDesktop: { width: 420, maxHeight: 640, borderRadius: radius.xl, marginBottom: 40 },
+    sheetHeader: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+    sheetTitle: { fontSize: 16, fontFamily: fonts.display, color: colors.text },
+    close: { fontSize: 20, color: colors.textMuted },
+    body: { padding: spacing.lg, alignItems: 'center' as const, gap: spacing.md },
+    legend: { alignSelf: 'stretch' as const, gap: spacing.sm },
+    legendRow: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm,
+      backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.sm, ...shadow.sm,
+    },
+    dot: { width: 12, height: 12, borderRadius: 6 },
+    legendLabel: { flex: 1, fontSize: 14, fontFamily: fonts.body, color: colors.text },
+    legendValue: { fontSize: 14, fontFamily: fonts.monoBold, color: colors.text },
+
+    list: { paddingHorizontal: spacing.md },
+    row: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, paddingVertical: spacing.sm },
+    rowPressed: { backgroundColor: colors.surfaceAlt },
+    rowImage: { width: 32, height: 32 },
+    rowLabel: { flex: 1, fontSize: 14, fontFamily: fonts.body, color: colors.text },
+  }));
 
   const handlePress = (item: BreakdownItem) => {
     if (item.owned) {
@@ -105,27 +129,3 @@ export function StatBreakdownModal({ target, onClose, onSelectItem }: Props) {
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end', alignItems: 'center' },
-  sheet: { width: '100%', maxHeight: '80%', backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
-  sheetDesktop: { width: 420, maxHeight: 640, borderRadius: radius.xl, marginBottom: 40 },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-  sheetTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
-  close: { fontSize: 20, color: colors.textMuted },
-  body: { padding: spacing.lg, alignItems: 'center', gap: spacing.md },
-  legend: { alignSelf: 'stretch', gap: spacing.sm },
-  legendRow: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.sm, ...shadow.sm,
-  },
-  dot: { width: 12, height: 12, borderRadius: 6 },
-  legendLabel: { flex: 1, fontSize: 14, color: colors.text },
-  legendValue: { fontSize: 14, fontWeight: '700', color: colors.text },
-
-  list: { paddingHorizontal: spacing.md },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
-  rowPressed: { backgroundColor: colors.surfaceAlt },
-  rowImage: { width: 32, height: 32 },
-  rowLabel: { flex: 1, fontSize: 14, color: colors.text },
-});

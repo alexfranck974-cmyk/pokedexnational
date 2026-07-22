@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { colors, radius } from '@/lib/theme';
+import { View, Text } from 'react-native';
+import { useThemedStyles, radius, fonts } from '@/lib/theme';
 
 interface Props {
   owned: number;
@@ -11,6 +11,17 @@ interface Props {
 export function ProgressCounter({ owned, total, cardCount, filterHint }: Props) {
   const pct = total > 0 ? Math.round((owned / total) * 100) : 0;
   const clamped = Math.min(100, Math.max(0, pct));
+  const styles = useThemedStyles((colors) => ({
+    wrap: { gap: 6 },
+    row: { flexDirection: 'row' as const, alignItems: 'center' as const, flexWrap: 'wrap' as const, gap: 6 },
+    main: { fontSize: 14, fontFamily: fonts.monoBold, color: colors.text },
+    pct: { color: colors.textMuted, fontFamily: fonts.mono },
+    sub: { fontSize: 14, fontFamily: fonts.mono, color: colors.textMuted },
+    hint: { fontSize: 12, fontFamily: fonts.body, color: colors.textDim, fontStyle: 'italic' as const },
+    track: { height: 6, backgroundColor: colors.surfaceAlt, borderRadius: radius.pill, overflow: 'hidden' as const },
+    fill: { height: '100%' as const, backgroundColor: colors.success, borderRadius: radius.pill },
+  }));
+
   return (
     <View style={styles.wrap}>
       <View style={styles.row}>
@@ -26,14 +37,3 @@ export function ProgressCounter({ owned, total, cardCount, filterHint }: Props) 
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { gap: 6 },
-  row: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  main: { fontSize: 14, fontWeight: '700', color: colors.text },
-  pct: { color: colors.textMuted, fontWeight: '400' },
-  sub: { fontSize: 14, color: colors.textMuted },
-  hint: { fontSize: 12, color: colors.textDim, fontStyle: 'italic' },
-  track: { height: 6, backgroundColor: colors.surfaceAlt, borderRadius: radius.pill, overflow: 'hidden' },
-  fill: { height: '100%', backgroundColor: colors.success, borderRadius: radius.pill },
-});

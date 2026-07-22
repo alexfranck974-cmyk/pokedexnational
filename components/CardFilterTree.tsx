@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import type { TcgCardRow } from '@/lib/tcg';
-import { colors, radius, spacing } from '@/lib/theme';
+import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 interface Props {
   cards: TcgCardRow[];
@@ -36,6 +36,22 @@ export function CardFilterTree({ cards, selectedSetIds, onChange }: Props) {
   const groups = useMemo(() => buildGroups(cards), [cards]);
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const styles = useThemedStyles((colors) => ({
+    wrap: { backgroundColor: colors.surface, borderRadius: radius.md, marginHorizontal: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
+    headerRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, padding: 12 },
+    title: { fontSize: 14, fontFamily: fonts.bodyBold, flex: 1, color: colors.text },
+    hint: { fontSize: 11, fontFamily: fonts.body, color: colors.textMuted },
+    reset: { fontSize: 12, fontFamily: fonts.body, color: colors.danger },
+    list: { maxHeight: 240, borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+    row: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, paddingHorizontal: 10, paddingVertical: 8 },
+    subRow: { paddingLeft: 34, backgroundColor: colors.surfaceAlt },
+    chevron: { fontSize: 10, color: colors.textMuted },
+    innerChevron: { width: 12, fontSize: 10, color: colors.textMuted },
+    check: { fontSize: 14, color: colors.text },
+    seriesName: { fontSize: 14, fontFamily: fonts.bodyBold, flex: 1, color: colors.text },
+    setName: { fontSize: 13, fontFamily: fonts.body, flex: 1, color: colors.text },
+    count: { fontSize: 12, fontFamily: fonts.mono, color: colors.textMuted },
+  }));
 
   const isSetSelected = (setId: string) =>
     selectedSetIds === null || selectedSetIds.has(setId);
@@ -120,20 +136,3 @@ export function CardFilterTree({ cards, selectedSetIds, onChange }: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { backgroundColor: colors.surface, borderRadius: radius.md, marginHorizontal: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12 },
-  title: { fontSize: 14, fontWeight: '700', flex: 1, color: colors.text },
-  hint: { fontSize: 11, color: colors.textMuted },
-  reset: { fontSize: 12, color: colors.danger },
-  list: { maxHeight: 240, borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 8 },
-  subRow: { paddingLeft: 34, backgroundColor: colors.surfaceAlt },
-  chevron: { fontSize: 10, color: colors.textMuted },
-  innerChevron: { width: 12, fontSize: 10, color: colors.textMuted },
-  check: { fontSize: 14, color: colors.text },
-  seriesName: { fontSize: 14, fontWeight: '600', flex: 1, color: colors.text },
-  setName: { fontSize: 13, flex: 1, color: colors.text },
-  count: { fontSize: 12, color: colors.textMuted },
-});

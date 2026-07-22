@@ -1,14 +1,23 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable } from 'react-native';
 import { Link } from 'expo-router';
 import { signIn } from '@/lib/auth';
-import { colors, radius, spacing } from '@/lib/theme';
+import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const styles = useThemedStyles((colors) => ({
+    wrap: { flex: 1, padding: spacing.xl, gap: spacing.md, justifyContent: 'center' as const, backgroundColor: colors.bg },
+    h1: { fontSize: 32, fontFamily: fonts.display, color: colors.text, marginBottom: spacing.lg },
+    input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 14, fontSize: 16, fontFamily: fonts.body },
+    err: { color: colors.danger, fontFamily: fonts.body },
+    btn: { backgroundColor: colors.primary, padding: 14, borderRadius: radius.md, alignItems: 'center' as const },
+    btnText: { color: 'white', fontSize: 16, fontFamily: fonts.bodyBold },
+    link: { textAlign: 'center' as const, marginTop: spacing.md, color: colors.textMuted, fontSize: 14, fontFamily: fonts.body },
+  }));
 
   const submit = async () => {
     setError(null);
@@ -33,13 +42,3 @@ export default function Login() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { flex: 1, padding: spacing.xl, gap: spacing.md, justifyContent: 'center', backgroundColor: colors.bg },
-  h1: { fontSize: 32, fontWeight: '800', color: colors.text, marginBottom: spacing.lg },
-  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 14, fontSize: 16 },
-  err: { color: colors.danger },
-  btn: { backgroundColor: colors.primary, padding: 14, borderRadius: radius.md, alignItems: 'center' },
-  btnText: { color: 'white', fontSize: 16, fontWeight: '700' },
-  link: { textAlign: 'center', marginTop: spacing.md, color: colors.textMuted, fontSize: 14 },
-});

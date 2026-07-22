@@ -1,7 +1,7 @@
-import { Pressable, Text, View, StyleSheet } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { IoniconName } from '@/lib/badges';
-import { colors, radius, spacing, shadow } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 interface Props {
   icon: IoniconName;
@@ -11,6 +11,24 @@ interface Props {
 }
 
 export function AchievementBadge({ icon, label, unlocked, onPress }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles((colors, shadow) => ({
+    tile: {
+      width: 92, alignItems: 'center' as const, gap: 6, padding: spacing.sm,
+      backgroundColor: colors.surface, borderRadius: radius.md, opacity: 0.5,
+    },
+    tileUnlocked: { opacity: 1, ...shadow.sm },
+    tilePressed: { backgroundColor: colors.surfaceAlt },
+    iconWrap: {
+      width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceAlt,
+      alignItems: 'center' as const, justifyContent: 'center' as const,
+    },
+    iconWrapUnlocked: { backgroundColor: colors.primarySoft },
+    label: { fontSize: 11, textAlign: 'center' as const, fontFamily: fonts.body },
+    labelLocked: { color: colors.textDim },
+    labelUnlocked: { color: colors.text, fontFamily: fonts.bodyBold },
+  }));
+
   return (
     <Pressable
       onPress={onPress}
@@ -24,20 +42,3 @@ export function AchievementBadge({ icon, label, unlocked, onPress }: Props) {
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  tile: {
-    width: 92, alignItems: 'center', gap: 6, padding: spacing.sm,
-    backgroundColor: colors.surface, borderRadius: radius.md, opacity: 0.5,
-  },
-  tileUnlocked: { opacity: 1, ...shadow.sm },
-  tilePressed: { backgroundColor: colors.surfaceAlt },
-  iconWrap: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceAlt,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  iconWrapUnlocked: { backgroundColor: colors.primaryBg },
-  label: { fontSize: 11, textAlign: 'center' },
-  labelLocked: { color: colors.textDim },
-  labelUnlocked: { color: colors.text, fontWeight: '600' },
-});

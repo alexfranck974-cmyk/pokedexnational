@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
 import { useSession } from '@/lib/auth';
@@ -13,12 +14,14 @@ import { suggestEvolutionGaps, suggestBinderPages, suggestByGeneration } from '@
 import { getName } from '@/lib/i18n';
 import { PokedexStatsSection } from '@/components/PokedexStatsSection';
 import { ShowcaseRow } from '@/components/ShowcaseRow';
-import { colors, spacing } from '@/lib/theme';
+import { IconBubble } from '@/components/IconBubble';
+import { useTheme, useThemedStyles, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
 const EVOLUTION_FAMILIES = buildEvolutionFamilies(POKEDEX);
 const eurFormatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
+const SUGGESTIONS_TINT = '#f472b6';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -54,6 +57,18 @@ export default function DashboardScreen() {
     };
   }), [favorites, ownedImages, router]);
 
+  const { colors } = useTheme();
+  const styles = useThemedStyles((colors) => ({
+    screen: { flex: 1, backgroundColor: colors.bg },
+    scroll: { padding: spacing.lg, gap: spacing.lg },
+    h1: { fontSize: 30, fontFamily: fonts.display, color: colors.text },
+    collectionValue: { fontSize: 15, fontFamily: fonts.monoBold, color: colors.success },
+
+    section: { gap: spacing.sm },
+    sectionTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
+    sectionTitle: { fontSize: 18, fontFamily: fonts.display, color: colors.text },
+  }));
+
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -69,8 +84,10 @@ export default function DashboardScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
-            <View style={[styles.accentBar, { backgroundColor: '#f472b6' }]} />
-            <Text style={styles.sectionTitle}>🎯 Prochaines cartes à obtenir</Text>
+            <IconBubble size={28} color={colors.primarySoft}>
+              <Ionicons name="flag" size={15} color={SUGGESTIONS_TINT} />
+            </IconBubble>
+            <Text style={styles.sectionTitle}>Prochaines cartes à obtenir</Text>
           </View>
           <ShowcaseRow
             title="Compléter une ligne évolutive"
@@ -119,15 +136,3 @@ export default function DashboardScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  scroll: { padding: spacing.lg, gap: spacing.lg },
-  h1: { fontSize: 30, fontWeight: '800', color: colors.text },
-  collectionValue: { fontSize: 15, color: colors.success, fontWeight: '700' },
-
-  section: { gap: spacing.sm },
-  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  accentBar: { width: 4, height: 16, borderRadius: 2 },
-  sectionTitle: { fontSize: 14, fontWeight: '800', color: colors.text, textTransform: 'uppercase', letterSpacing: 0.3 },
-});

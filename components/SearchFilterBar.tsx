@@ -5,7 +5,7 @@ import type { PokemonType } from '@/lib/types';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
 import { GENERATIONS } from '@/lib/generations';
-import { colors, radius, spacing, shadow } from '@/lib/theme';
+import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts } from '@/lib/theme';
 
 interface Props {
   search: string;                       onSearch: (v: string) => void;
@@ -23,11 +23,49 @@ interface Props {
 
 const COLUMN_CYCLE: (2 | 3 | 4 | null)[] = [null, 2, 3, 4];
 
-const Chip = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => (
-  <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
-    <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
-  </Pressable>
-);
+function makeStyles(colors: ColorTokens, shadow: ShadowTokens) {
+  return {
+    overlay: { position: 'absolute' as const, left: 0, right: 0, top: 0, bottom: 0, alignItems: 'flex-end' as const, justifyContent: 'flex-end' as const, padding: spacing.lg, gap: spacing.md },
+
+    floatingSearch: { alignSelf: 'stretch' as const, flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, ...shadow.md },
+    floatingSearchInput: { flex: 1, fontSize: 15, fontFamily: fonts.body, color: colors.text, padding: 0 },
+
+    fabStack: { gap: spacing.md, alignItems: 'center' as const },
+    fab: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center' as const, justifyContent: 'center' as const, ...shadow.md },
+    badgeDot: { position: 'absolute' as const, top: 6, right: 6, width: 9, height: 9, borderRadius: 5, backgroundColor: colors.primary },
+    columnsLabel: { fontSize: 15, fontFamily: fonts.monoBold, color: colors.text },
+
+    filterSheetBody: { padding: spacing.md, gap: spacing.sm },
+    sectionLabel: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.textMuted, textTransform: 'uppercase' as const, marginTop: spacing.sm },
+    chipRow: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 6, alignItems: 'center' as const },
+    chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
+    chipActive: { backgroundColor: colors.primary },
+    chipText: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
+    chipTextActive: { color: 'white', fontFamily: fonts.bodyBold },
+    reset: { alignSelf: 'flex-start' as const, padding: 4, marginTop: spacing.sm },
+    resetText: { fontSize: 12, fontFamily: fonts.body, color: colors.danger },
+
+    backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' as const, alignItems: 'center' as const },
+    sheet: { width: '100%' as const, maxHeight: '75%' as const, backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
+    sheetDesktop: { width: 400, height: 560, borderRadius: radius.xl, marginBottom: 40 },
+    sheetHeader: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+    sheetTitle: { fontSize: 16, fontFamily: fonts.display, color: colors.text },
+    close: { fontSize: 20, color: colors.textMuted },
+    row: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, paddingHorizontal: 16, height: 44 },
+    rowPressed: { backgroundColor: colors.surfaceAlt },
+    rowLabel: { fontSize: 14, fontFamily: fonts.body, color: colors.text },
+    check: { color: colors.success, fontSize: 16, fontWeight: '700' as const },
+  };
+}
+
+const Chip = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
+      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+    </Pressable>
+  );
+};
 
 interface PickerOption { id: string; label: string; }
 
@@ -43,6 +81,7 @@ function PickerModal({
 }) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
+  const styles = useThemedStyles(makeStyles);
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
@@ -85,6 +124,8 @@ export function SearchFilterBar(p: Props) {
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const hasFilters = p.statusFilter !== 'all' || p.typeFilter || p.setFilter || p.rarityFilter || p.generationFilter !== null;
 
   const typeOptions: PickerOption[] = (Object.keys(TYPE_LABEL_FR) as PokemonType[])
@@ -218,36 +259,3 @@ export function SearchFilterBar(p: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'flex-end', justifyContent: 'flex-end', padding: spacing.lg, gap: spacing.md },
-
-  floatingSearch: { alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, ...shadow.md },
-  floatingSearchInput: { flex: 1, fontSize: 15, color: colors.text, padding: 0 },
-
-  fabStack: { gap: spacing.md, alignItems: 'center' },
-  fab: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', ...shadow.md },
-  badgeDot: { position: 'absolute', top: 6, right: 6, width: 9, height: 9, borderRadius: 5, backgroundColor: colors.primary },
-  columnsLabel: { fontSize: 15, fontWeight: '800', color: colors.text },
-
-  filterSheetBody: { padding: spacing.md, gap: spacing.sm },
-  sectionLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', marginTop: spacing.sm },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
-  chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
-  chipActive: { backgroundColor: colors.primary },
-  chipText: { fontSize: 12, color: colors.textMuted },
-  chipTextActive: { color: 'white', fontWeight: '600' },
-  reset: { alignSelf: 'flex-start', padding: 4, marginTop: spacing.sm },
-  resetText: { fontSize: 12, color: colors.danger },
-
-  backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end', alignItems: 'center' },
-  sheet: { width: '100%', maxHeight: '75%', backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
-  sheetDesktop: { width: 400, height: 560, borderRadius: radius.xl, marginBottom: 40 },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-  sheetTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
-  close: { fontSize: 20, color: colors.textMuted },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 44 },
-  rowPressed: { backgroundColor: colors.surfaceAlt },
-  rowLabel: { fontSize: 14, color: colors.text },
-  check: { color: colors.success, fontSize: 16, fontWeight: '700' },
-});

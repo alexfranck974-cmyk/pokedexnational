@@ -3,10 +3,11 @@ import { useSession } from '@/lib/auth';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PokedexDeviceIcon } from '@/components/PokedexDeviceIcon';
-import { colors } from '@/lib/theme';
+import { useTheme } from '@/lib/theme';
 
 export default function AppLayout() {
   const { session, loading } = useSession();
+  const { colors } = useTheme();
 
   if (loading) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
   if (!session) return <Redirect href="/login" />;

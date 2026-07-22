@@ -10,7 +10,7 @@ import {
   applyWishlistPipeline, groupWishlistByPokemon,
   type WishStatusFilter, type WishSortKey, type WishlistCard, type WishlistGroup,
 } from '@/lib/wishlist-list';
-import { colors, radius, spacing, shadow } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
 import { getName } from '@/lib/i18n';
 import type { Pokemon, PokemonType } from '@/lib/types';
@@ -28,18 +28,19 @@ function numColsFor(width: number): number {
   return 6;
 }
 
-const Chip = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => (
-  <Pressable onPress={onPress} style={[chipStyles.chip, active && chipStyles.active]}>
-    <Text style={[chipStyles.text, active && chipStyles.textActive]}>{label}</Text>
-  </Pressable>
-);
-
-const chipStyles = StyleSheet.create({
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
-  active: { backgroundColor: colors.primary },
-  text: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
-  textActive: { color: 'white' },
-});
+const Chip = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => {
+  const chipStyles = useThemedStyles((colors) => ({
+    chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
+    active: { backgroundColor: colors.primary },
+    text: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.textMuted },
+    textActive: { color: 'white' },
+  }));
+  return (
+    <Pressable onPress={onPress} style={[chipStyles.chip, active && chipStyles.active]}>
+      <Text style={[chipStyles.text, active && chipStyles.textActive]}>{label}</Text>
+    </Pressable>
+  );
+};
 
 export default function WishlistScreen() {
   const router = useRouter();
@@ -49,6 +50,7 @@ export default function WishlistScreen() {
   const { data: ownedIds = new Set<string>() } = useAllOwnedCardIds(userId);
   const toggleWish = useToggleWish();
   const { width } = useWindowDimensions();
+  const { colors } = useTheme();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatus] = useState<WishStatusFilter>('all');
@@ -99,6 +101,55 @@ export default function WishlistScreen() {
   };
   const reset = () => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); };
   const hasFilters = statusFilter !== 'all' || typeFilter !== null || setFilter !== null || rarityFilter !== null || generationFilter !== null;
+
+  const styles = useThemedStyles((colors, shadow) => ({
+    screen: { flex: 1, backgroundColor: colors.bg },
+    center: { flex: 1, justifyContent: 'center' as const, alignItems: 'center' as const, padding: spacing.xl, gap: spacing.sm },
+    header: { padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, gap: spacing.sm, ...shadow.sm },
+    headerTop: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
+    headerTopRight: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.xs },
+    title: { fontSize: 22, fontFamily: fonts.display, color: colors.text },
+    count: { fontSize: 13, fontFamily: fonts.mono, color: colors.textMuted, marginRight: 2 },
+    viewBtn: { width: 26, height: 26, borderRadius: radius.sm, alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: colors.surfaceAlt },
+    viewBtnActive: { backgroundColor: colors.primary },
+    search: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, fontSize: 15, fontFamily: fonts.body, backgroundColor: colors.surfaceAlt, color: colors.text },
+    chipRow: { gap: spacing.xs, alignItems: 'center' as const },
+    resetBtn: { alignSelf: 'flex-end' as const, paddingVertical: 2 },
+    resetText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.danger },
+    emptyTitle: { fontSize: 20, fontFamily: fonts.display, textAlign: 'center' as const, color: colors.text },
+    emptyHint: { fontSize: 14, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
+    tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, ...shadow.sm, backgroundColor: colors.surface, margin: 4 },
+    imgWrap: { position: 'relative' as const },
+    img: { width: '100%' as const, aspectRatio: 0.72 },
+    set: { fontSize: 12, fontFamily: fonts.bodyBold, marginTop: 4, color: colors.text },
+    rarity: { fontSize: 11, fontFamily: fonts.body, color: colors.textMuted },
+    pokeballOverlay: { position: 'absolute' as const, top: 4, left: 4, backgroundColor: colors.overlay, borderRadius: radius.pill, padding: 2 },
+    heartBtn: {
+      position: 'absolute' as const, top: 4, right: 4, width: 28, height: 28,
+      borderRadius: radius.pill, backgroundColor: colors.overlay,
+      alignItems: 'center' as const, justifyContent: 'center' as const,
+    },
+    pokemonRow: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, padding: spacing.sm,
+      borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, backgroundColor: colors.surface,
+      borderLeftWidth: 3, borderLeftColor: 'transparent',
+    },
+    pokemonRowOwned: { borderLeftColor: colors.success },
+    pokemonSpriteWrap: { width: 40, height: 40, position: 'relative' as const },
+    pokemonSprite: { width: 40, height: 40 },
+    pokemonOwnedBadge: {
+      position: 'absolute' as const, bottom: -2, right: -2, backgroundColor: colors.surface,
+      borderRadius: radius.pill, padding: 1, ...shadow.sm,
+    },
+    pokemonInfo: { flex: 1, gap: 2 },
+    pokemonName: { fontSize: 14, fontFamily: fonts.bodyBold, color: colors.text },
+    pokemonSub: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
+    pokemonThumbs: { maxWidth: 120, flexGrow: 0 },
+    pokemonThumbWrap: { borderRadius: radius.sm, marginRight: 4 },
+    pokemonThumbWrapOwned: { borderWidth: 1.5, borderColor: colors.success },
+    pokemonThumb: { width: 28, height: 40 },
+    heartFilled: { fontSize: 18, color: colors.danger, lineHeight: 22 },
+  }));
 
   if (isLoading) {
     return <SafeAreaView style={styles.center}><ActivityIndicator /></SafeAreaView>;
@@ -245,52 +296,3 @@ export default function WishlistScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl, gap: spacing.sm },
-  header: { padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, gap: spacing.sm, ...shadow.sm },
-  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerTopRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  title: { fontSize: 22, fontWeight: '800', color: colors.text },
-  count: { fontSize: 13, color: colors.textMuted, marginRight: 2 },
-  viewBtn: { width: 26, height: 26, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt },
-  viewBtnActive: { backgroundColor: colors.primary },
-  search: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, fontSize: 15, backgroundColor: colors.surfaceAlt, color: colors.text },
-  chipRow: { gap: spacing.xs, alignItems: 'center' },
-  resetBtn: { alignSelf: 'flex-end', paddingVertical: 2 },
-  resetText: { fontSize: 12, color: colors.danger, fontWeight: '600' },
-  emptyTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center', color: colors.text },
-  emptyHint: { fontSize: 14, color: colors.textMuted, textAlign: 'center' },
-  tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, ...shadow.sm, backgroundColor: colors.surface, margin: 4 },
-  imgWrap: { position: 'relative' },
-  img: { width: '100%', aspectRatio: 0.72 },
-  set: { fontSize: 12, fontWeight: '600', marginTop: 4, color: colors.text },
-  rarity: { fontSize: 11, color: colors.textMuted },
-  pokeballOverlay: { position: 'absolute', top: 4, left: 4, backgroundColor: colors.overlay, borderRadius: radius.pill, padding: 2 },
-  heartBtn: {
-    position: 'absolute', top: 4, right: 4, width: 28, height: 28,
-    borderRadius: radius.pill, backgroundColor: colors.overlay,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  pokemonRow: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, backgroundColor: colors.surface,
-    borderLeftWidth: 3, borderLeftColor: 'transparent',
-  },
-  pokemonRowOwned: { borderLeftColor: colors.success },
-  pokemonSpriteWrap: { width: 40, height: 40, position: 'relative' },
-  pokemonSprite: { width: 40, height: 40 },
-  pokemonOwnedBadge: {
-    position: 'absolute', bottom: -2, right: -2, backgroundColor: colors.surface,
-    borderRadius: radius.pill, padding: 1, ...shadow.sm,
-  },
-  pokemonInfo: { flex: 1, gap: 2 },
-  pokemonName: { fontSize: 14, fontWeight: '700', color: colors.text },
-  pokemonSub: { fontSize: 12, color: colors.textMuted },
-  pokemonThumbs: { maxWidth: 120, flexGrow: 0 },
-  pokemonThumbWrap: { borderRadius: radius.sm, marginRight: 4 },
-  pokemonThumbWrapOwned: { borderWidth: 1.5, borderColor: colors.success },
-  pokemonThumb: { width: 28, height: 40 },
-  heartFilled: { fontSize: 18, color: colors.danger, lineHeight: 22 },
-});
