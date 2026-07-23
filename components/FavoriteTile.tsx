@@ -8,11 +8,13 @@ interface Props {
   pokemon: Pokemon;
   cardImage?: string;
   favorited: boolean;
+  inShowcase: boolean;
   onPress: () => void;
   onToggleFavorite: () => void;
+  onToggleShowcase: () => void;
 }
 
-export function FavoriteTile({ pokemon, cardImage, favorited, onPress, onToggleFavorite }: Props) {
+export function FavoriteTile({ pokemon, cardImage, favorited, inShowcase, onPress, onToggleFavorite, onToggleShowcase }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles((colors, shadow) => ({
     tile: { flex: 1, aspectRatio: 0.85, padding: 6, alignItems: 'center' as const, justifyContent: 'flex-start' as const, ...shadow.sm },
@@ -21,6 +23,10 @@ export function FavoriteTile({ pokemon, cardImage, favorited, onPress, onToggleF
     sprite: { width: '100%' as const, height: '100%' as const },
     starBtn: {
       position: 'absolute' as const, top: 2, right: 2, width: 22, height: 22, borderRadius: radius.pill,
+      backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
+    },
+    showcaseBtn: {
+      position: 'absolute' as const, top: 2, left: 2, width: 22, height: 22, borderRadius: radius.pill,
       backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
     num: { fontSize: 10, fontFamily: fonts.mono, color: colors.textMuted, marginTop: 4 },
@@ -33,6 +39,16 @@ export function FavoriteTile({ pokemon, cardImage, favorited, onPress, onToggleF
         <Image source={{ uri: cardImage ?? pokemon.sprite_url }} style={styles.sprite} resizeMode="contain" />
         <Pressable
           hitSlop={8}
+          accessibilityLabel={`Vitrine ${getName(pokemon)}`}
+          accessibilityRole="button"
+          onPress={(e) => { e.stopPropagation(); onToggleShowcase(); }}
+          style={styles.showcaseBtn}>
+          <Ionicons name={inShowcase ? 'sparkles' : 'sparkles-outline'} size={14} color={inShowcase ? colors.primary : colors.textMuted} />
+        </Pressable>
+        <Pressable
+          hitSlop={8}
+          accessibilityLabel={`Favori ${getName(pokemon)}`}
+          accessibilityRole="button"
           onPress={(e) => { e.stopPropagation(); onToggleFavorite(); }}
           style={styles.starBtn}>
           <Ionicons name={favorited ? 'star' : 'star-outline'} size={16} color={favorited ? colors.warning : colors.textMuted} />

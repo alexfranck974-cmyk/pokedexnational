@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, Image, ActivityIndicator, Pressable, ScrollView } from 'react-native';
+import { View, Text, Image, ActivityIndicator, Pressable, ScrollView, PanResponder } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -61,6 +61,21 @@ export default function PokemonDetail() {
   const nextNum = num < POKEDEX.length ? num + 1 : 1;
   const goTo = (n: number) => router.replace(`/pokemon/${n}`);
 
+  // Swipe left/right anywhere on the screen to browse the National Pokédex —
+  // the arrow buttons below stay as a discoverable bonus, not the only way in.
+  // Only claims the gesture once a drag is clearly horizontal, so it doesn't
+  // fight vertical scrolling or the type-badges' own horizontal ScrollView.
+  const swipeNav = useMemo(
+    () => PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 16 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+      onPanResponderRelease: (_, g) => {
+        if (g.dx <= -60) goTo(nextNum);
+        else if (g.dx >= 60) goTo(prevNum);
+      },
+    }),
+    [nextNum, prevNum],
+  );
+
   const regionCards = useMemo(() => cards.filter(c => c.region === region), [cards, region]);
 
   const filteredCards = useMemo(
@@ -82,7 +97,9 @@ export default function PokemonDetail() {
 
   const { colors } = useTheme();
   const styles = useThemedStyles((colors, shadow) => ({
-    screen: { flex: 1, backgroundColor: colors.bg },
+    // userSelect:none stops a swipe from turning into a native text-drag-select
+    // on web, which would otherwise eat the gesture before our PanResponder sees it.
+    screen: { flex: 1, backgroundColor: colors.bg, userSelect: 'none' as const },
     hero: { padding: spacing.md, gap: spacing.sm, ...shadow.sm },
     heroTopRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
     back: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 2, padding: 4 },
@@ -125,7 +142,7 @@ export default function PokemonDetail() {
   if (!p) return <SafeAreaView><Text>Pokémon inconnu</Text></SafeAreaView>;
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} {...swipeNav.panHandlers}>
       <LinearGradient
         colors={[colors.primaryBg, colors.primaryDark, colors.primary]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}

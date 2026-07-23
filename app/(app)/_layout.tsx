@@ -24,15 +24,15 @@ export default function AppLayout() {
         tabBarInactiveTintColor: colors.textMuted,
       }}
     >
-      <Tabs.Screen
-        name="dashboard"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'trophy' : 'trophy-outline'} size={size} color={color} />
-          ),
-        }}
-      />
+      {/*
+        Pokédex listed first (its Tabs.Screen order = the navigator's implicit
+        initial route, no explicit initialRouteName is set). Tab-to-tab
+        navigation collapses via history.replaceState rather than pushing new
+        entries, so the mobile back gesture always bottoms out on whichever tab
+        is initial — putting Pokédex first makes that Pokédex instead of
+        Dashboard, notably for the pokemon/[num] hidden route reached from
+        Dashboard/Wishlist/Favoris.
+      */}
       <Tabs.Screen
         name="pokedex"
         options={{
@@ -41,6 +41,15 @@ export default function AppLayout() {
             <View style={[styles.iconWrap, focused && styles.iconWrapFocused]}>
               <PokedexDeviceIcon size={size - 2} />
             </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: 'Dashboard',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'trophy' : 'trophy-outline'} size={size} color={color} />
           ),
         }}
       />

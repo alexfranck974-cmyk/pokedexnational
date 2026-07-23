@@ -12,7 +12,9 @@ import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { useSession } from '@/lib/auth';
 import { useUserDex, useOwnedCardImages, useAllOwnedCardIds } from '@/lib/collection';
-import { useFavorites, useToggleFavorite } from '@/lib/favorites';
+import { useFavorites, useToggleFavorite, useShowcase, useToggleShowcase } from '@/lib/favorites';
+import { toast } from '@/lib/toast';
+import { enterPokemonDetail } from '@/lib/navigation';
 import {
   useTeams, useCreateTeam, useRenameTeam, useDeleteTeam, useSetTeamSlot, useClearTeamSlot,
 } from '@/lib/teams';
@@ -29,6 +31,7 @@ import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
 const TEAM_SIZE = 6;
+const VITRINE_LIMIT = 6;
 
 function numColsFor(width: number): number {
   if (width < 600) return 3;
@@ -62,6 +65,8 @@ export default function FavoritesScreen() {
   const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
   const { data: favorites = new Set<number>() } = useFavorites(userId);
   const toggleFavorite = useToggleFavorite();
+  const { data: showcase = new Set<number>() } = useShowcase(userId);
+  const toggleShowcase = useToggleShowcase();
 
   const { data: teams = [] } = useTeams(userId);
   const createTeam = useCreateTeam();
@@ -104,6 +109,15 @@ export default function FavoritesScreen() {
       .map(p => ({ pokemon: p, cardImage: ownedImages.get(p.num) }));
   }, [selectedTeam, ownedPokemon, ownedImages]);
 
+  const handleToggleShowcase = (dexNum: number) => {
+    const currentlyInShowcase = showcase.has(dexNum);
+    if (!currentlyInShowcase && showcase.size >= VITRINE_LIMIT) {
+      toast(`Vitrine limitée à ${VITRINE_LIMIT} cartes — retire-en une avant d’en ajouter une autre.`);
+      return;
+    }
+    toggleShowcase.mutate({ dexNum, currentlyFavorited: favorites.has(dexNum), currentlyInShowcase });
+  };
+
   const handleCreateTeam = async () => {
     const name = newTeamName.trim();
     if (!name) return;
@@ -145,6 +159,7 @@ export default function FavoritesScreen() {
     header: { padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, gap: spacing.sm, ...shadow.sm },
     title: { fontSize: 22, fontFamily: fonts.display, color: colors.text },
     chipRow: { flexDirection: 'row' as const, gap: spacing.xs },
+    legend: { fontSize: 12, fontFamily: fonts.body, color: colors.textDim },
     emptyTitle: { fontSize: 18, fontFamily: fonts.display, textAlign: 'center' as const, color: colors.text },
     emptyHint: { fontSize: 14, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
 
@@ -206,6 +221,11 @@ export default function FavoritesScreen() {
           <Chip label="Équipes" active={subTab === 'teams'} onPress={() => setSubTab('teams')} />
           <Chip label="Collections" active={subTab === 'collections'} onPress={() => setSubTab('collections')} />
         </View>
+        {subTab === 'favorites' && (
+          <Text style={styles.legend}>
+            ★ Favori · ✨ Vitrine (max {VITRINE_LIMIT}) — mise en avant sur ton Dashboard et ton profil public
+          </Text>
+        )}
       </View>
 
       {subTab === 'favorites' ? (
@@ -225,8 +245,10 @@ export default function FavoritesScreen() {
                 pokemon={item}
                 cardImage={ownedImages.get(item.num)}
                 favorited={favorites.has(item.num)}
-                onPress={() => router.push(`/pokemon/${item.num}`)}
+                inShowcase={showcase.has(item.num)}
+                onPress={() => enterPokemonDetail(router, `/pokemon/${item.num}`)}
                 onToggleFavorite={() => toggleFavorite.mutate({ dexNum: item.num, currentlyFavorited: favorites.has(item.num) })}
+                onToggleShowcase={() => handleToggleShowcase(item.num)}
               />
             )}
           />

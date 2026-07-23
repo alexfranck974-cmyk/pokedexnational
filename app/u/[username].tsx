@@ -5,7 +5,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import { fetchPublicProfile } from '@/lib/auth';
-import { useUserDex, useOwnedCardImages, useAllWishedCards, useAllOwnedCardIds } from '@/lib/collection';
+import { useUserDex, useOwnedCardImages, useAllOwnedCardsDetailed, useAllWishedCards, useAllOwnedCardIds } from '@/lib/collection';
+import { useShowcase } from '@/lib/favorites';
 import { useTcgIndex, useTcgSets, useTcgRarities } from '@/lib/tcg-index';
 import { applyPokedexPipeline } from '@/lib/pokedex-list';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
@@ -14,6 +15,8 @@ import { PokedexGrid } from '@/components/PokedexGrid';
 import { SearchFilterBar } from '@/components/SearchFilterBar';
 import { ProgressCounter } from '@/components/ProgressCounter';
 import { PokedexStatsSection } from '@/components/PokedexStatsSection';
+import { VitrineCarousel } from '@/components/VitrineCarousel';
+import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
 import { Pokeball } from '@/components/Pokeball';
 import { getName } from '@/lib/i18n';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
@@ -46,11 +49,32 @@ export default function PublicProfile() {
   const userId = typeof profile === 'object' && profile !== null ? profile.id : undefined;
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
+  const { data: ownedCardsDetailed = [] } = useAllOwnedCardsDetailed(userId);
+  const { data: showcase = new Set<number>() } = useShowcase(userId);
   const { data: tcgIndex = new Map() } = useTcgIndex();
   const { data: sets = [] } = useTcgSets();
   const { data: rarities = [] } = useTcgRarities();
   const { data: wishedCards = [] } = useAllWishedCards(userId);
   const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
+  // Grid taps zoom a single card; Vitrine taps zoom into the curated list and
+  // support swiping to the next/previous showcased card without closing.
+  const [zoom, setZoom] = useState<{ kind: 'grid'; card: ZoomableCard } | { kind: 'vitrine'; index: number } | null>(null);
+
+  const ownedCardsByDex = useMemo(() => new Map(ownedCardsDetailed.map(c => [c.dexNum, c])), [ownedCardsDetailed]);
+  const vitrineCards = useMemo(() => Array.from(showcase)
+    .map(dexNum => ownedCardsByDex.get(dexNum))
+    .filter((c): c is NonNullable<typeof c> => !!c)
+    .slice(0, 6), [showcase, ownedCardsByDex]);
+  const vitrineItems = useMemo(() => vitrineCards.map((c, i) => ({
+    key: c.cardId,
+    image: c.imageLarge ?? c.imageSmall,
+    onPress: () => setZoom({ kind: 'vitrine', index: i }),
+  })), [vitrineCards]);
+
+  const activeZoomCard: ZoomableCard | null =
+    zoom?.kind === 'grid' ? zoom.card
+    : zoom?.kind === 'vitrine' ? { image_small: vitrineCards[zoom.index].imageSmall, image_large: vitrineCards[zoom.index].imageLarge }
+    : null;
 
   const [search, setSearch]       = useState('');
   const [statusFilter, setStatus] = useState<StatusFilter>('all');
@@ -138,6 +162,8 @@ export default function PublicProfile() {
         <ProgressCounter owned={ownedCount} total={items.length} />
       </View>
 
+      <VitrineCarousel items={vitrineItems} />
+
       <View style={styles.tabRow}>
         {TABS.map(t => (
           <Pressable key={t.key} onPress={() => setTab(t.key)} style={[styles.tabBtn, tab === t.key && styles.tabBtnActive]}>
@@ -148,7 +174,15 @@ export default function PublicProfile() {
 
       {tab === 'pokedex' && (
         <>
-          <PokedexGrid items={items} ownedImages={ownedImages} columnsOverride={columns} onSelect={() => { /* V1: no detail from public view */ }} />
+          <PokedexGrid
+            items={items}
+            ownedImages={ownedImages}
+            columnsOverride={columns}
+            onSelect={(num) => {
+              const card = ownedCardsByDex.get(num);
+              if (card) setZoom({ kind: 'grid', card: { image_small: card.imageSmall, image_large: card.imageLarge } });
+            }}
+          />
           <SearchFilterBar
             search={search} onSearch={setSearch}
             statusFilter={statusFilter} onStatus={setStatus}
@@ -206,6 +240,12 @@ export default function PublicProfile() {
           )}
         </ScrollView>
       )}
+      <CardZoomModal
+        card={activeZoomCard}
+        onClose={() => setZoom(null)}
+        onSwipeNext={zoom?.kind === 'vitrine' ? () => setZoom({ kind: 'vitrine', index: (zoom.index + 1) % vitrineCards.length }) : undefined}
+        onSwipePrev={zoom?.kind === 'vitrine' ? () => setZoom({ kind: 'vitrine', index: (zoom.index - 1 + vitrineCards.length) % vitrineCards.length }) : undefined}
+      />
     </SafeAreaView>
   );
 }

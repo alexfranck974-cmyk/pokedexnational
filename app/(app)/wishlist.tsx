@@ -13,6 +13,7 @@ import {
 } from '@/lib/wishlist-list';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
+import { enterPokemonDetail } from '@/lib/navigation';
 import { getName } from '@/lib/i18n';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import pokedexData from '@/data/pokedex.json';
@@ -243,7 +244,7 @@ export default function WishlistScreen() {
             const ownedCount = item.cards.filter(c => ownedIds.has(c.id)).length;
             return (
               <Pressable
-                onPress={() => router.push(`/pokemon/${item.dexNum}?wishes=1`)}
+                onPress={() => enterPokemonDetail(router, `/pokemon/${item.dexNum}?wishes=1`)}
                 style={({ pressed }) => [styles.pokemonRow, ownedCount > 0 && styles.pokemonRowOwned, pressed && { backgroundColor: colors.surfaceAlt }]}>
                 <View style={styles.pokemonSpriteWrap}>
                   {mon && <Image source={{ uri: mon.sprite_url }} style={styles.pokemonSprite} resizeMode="contain" />}
@@ -280,7 +281,7 @@ export default function WishlistScreen() {
             const owned = ownedIds.has(item.id);
             return (
               <Pressable
-                onPress={() => router.push(`/pokemon/${item.dex_num}`)}
+                onPress={() => enterPokemonDetail(router, `/pokemon/${item.dex_num}`)}
                 style={({ pressed }) => [styles.tile, pressed && { transform: [{ scale: 0.97 }] }]}>
                 <View style={styles.imgWrap}>
                   {owned ? (
