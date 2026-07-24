@@ -17,7 +17,10 @@ interface Props {
 export function FavoriteTile({ pokemon, cardImage, favorited, inShowcase, onPress, onToggleFavorite, onToggleShowcase }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles((colors, shadow) => ({
-    tile: { flex: 1, aspectRatio: 0.85, padding: 6, alignItems: 'center' as const, justifyContent: 'flex-start' as const, ...shadow.sm },
+    // Same fix as PokemonTile: 0.85 didn't leave enough room below the image
+    // for the number + name lines, which would render past the tile and get
+    // covered by the next row.
+    tile: { flex: 1, aspectRatio: 0.68, padding: 6, alignItems: 'center' as const, justifyContent: 'flex-start' as const, ...shadow.sm },
     pressed: { transform: [{ scale: 0.95 }] },
     spriteWrap: { width: '100%' as const, aspectRatio: 1, position: 'relative' as const, backgroundColor: colors.surfaceAlt, borderRadius: radius.md },
     sprite: { width: '100%' as const, height: '100%' as const },

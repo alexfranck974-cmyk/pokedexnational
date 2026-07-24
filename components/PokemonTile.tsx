@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { View, Text, Image, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { Pokemon } from '@/lib/types';
@@ -12,14 +13,40 @@ interface Props {
   cardCount?: number;
   wishedInDex?: boolean;
   onPress: () => void;
-  onLongPress?: () => void;
+  onDoublePress?: () => void;
 }
 
-export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedInDex, onPress, onLongPress }: Props) {
+const DOUBLE_TAP_DELAY = 280;
+
+export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedInDex, onPress, onDoublePress }: Props) {
   const useCard = owned && !!ownedCardImage;
   const { colors } = useTheme();
+  const lastTap = useRef(0);
+  const pendingTap = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (pendingTap.current) clearTimeout(pendingTap.current); }, []);
+
+  // Single tap zooms immediately; a second tap within the window cancels that
+  // and navigates instead — avoids relying on long-press, which triggers the
+  // browser's native image context menu on real phones.
+  const handlePress = () => {
+    if (!onDoublePress) { onPress(); return; }
+    const now = Date.now();
+    if (now - lastTap.current < DOUBLE_TAP_DELAY) {
+      if (pendingTap.current) { clearTimeout(pendingTap.current); pendingTap.current = null; }
+      lastTap.current = 0;
+      onDoublePress();
+      return;
+    }
+    lastTap.current = now;
+    pendingTap.current = setTimeout(() => { onPress(); pendingTap.current = null; }, DOUBLE_TAP_DELAY);
+  };
+
   const styles = useThemedStyles((colors, shadow) => ({
-    tile: { flex: 1, aspectRatio: 0.85, padding: 6, alignItems: 'center' as const, justifyContent: 'flex-start' as const },
+    // 0.85 left too little room below the (square) image for the number +
+    // name lines once tiles got narrow in the 3/4-column grid modes — the
+    // name would render past the tile's box and get covered by the next row.
+    tile: { flex: 1, aspectRatio: 0.68, padding: 6, alignItems: 'center' as const, justifyContent: 'flex-start' as const },
     tileOwned: { ...shadow.sm },
     pressed: { transform: [{ scale: 0.95 }] },
     spriteWrap: { width: '100%' as const, aspectRatio: 1, position: 'relative' as const, backgroundColor: colors.surfaceAlt, borderRadius: radius.md },
@@ -56,9 +83,7 @@ export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedI
 
   return (
     <Pressable
-      onPress={onPress}
-      onLongPress={owned ? onLongPress : undefined}
-      delayLongPress={350}
+      onPress={handlePress}
       style={({ pressed }) => [styles.tile, owned && styles.tileOwned, pressed && styles.pressed]}>
       {useCard ? (
         // Real owned card art gets a foil-style gradient edge — a sprite alone doesn't.

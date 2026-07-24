@@ -13,7 +13,7 @@ interface Props {
   wishedInDexSet?: Set<number>;
   columnsOverride?: 2 | 3 | 4 | null;
   onSelect: (num: number) => void;
-  onLongSelect?: (num: number) => void;
+  onDoubleSelect?: (num: number) => void;
 }
 
 type GridRow =
@@ -26,7 +26,7 @@ function numColsFor(width: number): number {
   return 8;
 }
 
-export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverride, onSelect, onLongSelect }: Props) {
+export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverride, onSelect, onDoubleSelect }: Props) {
   const { width } = useWindowDimensions();
   const cols = columnsOverride ?? numColsFor(width);
   const styles = useThemedStyles((colors) => ({
@@ -91,7 +91,7 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverrid
             ownedCardImage={ownedImages?.get(row.item.num)}
             wishedInDex={wishedInDexSet?.has(row.item.num)}
             onPress={() => onSelect(row.item.num)}
-            onLongPress={onLongSelect ? () => onLongSelect(row.item.num) : undefined}
+            onDoublePress={onDoubleSelect ? () => onDoubleSelect(row.item.num) : undefined}
           />
         )
       }

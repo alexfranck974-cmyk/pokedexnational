@@ -13,20 +13,21 @@ interface Props {
   items: VitrineItem[];
 }
 
-const ITEM_WIDTH = 172;
+const ITEM_WIDTH = 130;
 const ITEM_ASPECT = 0.72;
 // Negative gap makes neighbouring cards overlap like a fanned deck instead of
 // sitting apart — the centred card still reads clearly thanks to scale/zIndex.
-const GAP = -64;
+const GAP = -48;
 const STRIDE = ITEM_WIDTH + GAP;
 
-// Scale/opacity/lift ramp gradually across two neighbours on each side instead
-// of snapping over a single stride — reads as a smooth continuous zoom as a
-// card approaches the centre rather than a sudden pop.
+// Scale/opacity/lift/tilt ramp gradually across two neighbours on each side
+// instead of snapping over a single stride — reads as a smooth continuous
+// coverflow sweep as a card approaches the centre rather than a sudden pop.
 const OFFSETS = [-2, -1, 0, 1, 2];
-const SCALE_STEPS = [0.58, 0.8, 1.22, 0.8, 0.58];
+const SCALE_STEPS = [0.56, 0.78, 1.2, 0.78, 0.56];
 const OPACITY_STEPS = [0.45, 0.75, 1, 0.75, 0.45];
-const LIFT_STEPS = [8, 3, -10, 3, 8];
+const LIFT_STEPS = [6, 2, -8, 2, 6];
+const ROTATE_STEPS = ['48deg', '26deg', '0deg', '-26deg', '-48deg'];
 
 export function VitrineCarousel({ title = 'Vitrine', items }: Props) {
   const [containerWidth, setContainerWidth] = useState(0);
@@ -80,13 +81,14 @@ export function VitrineCarousel({ title = 'Vitrine', items }: Props) {
             const scale = scrollX.interpolate({ inputRange, outputRange: SCALE_STEPS, extrapolate: 'clamp' });
             const opacity = scrollX.interpolate({ inputRange, outputRange: OPACITY_STEPS, extrapolate: 'clamp' });
             const translateY = scrollX.interpolate({ inputRange, outputRange: LIFT_STEPS, extrapolate: 'clamp' });
+            const rotateY = scrollX.interpolate({ inputRange, outputRange: ROTATE_STEPS, extrapolate: 'clamp' });
             const zIndex = 100 - Math.min(99, Math.abs(index - activeIndex));
             return (
               <Pressable
                 onPress={item.onPress}
                 style={{ width: ITEM_WIDTH, marginRight: GAP, alignItems: 'center' as const, zIndex }}>
-                <Animated.View style={{ transform: [{ scale }, { translateY }], opacity }}>
-                  <Image source={{ uri: item.image }} style={styles.card} resizeMode="cover" />
+                <Animated.View style={{ transform: [{ perspective: 700 }, { rotateY }, { scale }, { translateY }], opacity }}>
+                  <Image source={{ uri: item.image }} style={styles.card} resizeMode="contain" />
                 </Animated.View>
               </Pressable>
             );
