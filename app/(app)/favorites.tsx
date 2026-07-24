@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, Image, StyleSheet, FlatList, useWindowDimensions,
+  View, Text, TextInput, Pressable, Image, StyleSheet, FlatList, ScrollView, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
@@ -32,6 +32,13 @@ const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
 const TEAM_SIZE = 6;
 const VITRINE_LIMIT = 6;
+
+type FavStatusFilter = 'all' | 'favorites' | 'vitrine';
+type FavSortKey = 'fav-recent' | 'num-asc' | 'num-desc' | 'name-asc' | 'name-desc';
+
+function normalize(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
 
 function numColsFor(width: number): number {
   if (width < 600) return 3;
@@ -95,7 +102,40 @@ export default function FavoritesScreen() {
   const [cardPickerOpen, setCardPickerOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'team' | 'collection'; id: string; name: string } | null>(null);
 
+  const [favSearch, setFavSearch] = useState('');
+  const [favStatusFilter, setFavStatusFilter] = useState<FavStatusFilter>('all');
+  const [favSort, setFavSort] = useState<FavSortKey>('num-asc');
+
   const ownedPokemon = useMemo(() => POKEDEX.filter(p => owned.has(p.num)), [owned]);
+
+  // Set iteration order already reflects favorited_at desc (see lib/favorites.ts),
+  // so its index doubles as a "most recently favorited first" rank.
+  const favoriteRecency = useMemo(() => new Map(Array.from(favorites).map((d, i) => [d, i])), [favorites]);
+
+  const visibleFavoritePokemon = useMemo(() => {
+    const q = normalize(favSearch.trim());
+    let list = ownedPokemon.filter(p => {
+      if (q && !normalize(getName(p)).includes(q) && !String(p.num).includes(q)) return false;
+      if (favStatusFilter === 'favorites' && !favorites.has(p.num)) return false;
+      if (favStatusFilter === 'vitrine' && !showcase.has(p.num)) return false;
+      return true;
+    });
+    list = [...list].sort((a, b) => {
+      switch (favSort) {
+        case 'name-asc': return getName(a).localeCompare(getName(b));
+        case 'name-desc': return getName(b).localeCompare(getName(a));
+        case 'num-desc': return b.num - a.num;
+        case 'fav-recent': {
+          const ra = favoriteRecency.get(a.num) ?? Infinity;
+          const rb = favoriteRecency.get(b.num) ?? Infinity;
+          return ra !== rb ? ra - rb : a.num - b.num;
+        }
+        case 'num-asc':
+        default: return a.num - b.num;
+      }
+    });
+    return list;
+  }, [ownedPokemon, favSearch, favStatusFilter, favSort, favorites, showcase, favoriteRecency]);
   const selectedTeam = teams.find(t => t.id === selectedTeamId) ?? null;
   const selectedCollection = collections.find(c => c.id === selectedCollectionId) ?? null;
   const { data: collectionCards = [] } = useCollectionCards(selectedCollectionId ?? undefined);
@@ -160,6 +200,14 @@ export default function FavoritesScreen() {
     title: { fontSize: 22, fontFamily: fonts.display, color: colors.text },
     chipRow: { flexDirection: 'row' as const, gap: spacing.xs },
     legend: { fontSize: 12, fontFamily: fonts.body, color: colors.textDim },
+    favControls: {
+      padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border, gap: spacing.sm,
+    },
+    favSearch: {
+      borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12,
+      fontSize: 15, fontFamily: fonts.body, backgroundColor: colors.surfaceAlt, color: colors.text,
+    },
     emptyTitle: { fontSize: 18, fontFamily: fonts.display, textAlign: 'center' as const, color: colors.text },
     emptyHint: { fontSize: 14, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
 
@@ -235,23 +283,52 @@ export default function FavoritesScreen() {
             <Text style={styles.emptyHint}>Ajoute des cartes depuis le Pokédex pour pouvoir les mettre en favoris.</Text>
           </View>
         ) : (
-          <FlashList
-            data={ownedPokemon}
-            numColumns={numColsFor(width)}
-            estimatedItemSize={120}
-            keyExtractor={p => String(p.num)}
-            renderItem={({ item }) => (
-              <FavoriteTile
-                pokemon={item}
-                cardImage={ownedImages.get(item.num)}
-                favorited={favorites.has(item.num)}
-                inShowcase={showcase.has(item.num)}
-                onPress={() => enterPokemonDetail(router, `/pokemon/${item.num}`)}
-                onToggleFavorite={() => toggleFavorite.mutate({ dexNum: item.num, currentlyFavorited: favorites.has(item.num) })}
-                onToggleShowcase={() => handleToggleShowcase(item.num)}
+          <>
+            <View style={styles.favControls}>
+              <TextInput
+                placeholder="Rechercher (nom, n°)"
+                value={favSearch}
+                onChangeText={setFavSearch}
+                autoCapitalize="none"
+                style={styles.favSearch}
+              />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+                <Chip label="Tous" active={favStatusFilter === 'all'} onPress={() => setFavStatusFilter('all')} />
+                <Chip label="★ Favoris" active={favStatusFilter === 'favorites'} onPress={() => setFavStatusFilter('favorites')} />
+                <Chip label="✨ Vitrine" active={favStatusFilter === 'vitrine'} onPress={() => setFavStatusFilter('vitrine')} />
+              </ScrollView>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+                <Chip label="★ récent" active={favSort === 'fav-recent'} onPress={() => setFavSort('fav-recent')} />
+                <Chip label="N° ↑" active={favSort === 'num-asc'} onPress={() => setFavSort('num-asc')} />
+                <Chip label="N° ↓" active={favSort === 'num-desc'} onPress={() => setFavSort('num-desc')} />
+                <Chip label="A→Z" active={favSort === 'name-asc'} onPress={() => setFavSort('name-asc')} />
+                <Chip label="Z→A" active={favSort === 'name-desc'} onPress={() => setFavSort('name-desc')} />
+              </ScrollView>
+            </View>
+            {visibleFavoritePokemon.length === 0 ? (
+              <View style={styles.center}>
+                <Text style={styles.emptyHint}>Aucun résultat avec ces filtres.</Text>
+              </View>
+            ) : (
+              <FlashList
+                data={visibleFavoritePokemon}
+                numColumns={numColsFor(width)}
+                estimatedItemSize={120}
+                keyExtractor={p => String(p.num)}
+                renderItem={({ item }) => (
+                  <FavoriteTile
+                    pokemon={item}
+                    cardImage={ownedImages.get(item.num)}
+                    favorited={favorites.has(item.num)}
+                    inShowcase={showcase.has(item.num)}
+                    onPress={() => enterPokemonDetail(router, `/pokemon/${item.num}`)}
+                    onToggleFavorite={() => toggleFavorite.mutate({ dexNum: item.num, currentlyFavorited: favorites.has(item.num) })}
+                    onToggleShowcase={() => handleToggleShowcase(item.num)}
+                  />
+                )}
               />
             )}
-          />
+          </>
         )
       ) : subTab === 'teams' ? (
         selectedTeam ? (

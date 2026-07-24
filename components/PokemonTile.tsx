@@ -12,9 +12,10 @@ interface Props {
   cardCount?: number;
   wishedInDex?: boolean;
   onPress: () => void;
+  onLongPress?: () => void;
 }
 
-export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedInDex, onPress }: Props) {
+export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedInDex, onPress, onLongPress }: Props) {
   const useCard = owned && !!ownedCardImage;
   const { colors } = useTheme();
   const styles = useThemedStyles((colors, shadow) => ({
@@ -54,7 +55,11 @@ export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedI
   );
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, owned && styles.tileOwned, pressed && styles.pressed]}>
+    <Pressable
+      onPress={onPress}
+      onLongPress={owned ? onLongPress : undefined}
+      delayLongPress={350}
+      style={({ pressed }) => [styles.tile, owned && styles.tileOwned, pressed && styles.pressed]}>
       {useCard ? (
         // Real owned card art gets a foil-style gradient edge — a sprite alone doesn't.
         <LinearGradient

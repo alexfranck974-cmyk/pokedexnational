@@ -182,6 +182,10 @@ export default function PublicProfile() {
               const card = ownedCardsByDex.get(num);
               if (card) setZoom({ kind: 'grid', card: { image_small: card.imageSmall, image_large: card.imageLarge } });
             }}
+            onLongSelect={(num) => {
+              const card = ownedCardsByDex.get(num);
+              if (card) setZoom({ kind: 'grid', card: { image_small: card.imageSmall, image_large: card.imageLarge } });
+            }}
           />
           <SearchFilterBar
             search={search} onSearch={setSearch}

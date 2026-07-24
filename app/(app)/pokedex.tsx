@@ -6,13 +6,14 @@ import { useRouter } from 'expo-router';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import { useSession } from '@/lib/auth';
-import { useUserDex, useOwnedCardImages, useWishedDexNums } from '@/lib/collection';
+import { useUserDex, useOwnedCardImages, useWishedDexNums, useAllOwnedCardsDetailed } from '@/lib/collection';
 import { useTcgIndex, useTcgSets, useTcgRarities } from '@/lib/tcg-index';
 import { applyPokedexPipeline } from '@/lib/pokedex-list';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { PokedexGrid } from '@/components/PokedexGrid';
 import { SearchFilterBar } from '@/components/SearchFilterBar';
 import { ProgressRing } from '@/components/ProgressRing';
+import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
@@ -36,7 +37,10 @@ export default function PokedexScreen() {
   }));
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
+  const { data: ownedCardsDetailed = [] } = useAllOwnedCardsDetailed(userId);
   const { data: wishedInDexSet = new Set<number>() } = useWishedDexNums(userId);
+  const [zoomCard, setZoomCard] = useState<ZoomableCard | null>(null);
+  const ownedCardsByDex = useMemo(() => new Map(ownedCardsDetailed.map(c => [c.dexNum, c])), [ownedCardsDetailed]);
   const { data: tcgIndex = new Map() } = useTcgIndex();
   const { data: sets = [] } = useTcgSets();
   const { data: rarities = [] } = useTcgRarities();
@@ -90,7 +94,12 @@ export default function PokedexScreen() {
         wishedInDexSet={wishedInDexSet}
         columnsOverride={columns}
         onSelect={num => router.push(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`)}
+        onLongSelect={num => {
+          const card = ownedCardsByDex.get(num);
+          if (card) setZoomCard({ image_small: card.imageSmall, image_large: card.imageLarge });
+        }}
       />
+      <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
       <SearchFilterBar
         search={search} onSearch={setSearch}
         statusFilter={statusFilter} onStatus={setStatus}
