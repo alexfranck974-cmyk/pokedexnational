@@ -28,6 +28,8 @@ export default function SignUp() {
     btn: { backgroundColor: colors.primary, padding: 14, borderRadius: radius.md, alignItems: 'center' as const },
     btnText: { color: 'white', fontSize: 16, fontFamily: fonts.bodyBold },
     link: { textAlign: 'center' as const, marginTop: spacing.md, color: colors.textMuted, fontSize: 14, fontFamily: fonts.body },
+    legalText: { fontSize: 12, fontFamily: fonts.body, color: colors.textDim, textAlign: 'center' as const, marginTop: spacing.sm },
+    legalLink: { fontFamily: fonts.bodyBold, color: colors.textDim, textDecorationLine: 'underline' as const },
   }));
 
   const onUsernameBlur = async () => {
@@ -91,6 +93,12 @@ export default function SignUp() {
         <Text style={styles.btnText}>{pending ? '…' : "S'inscrire"}</Text>
       </Pressable>
       <Link href="/login" style={styles.link}>Déjà un compte ? Se connecter</Link>
+      <Text style={styles.legalText}>
+        En t'inscrivant, tu acceptes les{' '}
+        <Link href="/legal/terms" style={styles.legalLink}>CGU</Link>
+        {' '}et la{' '}
+        <Link href="/legal/privacy" style={styles.legalLink}>politique de confidentialité</Link>
+      </Text>
     </View>
   );
 }

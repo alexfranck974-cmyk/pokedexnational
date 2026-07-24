@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, Switch, Alert, ScrollView } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useSession, signOut } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import * as Clipboard from 'expo-clipboard';
@@ -10,6 +11,7 @@ import { IconBubble } from '@/components/IconBubble';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 export default function Settings() {
+  const router = useRouter();
   const { session } = useSession();
   const userId = session?.user.id;
   const { colors, mode, toggleMode } = useTheme();
@@ -38,6 +40,8 @@ export default function Settings() {
     btnSecondaryText: { fontFamily: fonts.body, color: colors.text, fontSize: 13 },
     btnDanger: { flexDirection: 'row' as const, gap: 6, backgroundColor: colors.danger, padding: spacing.md, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const },
     btnText: { fontFamily: fonts.bodyBold, color: 'white' },
+    legalRow: { flexDirection: 'row' as const, justifyContent: 'center' as const, gap: spacing.md, marginTop: spacing.xs },
+    legalLink: { fontSize: 13, fontFamily: fonts.body, color: colors.textDim, textDecorationLine: 'underline' as const },
   }));
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
@@ -154,6 +158,15 @@ export default function Settings() {
           <Ionicons name="log-out-outline" size={18} color="white" />
           <Text style={styles.btnText}>Se déconnecter</Text>
         </Pressable>
+
+        <View style={styles.legalRow}>
+          <Pressable onPress={() => router.push('/legal/terms')}>
+            <Text style={styles.legalLink}>Conditions d'utilisation</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/legal/privacy')}>
+            <Text style={styles.legalLink}>Confidentialité</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
