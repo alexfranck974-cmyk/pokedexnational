@@ -23,17 +23,22 @@ export async function signIn(email: string, password: string) {
   if (error) throw error;
 }
 
-export async function signUp(email: string, password: string, username: string, displayName: string) {
+// Returns whether the new account already has an active session — false
+// means the Supabase project requires email confirmation before login, and
+// the caller needs to tell the user to check their inbox instead of assuming
+// they're signed in.
+export async function signUp(email: string, password: string, username: string, displayName: string): Promise<{ confirmed: boolean }> {
   const { data: avail, error: rpcErr } = await supabase.rpc('check_username_available', { candidate: username });
   if (rpcErr) throw rpcErr;
   if (!avail) throw new Error('USERNAME_TAKEN');
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: { data: { username, display_name: displayName } },
   });
   if (error) throw error;
+  return { confirmed: data.session !== null };
 }
 
 export async function signOut() {

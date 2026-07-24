@@ -13,6 +13,7 @@ export default function SignUp() {
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const [usernameCheck, setUsernameCheck] = useState<'idle' | 'checking' | 'ok' | 'taken' | 'invalid'>('idle');
   const { colors } = useTheme();
   const styles = useThemedStyles((colors) => ({
@@ -45,12 +46,29 @@ export default function SignUp() {
     if (!isValidUsername(u)) return setError("Username invalide (3–30 caractères, a-z 0-9 _ - uniquement, doit commencer par a-z ou 0-9)");
     setPending(true);
     try {
-      await signUp(email.trim(), password, u, displayName.trim() || u);
+      const { confirmed } = await signUp(email.trim(), password, u, displayName.trim() || u);
+      // If confirmed, a session now exists and the (auth) layout's Redirect
+      // will take over automatically — nothing else to do here. Otherwise the
+      // account exists but is waiting on the confirmation email, which the
+      // user would otherwise have no way of knowing from a blank screen.
+      if (!confirmed) setNeedsConfirmation(true);
     } catch (e: any) {
       if (e?.message === 'USERNAME_TAKEN') setError('Ce username est déjà pris');
       else setError(e?.message ?? 'Inscription échouée');
     } finally { setPending(false); }
   };
+
+  if (needsConfirmation) {
+    return (
+      <View style={styles.wrap}>
+        <Text style={styles.h1}>Vérifie ta boîte mail</Text>
+        <Text style={styles.hint}>
+          On a envoyé un lien de confirmation à {email.trim()}. Clique dessus pour activer ton compte, puis connecte-toi.
+        </Text>
+        <Link href="/login" style={styles.link}>Retour à la connexion</Link>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.wrap}>
