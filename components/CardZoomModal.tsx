@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { Modal, Image, View, PanResponder, useWindowDimensions } from 'react-native';
-import { useThemedStyles } from '@/lib/theme';
+import { Modal, Image, Text, View, PanResponder, useWindowDimensions } from 'react-native';
+import { useThemedStyles, fonts, spacing } from '@/lib/theme';
 
 export interface ZoomableCard {
   image_small: string;
@@ -9,6 +9,7 @@ export interface ZoomableCard {
 
 interface Props {
   card: ZoomableCard | null;
+  caption?: string;
   onClose: () => void;
   onSwipeNext?: () => void;
   onSwipePrev?: () => void;
@@ -17,10 +18,14 @@ interface Props {
 const SWIPE_THRESHOLD = 50;
 const TAP_TOLERANCE = 8;
 
-export function CardZoomModal({ card, onClose, onSwipeNext, onSwipePrev }: Props) {
+export function CardZoomModal({ card, caption, onClose, onSwipeNext, onSwipePrev }: Props) {
   const { width, height } = useWindowDimensions();
   const styles = useThemedStyles((colors) => ({
     backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center' as const, justifyContent: 'center' as const },
+    caption: {
+      marginTop: spacing.md, fontSize: 17, fontFamily: fonts.display, color: 'white',
+      textAlign: 'center' as const, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6,
+    },
   }));
 
   // Single responder handles both tap-to-close and swipe-to-browse — claiming it
@@ -42,7 +47,7 @@ export function CardZoomModal({ card, onClose, onSwipeNext, onSwipePrev }: Props
   if (!card) return null;
   const src = card.image_large ?? card.image_small;
   const maxW = Math.min(width * 0.9, 500);
-  const maxH = Math.min(height * 0.85, 700);
+  const maxH = Math.min(height * 0.78, 650);
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.backdrop} {...pan.panHandlers}>
@@ -51,6 +56,7 @@ export function CardZoomModal({ card, onClose, onSwipeNext, onSwipePrev }: Props
           style={{ width: maxW, height: maxH }}
           resizeMode="contain"
         />
+        {caption && <Text style={styles.caption}>{caption}</Text>}
       </View>
     </Modal>
   );

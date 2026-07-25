@@ -13,8 +13,9 @@ import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { PokedexGrid } from '@/components/PokedexGrid';
 import { SearchFilterBar } from '@/components/SearchFilterBar';
 import { ProgressRing } from '@/components/ProgressRing';
-import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
+import { CardZoomModal } from '@/components/CardZoomModal';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
+import { getName } from '@/lib/i18n';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
@@ -39,7 +40,7 @@ export default function PokedexScreen() {
   const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
   const { data: ownedCardsDetailed = [] } = useAllOwnedCardsDetailed(userId);
   const { data: wishedInDexSet = new Set<number>() } = useWishedDexNums(userId);
-  const [zoomCard, setZoomCard] = useState<ZoomableCard | null>(null);
+  const [zoomIndex, setZoomIndex] = useState<number | null>(null);
   const ownedCardsByDex = useMemo(() => new Map(ownedCardsDetailed.map(c => [c.dexNum, c])), [ownedCardsDetailed]);
   const { data: tcgIndex = new Map() } = useTcgIndex();
   const { data: sets = [] } = useTcgSets();
@@ -68,8 +69,13 @@ export default function PokedexScreen() {
   if (rarityFilter) filterHintParts.push(rarityFilter);
   const filterHint = filterHintParts.length ? filterHintParts.join(' + ') : undefined;
 
-  const ownedCount = items.filter(p => p.owned).length;
+  const ownedItems = useMemo(() => items.filter(p => p.owned), [items]);
+  const ownedCount = ownedItems.length;
   const pct = items.length > 0 ? Math.round((ownedCount / items.length) * 100) : 0;
+
+  const zoomPokemon = zoomIndex !== null ? ownedItems[zoomIndex] : null;
+  const zoomCard = zoomPokemon ? ownedCardsByDex.get(zoomPokemon.num) : null;
+  const zoomCardImage = zoomCard ? { image_small: zoomCard.imageSmall, image_large: zoomCard.imageLarge } : null;
 
   const reset = () => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); };
 
@@ -94,12 +100,18 @@ export default function PokedexScreen() {
         wishedInDexSet={wishedInDexSet}
         columnsOverride={columns}
         onSelect={num => {
-          const card = ownedCardsByDex.get(num);
-          if (card) setZoomCard({ image_small: card.imageSmall, image_large: card.imageLarge });
+          const idx = ownedItems.findIndex(p => p.num === num);
+          if (idx !== -1) setZoomIndex(idx);
         }}
         onDoubleSelect={num => router.push(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`)}
       />
-      <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
+      <CardZoomModal
+        card={zoomCardImage}
+        caption={zoomPokemon ? `#${String(zoomPokemon.num).padStart(4, '0')} · ${getName(zoomPokemon)}` : undefined}
+        onClose={() => setZoomIndex(null)}
+        onSwipeNext={() => setZoomIndex(i => i === null || ownedItems.length === 0 ? null : (i + 1) % ownedItems.length)}
+        onSwipePrev={() => setZoomIndex(i => i === null || ownedItems.length === 0 ? null : (i - 1 + ownedItems.length) % ownedItems.length)}
+      />
       <SearchFilterBar
         search={search} onSearch={setSearch}
         statusFilter={statusFilter} onStatus={setStatus}

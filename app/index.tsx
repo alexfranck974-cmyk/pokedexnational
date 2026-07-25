@@ -11,5 +11,5 @@ export default function Index() {
       </View>
     );
   }
-  return <Redirect href={session ? '/pokedex' : '/login'} />;
+  return <Redirect href={session ? '/dashboard' : '/login'} />;
 }
