@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, TextInput, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
@@ -13,12 +13,11 @@ import {
 } from '@/lib/wishlist-list';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
+import { WishlistFilterBar } from '@/components/WishlistFilterBar';
 import { enterPokemonDetail } from '@/lib/navigation';
 import { getName } from '@/lib/i18n';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import pokedexData from '@/data/pokedex.json';
-import { TYPE_LABEL_FR } from '@/lib/types-colors';
-import { GENERATIONS } from '@/lib/generations';
 
 const POKEDEX = pokedexData as Pokemon[];
 const TYPES_BY_DEX = new Map<number, PokemonType[]>(POKEDEX.map(p => [p.num, p.types]));
@@ -29,20 +28,6 @@ function numColsFor(width: number): number {
   if (width < 1024) return 4;
   return 6;
 }
-
-const Chip = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => {
-  const chipStyles = useThemedStyles((colors) => ({
-    chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
-    active: { backgroundColor: colors.primary },
-    text: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.textMuted },
-    textActive: { color: 'white' },
-  }));
-  return (
-    <Pressable onPress={onPress} style={[chipStyles.chip, active && chipStyles.active]}>
-      <Text style={[chipStyles.text, active && chipStyles.textActive]}>{label}</Text>
-    </Pressable>
-  );
-};
 
 export default function WishlistScreen() {
   const router = useRouter();
@@ -60,7 +45,7 @@ export default function WishlistScreen() {
   const [setFilter, setSet] = useState<string | null>(null);
   const [rarityFilter, setRarity] = useState<string | null>(null);
   const [generationFilter, setGeneration] = useState<number | null>(null);
-  const [sort, setSort] = useState<WishSortKey>('wished-desc');
+  const [sort, setSort] = useState<WishSortKey>('num-asc');
   const [viewMode, setViewMode] = useState<'cards' | 'pokemon'>('pokemon');
 
   const availableSets = useMemo(() => {
@@ -84,25 +69,7 @@ export default function WishlistScreen() {
 
   const grouped = useMemo(() => groupWishlistByPokemon(filtered, ownedIds), [filtered, ownedIds]);
 
-  const cycleType = () => {
-    const types = Object.keys(TYPE_LABEL_FR) as PokemonType[];
-    const idx = typeFilter ? types.indexOf(typeFilter) : -1;
-    setType(idx === types.length - 1 ? null : types[idx + 1]);
-  };
-  const cycleSet = () => {
-    const idx = setFilter ? availableSets.findIndex(s => s.id === setFilter) : -1;
-    setSet(idx === availableSets.length - 1 ? null : availableSets[idx + 1]?.id ?? null);
-  };
-  const cycleRarity = () => {
-    const idx = rarityFilter ? availableRarities.indexOf(rarityFilter) : -1;
-    setRarity(idx === availableRarities.length - 1 ? null : availableRarities[idx + 1] ?? null);
-  };
-  const cycleGeneration = () => {
-    const idx = generationFilter ? GENERATIONS.findIndex(g => g.gen === generationFilter) : -1;
-    setGeneration(idx === GENERATIONS.length - 1 ? null : GENERATIONS[idx + 1]?.gen ?? null);
-  };
   const reset = () => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); };
-  const hasFilters = statusFilter !== 'all' || typeFilter !== null || setFilter !== null || rarityFilter !== null || generationFilter !== null;
 
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
@@ -115,13 +82,8 @@ export default function WishlistScreen() {
     heroRight: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
     heroCount: { fontSize: 14, fontFamily: fonts.monoBold, color: 'white' },
     heroToggle: { flexDirection: 'row' as const, gap: 6 },
-    controls: { padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, gap: spacing.sm, ...shadow.sm },
     viewBtn: { width: 30, height: 30, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: 'rgba(255,255,255,0.18)' },
     viewBtnActive: { backgroundColor: 'white' },
-    search: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, fontSize: 15, fontFamily: fonts.body, backgroundColor: colors.surfaceAlt, color: colors.text },
-    chipRow: { gap: spacing.xs, alignItems: 'center' as const },
-    resetBtn: { alignSelf: 'flex-end' as const, paddingVertical: 2 },
-    resetText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.danger },
     emptyTitle: { fontSize: 20, fontFamily: fonts.display, textAlign: 'center' as const, color: colors.text },
     emptyHint: { fontSize: 14, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
     tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, ...shadow.sm, backgroundColor: colors.surface, margin: 4 },
@@ -196,39 +158,6 @@ export default function WishlistScreen() {
           </View>
         </View>
       </LinearGradient>
-
-      <View style={styles.controls}>
-        <TextInput placeholder="Rechercher (nom, set, n°)" value={search} onChangeText={setSearch}
-          style={styles.search} autoCapitalize="none" />
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          <Chip label="Toutes" active={statusFilter === 'all'} onPress={() => setStatus('all')} />
-          <Chip label="À acheter" active={statusFilter === 'not_owned'} onPress={() => setStatus('not_owned')} />
-          <Chip label="Déjà possédée" active={statusFilter === 'owned'} onPress={() => setStatus('owned')} />
-        </ScrollView>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          <Chip label={generationFilter ? `Gen ${generationFilter}` : 'Génération'} active={generationFilter !== null} onPress={cycleGeneration} />
-          <Chip label={typeFilter ? `Type: ${TYPE_LABEL_FR[typeFilter]}` : 'Type'} active={typeFilter !== null} onPress={cycleType} />
-          <Chip label={setFilter ? `Set: ${availableSets.find(s => s.id === setFilter)?.name ?? setFilter}` : 'Set'} active={setFilter !== null} onPress={cycleSet} />
-          <Chip label={rarityFilter ? `Rareté: ${rarityFilter}` : 'Rareté'} active={rarityFilter !== null} onPress={cycleRarity} />
-        </ScrollView>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          <Chip label="♥ récent" active={sort === 'wished-desc'} onPress={() => setSort('wished-desc')} />
-          <Chip label="♥ ancien" active={sort === 'wished-asc'} onPress={() => setSort('wished-asc')} />
-          <Chip label="A→Z" active={sort === 'name-asc'} onPress={() => setSort('name-asc')} />
-          <Chip label="Z→A" active={sort === 'name-desc'} onPress={() => setSort('name-desc')} />
-          <Chip label="N° ↑" active={sort === 'num-asc'} onPress={() => setSort('num-asc')} />
-          <Chip label="N° ↓" active={sort === 'num-desc'} onPress={() => setSort('num-desc')} />
-        </ScrollView>
-
-        {hasFilters && (
-          <Pressable onPress={reset} style={styles.resetBtn}>
-            <Text style={styles.resetText}>Réinitialiser</Text>
-          </Pressable>
-        )}
-      </View>
 
       {filtered.length === 0 ? (
         <View style={styles.center}>
@@ -320,6 +249,17 @@ export default function WishlistScreen() {
           }}
         />
       )}
+      <WishlistFilterBar
+        search={search} onSearch={setSearch}
+        statusFilter={statusFilter} onStatus={setStatus}
+        typeFilter={typeFilter} onType={setType}
+        setFilter={setFilter} onSet={setSet}
+        rarityFilter={rarityFilter} onRarity={setRarity}
+        generationFilter={generationFilter} onGeneration={setGeneration}
+        sort={sort} onSort={setSort}
+        sets={availableSets} rarities={availableRarities}
+        onReset={reset}
+      />
     </SafeAreaView>
   );
 }

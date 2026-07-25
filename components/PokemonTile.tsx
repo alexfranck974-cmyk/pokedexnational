@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react';
 import { View, Text, Image, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { useTheme, useThemedStyles, radius, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
+import { useDoubleTap } from '@/lib/useDoubleTap';
 
 interface Props {
   pokemon: Pokemon;
@@ -16,31 +16,10 @@ interface Props {
   onDoublePress?: () => void;
 }
 
-const DOUBLE_TAP_DELAY = 280;
-
 export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedInDex, onPress, onDoublePress }: Props) {
   const useCard = owned && !!ownedCardImage;
   const { colors } = useTheme();
-  const lastTap = useRef(0);
-  const pendingTap = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => () => { if (pendingTap.current) clearTimeout(pendingTap.current); }, []);
-
-  // Single tap zooms immediately; a second tap within the window cancels that
-  // and navigates instead — avoids relying on long-press, which triggers the
-  // browser's native image context menu on real phones.
-  const handlePress = () => {
-    if (!onDoublePress) { onPress(); return; }
-    const now = Date.now();
-    if (now - lastTap.current < DOUBLE_TAP_DELAY) {
-      if (pendingTap.current) { clearTimeout(pendingTap.current); pendingTap.current = null; }
-      lastTap.current = 0;
-      onDoublePress();
-      return;
-    }
-    lastTap.current = now;
-    pendingTap.current = setTimeout(() => { onPress(); pendingTap.current = null; }, DOUBLE_TAP_DELAY);
-  };
+  const handlePress = useDoubleTap(onPress, onDoublePress);
 
   const styles = useThemedStyles((colors, shadow) => ({
     // 0.85 left too little room below the (square) image for the number +

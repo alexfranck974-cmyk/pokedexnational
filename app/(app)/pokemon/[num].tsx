@@ -224,7 +224,7 @@ export default function PokemonDetail() {
               viewMode={viewMode}
               onToggle={c => toggle.mutate({ cardId: c.id, currentlyOwned: ownedSet.has(c.id), dexNum: num, imageSmall: c.image_small })}
               onToggleWish={c => toggleWish.mutate({ cardId: c.id, currentlyWished: wishedSet.has(c.id), dexNum: num })}
-              onLongPress={c => setZoomCard(c)}
+              onZoom={c => setZoomCard(c)}
             />
           )}
         </>

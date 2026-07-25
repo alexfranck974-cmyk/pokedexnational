@@ -23,7 +23,7 @@ export function CardZoomModal({ card, caption, onClose, onSwipeNext, onSwipePrev
   const styles = useThemedStyles((colors) => ({
     backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center' as const, justifyContent: 'center' as const },
     caption: {
-      marginTop: spacing.md, fontSize: 17, fontFamily: fonts.display, color: 'white',
+      marginTop: spacing.sm, fontSize: 17, fontFamily: fonts.display, color: 'white',
       textAlign: 'center' as const, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6,
     },
   }));
@@ -48,12 +48,19 @@ export function CardZoomModal({ card, caption, onClose, onSwipeNext, onSwipePrev
   const src = card.image_large ?? card.image_small;
   const maxW = Math.min(width * 0.9, 500);
   const maxH = Math.min(height * 0.78, 650);
+  // Fit tightly to the standard TCG card ratio instead of a fixed box — a
+  // fixed height left letterbox slack around the (narrower) card art, which
+  // pushed the caption well below the card's actual visible bottom edge.
+  const CARD_RATIO = 0.72;
+  let renderW = maxW;
+  let renderH = renderW / CARD_RATIO;
+  if (renderH > maxH) { renderH = maxH; renderW = renderH * CARD_RATIO; }
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.backdrop} {...pan.panHandlers}>
         <Image
           source={{ uri: src }}
-          style={{ width: maxW, height: maxH }}
+          style={{ width: renderW, height: renderH }}
           resizeMode="contain"
         />
         {caption && <Text style={styles.caption}>{caption}</Text>}

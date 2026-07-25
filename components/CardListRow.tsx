@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
+import { useDoubleTap } from '@/lib/useDoubleTap';
 
 interface Props {
   card: TcgCardRow;
@@ -12,11 +13,14 @@ interface Props {
   readOnly?: boolean;
   onToggle: () => void;
   onToggleWish?: () => void;
-  onLongPress?: () => void;
+  onZoom?: () => void;
 }
 
-export function CardListRow({ card, owned, wished, readOnly, onToggle, onToggleWish, onLongPress }: Props) {
+export function CardListRow({ card, owned, wished, readOnly, onToggle, onToggleWish, onZoom }: Props) {
   const { colors } = useTheme();
+  // Single tap zooms; a second tap within the window toggles ownership instead
+  // — avoids long-press, which triggers the browser's native image context menu.
+  const handlePress = useDoubleTap(onZoom ?? (() => {}), readOnly ? undefined : onToggle);
   const styles = useThemedStyles((colors) => ({
     row: {
       flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md,
@@ -46,8 +50,7 @@ export function CardListRow({ card, owned, wished, readOnly, onToggle, onToggleW
   }));
 
   return (
-    <Pressable onPress={readOnly ? undefined : onToggle}
-      onLongPress={onLongPress}
+    <Pressable onPress={handlePress}
       style={({ pressed }) => [
         styles.row,
         pressed && !readOnly && { opacity: 0.7 },
