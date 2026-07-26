@@ -4,7 +4,6 @@ import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { useTheme, useThemedStyles, radius, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
-import { useDoubleTap } from '@/lib/useDoubleTap';
 
 interface Props {
   pokemon: Pokemon;
@@ -13,13 +12,12 @@ interface Props {
   cardCount?: number;
   wishedInDex?: boolean;
   onPress: () => void;
-  onDoublePress?: () => void;
+  onZoom?: () => void;
 }
 
-export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedInDex, onPress, onDoublePress }: Props) {
+export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedInDex, onPress, onZoom }: Props) {
   const useCard = owned && !!ownedCardImage;
   const { colors } = useTheme();
-  const handlePress = useDoubleTap(onPress, onDoublePress);
 
   const styles = useThemedStyles((colors, shadow) => ({
     // 0.85 left too little room below the (square) image for the number +
@@ -62,7 +60,9 @@ export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedI
 
   return (
     <Pressable
-      onPress={handlePress}
+      onPress={onPress}
+      onLongPress={owned ? onZoom : undefined}
+      delayLongPress={350}
       style={({ pressed }) => [styles.tile, owned && styles.tileOwned, pressed && styles.pressed]}>
       {useCard ? (
         // Real owned card art gets a foil-style gradient edge — a sprite alone doesn't.

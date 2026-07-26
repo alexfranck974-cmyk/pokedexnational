@@ -25,6 +25,16 @@ export default function Root({ children }: PropsWithChildren) {
 
         {/* Prevents an unstyled flash of a scrollable body — Expo's recommended web reset. */}
         <ScrollViewStyleReset />
+
+        {/*
+          Long-pressing a card image is used app-wide to open the zoom view —
+          without this, mobile browsers show their own "save image / open in
+          new tab" callout on long-press instead, on top of (or overriding)
+          our onLongPress handler.
+        */}
+        <style>{`
+          img { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        `}</style>
       </head>
       <body>{children}</body>
     </html>

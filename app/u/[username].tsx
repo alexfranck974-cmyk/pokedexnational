@@ -178,11 +178,8 @@ export default function PublicProfile() {
             items={items}
             ownedImages={ownedImages}
             columnsOverride={columns}
-            onSelect={(num) => {
-              const card = ownedCardsByDex.get(num);
-              if (card) setZoom({ kind: 'grid', card: { image_small: card.imageSmall, image_large: card.imageLarge } });
-            }}
-            onDoubleSelect={(num) => {
+            onSelect={() => { /* no detail page for visitors — long-press to zoom instead */ }}
+            onLongSelect={(num) => {
               const card = ownedCardsByDex.get(num);
               if (card) setZoom({ kind: 'grid', card: { image_small: card.imageSmall, image_large: card.imageLarge } });
             }}

@@ -2,7 +2,8 @@ import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { Platform } from 'react-native';
 import { RootSiblingParent } from 'react-native-root-siblings';
 import { useFonts, Fredoka_700Bold } from '@expo-google-fonts/fredoka';
 import { Karla_400Regular, Karla_700Bold } from '@expo-google-fonts/karla';
@@ -36,6 +37,18 @@ function RootLayout() {
     JetBrainsMono_500Medium,
     JetBrainsMono_700Bold,
   });
+
+  // Long-press opens the card zoom view app-wide — on web that gesture is
+  // also the browser's own trigger for its native "save image" context menu
+  // (Android Chrome fires a real contextmenu event; iOS Safari's callout is
+  // handled separately via CSS in app/+html.tsx). Suppressing it here is what
+  // makes long-press-to-zoom actually usable instead of fighting the browser.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const onContextMenu = (e: Event) => e.preventDefault();
+    document.addEventListener('contextmenu', onContextMenu);
+    return () => document.removeEventListener('contextmenu', onContextMenu);
+  }, []);
 
   if (!fontsLoaded) return null;
 

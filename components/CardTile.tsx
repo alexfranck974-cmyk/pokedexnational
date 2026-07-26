@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
-import { useDoubleTap } from '@/lib/useDoubleTap';
 
 interface Props {
   card: TcgCardRow;
@@ -18,9 +17,6 @@ interface Props {
 
 export function CardTile({ card, owned, wished, readOnly, onToggle, onToggleWish, onZoom }: Props) {
   const { colors } = useTheme();
-  // Single tap zooms; a second tap within the window toggles ownership instead
-  // — avoids long-press, which triggers the browser's native image context menu.
-  const handlePress = useDoubleTap(onZoom ?? (() => {}), readOnly ? undefined : onToggle);
   const styles = useThemedStyles((colors, shadow) => ({
     tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, ...shadow.sm },
     imgWrap: { position: 'relative' as const },
@@ -51,7 +47,9 @@ export function CardTile({ card, owned, wished, readOnly, onToggle, onToggleWish
   }));
 
   return (
-    <Pressable onPress={handlePress}
+    <Pressable onPress={readOnly ? undefined : onToggle}
+      onLongPress={onZoom}
+      delayLongPress={350}
       style={({ pressed }) => [
         styles.tile,
         pressed && !readOnly && { transform: [{ scale: 0.97 }] },

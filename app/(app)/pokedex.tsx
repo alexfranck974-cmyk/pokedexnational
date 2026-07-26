@@ -99,11 +99,11 @@ export default function PokedexScreen() {
         ownedImages={ownedImages}
         wishedInDexSet={wishedInDexSet}
         columnsOverride={columns}
-        onSelect={num => {
+        onSelect={num => router.push(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`)}
+        onLongSelect={num => {
           const idx = ownedItems.findIndex(p => p.num === num);
           if (idx !== -1) setZoomIndex(idx);
         }}
-        onDoubleSelect={num => router.push(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`)}
       />
       <CardZoomModal
         card={zoomCardImage}
