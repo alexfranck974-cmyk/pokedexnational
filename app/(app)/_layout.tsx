@@ -76,6 +76,15 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="friends"
+        options={{
+          title: 'Amis',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',

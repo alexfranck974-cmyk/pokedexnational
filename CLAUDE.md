@@ -11,7 +11,7 @@
 - **Expo SDK 54** (downgraded from 57 because Expo Go on iOS App Store lags behind — see `AGENTS.md`)
 - **React 19.2.3, React Native 0.85.3, TypeScript**
 - **Windows-first repo** (dev on Windows 11, PowerShell + bash). `.npmrc` sets `legacy-peer-deps=true` to resolve React 19 patch mismatch.
-- **Package scripts of note:** `npm run web` (dev), `npm test` (Jest), `npm run build:pokedex` (fetch PokéAPI, only re-run if the 1025 changes), `npm run sync:tcg` (fetch pokemontcg.io, only re-run if new sets released)
+- **Package scripts of note:** `npm run web` (dev), `npm test` (Jest), `npm run build:pokedex` (fetch PokéAPI, only re-run if the 1025 changes), `npm run sync:tcg` (full metadata sync from pokemontcg.io — name/images/set/rarity/artist — only re-run if new sets released), `npm run sync:tcg:prices` (lightweight cardmarket price-only refresh — uses the API's `select` param to skip images/set/etc, runs weekly via `.github/workflows/sync-tcg-prices.yml`; do not switch it to a naive partial-column upsert — Postgres validates NOT NULL on the proposed insert row even when `ON CONFLICT DO UPDATE` fires, so it fetches+merges full existing rows first)
 - **ts-node runs script/*.ts with `tsconfig.scripts.json`** (Expo's tsconfig.base uses `module=preserve` which is incompatible with ts-node CJS).
 
 ## Required env vars (`.env` at project root, NOT committed)

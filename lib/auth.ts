@@ -45,13 +45,21 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
-export async function fetchPublicProfile(username: string) {
+// viewerId lets an accepted friend (or the profile's own owner) see a
+// profile even when is_public is off — is_public alone still governs
+// whether an anonymous or non-friend visitor can see it via the link.
+export async function fetchPublicProfile(username: string, viewerId?: string) {
   const { data, error } = await supabase
     .from('profiles')
     .select('id, username, display_name, is_public')
     .eq('username', username.toLowerCase())
     .maybeSingle();
   if (error) throw error;
-  if (!data || !data.is_public) return null;
-  return data as { id: string; username: string; display_name: string; is_public: boolean };
+  if (!data) return null;
+  if (data.is_public || data.id === viewerId) return data as { id: string; username: string; display_name: string; is_public: boolean };
+  if (viewerId) {
+    const { data: friends } = await supabase.rpc('are_friends', { user_a: viewerId, user_b: data.id });
+    if (friends) return data as { id: string; username: string; display_name: string; is_public: boolean };
+  }
+  return null;
 }

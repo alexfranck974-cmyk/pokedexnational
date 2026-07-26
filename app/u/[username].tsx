@@ -2,11 +2,13 @@ import { useMemo, useState, useEffect } from 'react';
 import { View, Text, Image, ActivityIndicator, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon, PokemonType } from '@/lib/types';
-import { fetchPublicProfile } from '@/lib/auth';
+import { fetchPublicProfile, useSession } from '@/lib/auth';
 import { useUserDex, useOwnedCardImages, useAllOwnedCardsDetailed, useAllWishedCards, useAllOwnedCardIds } from '@/lib/collection';
 import { useShowcase } from '@/lib/favorites';
+import { useFriendshipStatus, useSendFriendRequest, useAcceptFriendRequest, useRemoveFriendship } from '@/lib/friends';
 import { useTcgIndex, useTcgSets, useTcgRarities } from '@/lib/tcg-index';
 import { applyPokedexPipeline } from '@/lib/pokedex-list';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
@@ -19,7 +21,7 @@ import { VitrineCarousel } from '@/components/VitrineCarousel';
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
 import { Pokeball } from '@/components/Pokeball';
 import { getName } from '@/lib/i18n';
-import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
@@ -34,19 +36,26 @@ const TABS: { key: ProfileTab; label: string }[] = [
 export default function PublicProfile() {
   const { username } = useLocalSearchParams<{ username: string }>();
   const router = useRouter();
+  const { session } = useSession();
+  const viewerId = session?.user.id;
   const [profile, setProfile] = useState<{ id: string; display_name: string; username: string } | 'notfound'>('notfound');
   const [checking, setChecking] = useState(true);
   const [tab, setTab] = useState<ProfileTab>('pokedex');
 
   useEffect(() => {
     let alive = true;
-    fetchPublicProfile(username as string)
+    setChecking(true);
+    fetchPublicProfile(username as string, viewerId)
       .then(p => { if (alive) { setProfile(p ?? 'notfound'); setChecking(false); } })
       .catch(() => { if (alive) { setProfile('notfound'); setChecking(false); } });
     return () => { alive = false; };
-  }, [username]);
+  }, [username, viewerId]);
 
   const userId = typeof profile === 'object' && profile !== null ? profile.id : undefined;
+  const { data: friendStatus = 'none' } = useFriendshipStatus(viewerId, userId);
+  const sendRequest = useSendFriendRequest();
+  const acceptRequest = useAcceptFriendRequest();
+  const removeFriendship = useRemoveFriendship();
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
   const { data: ownedCardsDetailed = [] } = useAllOwnedCardsDetailed(userId);
@@ -97,10 +106,20 @@ export default function PublicProfile() {
     [wishedCards, ownedCardIds],
   );
 
+  const { colors } = useTheme();
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
-    banner: { padding: spacing.md, backgroundColor: colors.surface, ...shadow.sm },
-    bannerTitle: { fontSize: 20, fontFamily: fonts.display, color: colors.text },
+    banner: { padding: spacing.md, backgroundColor: colors.surface, ...shadow.sm, gap: spacing.sm },
+    bannerTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, gap: spacing.sm },
+    bannerTitle: { fontSize: 20, fontFamily: fonts.display, color: colors.text, flex: 1 },
+    friendBtn: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6,
+      paddingHorizontal: spacing.sm, paddingVertical: 8, borderRadius: radius.pill,
+      backgroundColor: colors.primary,
+    },
+    friendBtnSecondary: { backgroundColor: colors.surfaceAlt },
+    friendBtnText: { fontSize: 12, fontFamily: fonts.bodyBold, color: 'white' },
+    friendBtnTextSecondary: { color: colors.text },
     center: { flex: 1, justifyContent: 'center' as const, alignItems: 'center' as const, padding: spacing.xl, gap: spacing.lg, backgroundColor: colors.bg },
     notFoundTitle: { fontSize: 18, textAlign: 'center' as const, fontFamily: fonts.display, color: colors.text },
     cta: { backgroundColor: colors.primary, padding: 14, borderRadius: radius.md },
@@ -158,7 +177,35 @@ export default function PublicProfile() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.banner}>
-        <Text style={styles.bannerTitle}>Pokédex TCG de {profile.display_name}</Text>
+        <View style={styles.bannerTitleRow}>
+          <Text style={styles.bannerTitle}>Pokédex TCG de {profile.display_name}</Text>
+          {viewerId && userId && viewerId !== userId && (
+            friendStatus === 'friends' ? (
+              <Pressable
+                onPress={() => removeFriendship.mutate(userId)}
+                style={[styles.friendBtn, styles.friendBtnSecondary]}>
+                <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+                <Text style={[styles.friendBtnText, styles.friendBtnTextSecondary]}>Ami</Text>
+              </Pressable>
+            ) : friendStatus === 'pending_sent' ? (
+              <Pressable
+                onPress={() => removeFriendship.mutate(userId)}
+                style={[styles.friendBtn, styles.friendBtnSecondary]}>
+                <Text style={[styles.friendBtnText, styles.friendBtnTextSecondary]}>Demande envoyée</Text>
+              </Pressable>
+            ) : friendStatus === 'pending_received' ? (
+              <Pressable onPress={() => acceptRequest.mutate(userId)} style={styles.friendBtn}>
+                <Ionicons name="person-add" size={14} color="white" />
+                <Text style={styles.friendBtnText}>Accepter</Text>
+              </Pressable>
+            ) : (
+              <Pressable onPress={() => sendRequest.mutate(userId)} style={styles.friendBtn}>
+                <Ionicons name="person-add-outline" size={14} color="white" />
+                <Text style={styles.friendBtnText}>Ajouter</Text>
+              </Pressable>
+            )
+          )}
+        </View>
         <ProgressCounter owned={ownedCount} total={items.length} />
       </View>
 

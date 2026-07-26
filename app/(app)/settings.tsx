@@ -8,11 +8,13 @@ import { useSession, signOut } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import * as Clipboard from 'expo-clipboard';
 import { IconBubble } from '@/components/IconBubble';
+import { QRCodeModal } from '@/components/QRCodeModal';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 export default function Settings() {
   const router = useRouter();
   const { session } = useSession();
+  const [qrOpen, setQrOpen] = useState(false);
   const userId = session?.user.id;
   const { colors, mode, toggleMode } = useTheme();
   const styles = useThemedStyles((colors, shadow) => ({
@@ -37,6 +39,7 @@ export default function Settings() {
     input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt },
     btn: { flexDirection: 'row' as const, gap: 6, backgroundColor: colors.primary, padding: spacing.md, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const },
     btnSecondary: { flexDirection: 'row' as const, gap: 4, backgroundColor: colors.surfaceAlt, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.sm, alignSelf: 'flex-start' as const, alignItems: 'center' as const },
+    shareBtnRow: { flexDirection: 'row' as const, gap: spacing.sm },
     btnSecondaryText: { fontFamily: fonts.body, color: colors.text, fontSize: 13 },
     btnDanger: { flexDirection: 'row' as const, gap: 6, backgroundColor: colors.danger, padding: spacing.md, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const },
     btnText: { fontFamily: fonts.bodyBold, color: 'white' },
@@ -143,10 +146,16 @@ export default function Settings() {
             <Text style={styles.label}>Lien de partage</Text>
           </View>
           <Text style={styles.readonly}>{shareUrl}</Text>
-          <Pressable onPress={copy} style={styles.btnSecondary}>
-            <Ionicons name="copy-outline" size={14} color={colors.text} />
-            <Text style={styles.btnSecondaryText}>Copier</Text>
-          </Pressable>
+          <View style={styles.shareBtnRow}>
+            <Pressable onPress={copy} style={styles.btnSecondary}>
+              <Ionicons name="copy-outline" size={14} color={colors.text} />
+              <Text style={styles.btnSecondaryText}>Copier</Text>
+            </Pressable>
+            <Pressable onPress={() => setQrOpen(true)} style={styles.btnSecondary}>
+              <Ionicons name="qr-code-outline" size={14} color={colors.text} />
+              <Text style={styles.btnSecondaryText}>QR code</Text>
+            </Pressable>
+          </View>
         </View>
 
         <Pressable onPress={save} disabled={saving} style={styles.btn}>
@@ -168,6 +177,7 @@ export default function Settings() {
           </Pressable>
         </View>
       </ScrollView>
+      <QRCodeModal visible={qrOpen} value={shareUrl} label="Mon Pokédex" onClose={() => setQrOpen(false)} />
     </SafeAreaView>
   );
 }

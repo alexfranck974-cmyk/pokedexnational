@@ -1,0 +1,26 @@
+name: Sync TCG card prices
+
+on:
+  schedule:
+    # Every Monday at 05:00 UTC — cardmarket prices update roughly weekly,
+    # no point running more often than that.
+    - cron: '0 5 * * 1'
+  workflow_dispatch: {} # lets you trigger a run manually from the Actions tab
+
+jobs:
+  sync-prices:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - run: npm run sync:tcg:prices
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          POKEMON_TCG_API_KEY: ${{ secrets.POKEMON_TCG_API_KEY }}
