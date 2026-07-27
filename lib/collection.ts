@@ -148,6 +148,9 @@ export function useToggleCard() {
       qc.invalidateQueries({ queryKey: ['user_wishlist', userId, dexNum] });
       qc.invalidateQueries({ queryKey: ['user_wishlist_all', userId] });
       qc.invalidateQueries({ queryKey: ['wished_dex_nums', userId] });
+      qc.invalidateQueries({ queryKey: ['owned_dex_nums', userId] });
+      qc.invalidateQueries({ queryKey: ['ledger_cards_for_dex', userId, dexNum] });
+      qc.invalidateQueries({ queryKey: ['all_owned_cards_ledger_detailed', userId] });
     },
   });
 }
@@ -263,6 +266,46 @@ export function useWishedDexNums(userId?: string) {
   });
 }
 
+// Which Pokémon have at least one owned card in the ledger (user_owned_cards),
+// regardless of whether an official National Dex card has been chosen for them.
+export function useOwnedDexNums(userId?: string) {
+  return useQuery({
+    queryKey: ['owned_dex_nums', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_owned_cards')
+        .select('tcg_cards!inner(dex_num)')
+        .eq('user_id', userId!);
+      if (error) throw error;
+      const set = new Set<number>();
+      for (const row of data ?? []) {
+        const dn = (row.tcg_cards as any)?.dex_num;
+        if (typeof dn === 'number') set.add(dn);
+      }
+      return set;
+    },
+  });
+}
+
+// All ledger-owned card ids for one Pokémon (not just the official dex pick) —
+// used to unlock every owned printing on the Pokémon detail page's card grid.
+export function useLedgerCardsForDex(userId: string | undefined, dexNum: number | undefined) {
+  return useQuery({
+    queryKey: ['ledger_cards_for_dex', userId, dexNum],
+    enabled: !!userId && !!dexNum,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_owned_cards')
+        .select('card_id, tcg_cards!inner(dex_num)')
+        .eq('user_id', userId!)
+        .eq('tcg_cards.dex_num', dexNum!);
+      if (error) throw error;
+      return new Set<string>((data ?? []).map(r => r.card_id as string));
+    },
+  });
+}
+
 // Sourced from the ownership ledger (user_owned_cards), not user_cards: this answers
 // "do I own this exact card" regardless of whether it's the chosen National Dex card
 // for its Pokémon. Used by set goals, custom lists, the public profile, and the wishlist.
@@ -311,6 +354,8 @@ export function useToggleOwnedCard() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['all_owned_card_ids', userId] });
+      qc.invalidateQueries({ queryKey: ['owned_dex_nums', userId] });
+      qc.invalidateQueries({ queryKey: ['all_owned_cards_ledger_detailed', userId] });
     },
   });
 }
@@ -322,7 +367,7 @@ export function useAllOwnedCardsLedgerDetailed(userId?: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_owned_cards')
-        .select('card_id, acquired_at, tcg_cards(dex_num, name, image_small, image_large, set_name, rarity, cardmarket_trend_eur, artist)')
+        .select('card_id, acquired_at, tcg_cards(dex_num, name, image_small, image_large, set_id, set_name, rarity, cardmarket_trend_eur, artist)')
         .eq('user_id', userId!);
       if (error) throw error;
       return (data ?? []).map(r => {
@@ -335,11 +380,12 @@ export function useAllOwnedCardsLedgerDetailed(userId?: string) {
           name: (card?.name as string | undefined) ?? '',
           imageSmall: (card?.image_small as string | undefined) ?? '',
           imageLarge: (card?.image_large as string | undefined) ?? null,
+          setId: (card?.set_id as string | undefined) ?? '',
           setName: (card?.set_name as string | undefined) ?? '',
           cardmarketTrendEur: (card?.cardmarket_trend_eur as number | undefined) ?? null,
           artist: (card?.artist as string | undefined) ?? null,
         };
-      }) as (OwnedCardDetail & { setName: string })[];
+      }) as (OwnedCardDetail & { setId: string; setName: string })[];
     },
   });
 }

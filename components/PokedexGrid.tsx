@@ -88,6 +88,7 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverrid
           <PokemonTile
             pokemon={row.item}
             owned={row.item.owned}
+            collected={row.item.collected}
             ownedCardImage={ownedImages?.get(row.item.num)}
             wishedInDex={wishedInDexSet?.has(row.item.num)}
             onPress={() => onSelect(row.item.num)}

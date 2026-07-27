@@ -7,6 +7,14 @@ import type { OwnedCardDetail } from './collection';
 
 export type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
+export interface SetBadgeInfo {
+  setId: string;
+  setName: string;
+  symbol: string | null;
+  owned: number;
+  total: number;
+}
+
 export interface DashboardStats {
   overall: Progress;
   byGeneration: GenerationProgress[];
@@ -16,6 +24,7 @@ export interface DashboardStats {
   wishedCardIds: Set<string>;
   wishlistCount: number;
   collectionValue: number;
+  bySet: SetBadgeInfo[];
 }
 
 export interface Badge {
@@ -23,6 +32,8 @@ export interface Badge {
   label: string;
   description: string;
   icon: IoniconName;
+  /** When set, rendered instead of `icon` (e.g. a set's real symbol image). */
+  iconUri?: string;
   unlocked: (stats: DashboardStats) => boolean;
 }
 
@@ -187,6 +198,20 @@ export const BADGES: Badge[] = [
   ...valueBadges, ...artistBadges,
 ];
 
+// One badge per pinned TCG set — dynamic (depends on which sets the user pinned),
+// so built per-call from stats.bySet rather than living in the static BADGES list.
+function buildSetBadges(bySet: SetBadgeInfo[]): Badge[] {
+  return bySet.map(s => ({
+    id: `set-${s.setId}`,
+    label: `${s.setName} complet`,
+    description: `Posséder toutes les cartes de l’extension ${s.setName}`,
+    icon: 'albums' as const,
+    iconUri: s.symbol ?? undefined,
+    unlocked: () => s.total > 0 && s.owned >= s.total,
+  }));
+}
+
 export function computeBadges(stats: DashboardStats): (Badge & { unlockedNow: boolean })[] {
-  return BADGES.map(badge => ({ ...badge, unlockedNow: badge.unlocked(stats) }));
+  const all = [...BADGES, ...buildSetBadges(stats.bySet)];
+  return all.map(badge => ({ ...badge, unlockedNow: badge.unlocked(stats) }));
 }

@@ -15,7 +15,7 @@ export interface PipelineOptions {
   sort: SortKey;
 }
 
-export interface PokemonWithState extends Pokemon { owned: boolean }
+export interface PokemonWithState extends Pokemon { owned: boolean; collected: boolean }
 
 export type TcgIndex = Map<number, { set_ids: string[]; rarities: string[] }>;
 
@@ -28,11 +28,14 @@ export function applyPokedexPipeline(
   owned: Set<number>,
   tcgIndex: TcgIndex,
   opts: PipelineOptions,
+  collectedDex: Set<number> = owned,
 ): PokemonWithState[] {
   const searchN = normalize(opts.search.trim());
   const searchDigits = /^\d+$/.test(searchN) ? String(parseInt(searchN, 10)) : null;
 
-  const merged: PokemonWithState[] = pokemons.map(p => ({ ...p, owned: owned.has(p.num) }));
+  const merged: PokemonWithState[] = pokemons.map(p => ({
+    ...p, owned: owned.has(p.num), collected: collectedDex.has(p.num),
+  }));
 
   const filtered = merged.filter(p => {
     if (opts.statusFilter === 'owned' && !p.owned) return false;

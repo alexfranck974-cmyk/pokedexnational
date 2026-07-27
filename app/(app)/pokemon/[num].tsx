@@ -14,7 +14,7 @@ import { CardZoomModal } from '@/components/CardZoomModal';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForPokemon } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
-import { useUserCards, useUserWishlist, useToggleCard, useToggleWish, useCardAcquiredAt } from '@/lib/collection';
+import { useUserCards, useLedgerCardsForDex, useUserWishlist, useToggleCard, useToggleWish, useCardAcquiredAt } from '@/lib/collection';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
@@ -33,7 +33,11 @@ export default function PokemonDetail() {
   const { session } = useSession();
   const userId = session?.user.id;
   const { data: cards = [], isLoading: cardsLoading } = useCardsForPokemon(num);
-  const { data: ownedSet = new Set<string>() } = useUserCards(userId, num);
+  // officialSet drives tap semantics (choose/unchoose the National Dex card) and stays
+  // exactly as before; ledgerSet drives the lock icon so every owned printing shows
+  // unlocked, not just the one currently chosen as official.
+  const { data: officialSet = new Set<string>() } = useUserCards(userId, num);
+  const { data: ledgerSet = new Set<string>() } = useLedgerCardsForDex(userId, num);
   const { data: wishedSet = new Set<string>() } = useUserWishlist(userId, num);
   const { data: acquiredAt } = useCardAcquiredAt(userId, num);
   const toggle = useToggleCard();
@@ -129,6 +133,12 @@ export default function PokemonDetail() {
       backgroundColor: colors.dangerBg, borderRadius: radius.pill,
     },
     wishBannerText: { color: colors.danger, fontSize: 12, fontFamily: fonts.bodyBold },
+    infoBanner: {
+      flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: 8,
+      marginHorizontal: spacing.md, marginBottom: spacing.sm, padding: spacing.sm,
+      backgroundColor: colors.primaryBg, borderRadius: radius.md,
+    },
+    infoBannerText: { flex: 1, fontSize: 11, fontFamily: fonts.body, color: colors.text, lineHeight: 15 },
 
     navOverlay: { position: 'absolute' as const, left: 0, right: 0, top: 0, bottom: 0 },
     navBtn: {
@@ -175,7 +185,7 @@ export default function PokemonDetail() {
             </ScrollView>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.heroCount}>{ownedSet.size} / {filteredCards.length}</Text>
+            <Text style={styles.heroCount}>{ledgerSet.size} / {filteredCards.length}</Text>
             {acquiredAt && (
               <Text style={styles.heroAcquired}>Ajoutée le {new Date(acquiredAt).toLocaleDateString('fr-FR')}</Text>
             )}
@@ -214,15 +224,22 @@ export default function PokemonDetail() {
               </Pressable>
             </View>
           )}
+          <View style={styles.infoBanner}>
+            <Ionicons name="information-circle" size={16} color={colors.primary} />
+            <Text style={styles.infoBannerText}>
+              Les cartes possédées apparaissent déverrouillées. Touche une carte pour en faire
+              ta carte officielle du Pokédex national.
+            </Text>
+          </View>
           {sortedCards.length === 0 ? (
             <Text style={styles.empty}>Aucune carte dans les extensions sélectionnées.</Text>
           ) : (
             <CardGallery
               cards={sortedCards}
-              ownedSet={ownedSet}
+              ownedSet={ledgerSet}
               wishedSet={wishedSet}
               viewMode={viewMode}
-              onToggle={c => toggle.mutate({ cardId: c.id, currentlyOwned: ownedSet.has(c.id), dexNum: num, imageSmall: c.image_small })}
+              onToggle={c => toggle.mutate({ cardId: c.id, currentlyOwned: officialSet.has(c.id), dexNum: num, imageSmall: c.image_small })}
               onToggleWish={c => toggleWish.mutate({ cardId: c.id, currentlyWished: wishedSet.has(c.id), dexNum: num })}
               onZoom={c => setZoomCard(c)}
             />

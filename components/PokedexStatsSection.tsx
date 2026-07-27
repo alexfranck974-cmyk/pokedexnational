@@ -5,8 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
-import { useUserDex, useAllOwnedCardIds, useAllOwnedCardsDetailed } from '@/lib/collection';
-import { useVariantCards } from '@/lib/tcg-index';
+import { useUserDex, useAllOwnedCardIds, useAllOwnedCardsDetailed, useAllOwnedCardsLedgerDetailed } from '@/lib/collection';
+import { useSetGoals } from '@/lib/collection-goals';
+import { useVariantCards, useTcgSets } from '@/lib/tcg-index';
 import {
   computeOverallProgress, computeByGeneration, computeByType,
   bucketVariantCards, computeVariantProgress, totalCollectionValue, topArtists,
@@ -75,6 +76,9 @@ export function PokedexStatsSection({
   const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
   const { data: ownedCards = [] } = useAllOwnedCardsDetailed(userId);
   const { data: variantCards = [] } = useVariantCards();
+  const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
+  const { data: pinnedGoals = [] } = useSetGoals(userId);
+  const { data: allSets = [] } = useTcgSets();
   const [breakdown, setBreakdown] = useState<BreakdownTarget | null>(null);
   const [badgeDetail, setBadgeDetail] = useState<BadgeDetailTarget | null>(null);
   const [statsOpen, setStatsOpen] = useState(false);
@@ -91,14 +95,34 @@ export function PokedexStatsSection({
     [variantBuckets, ownedCardIds],
   );
   const collectionValue = useMemo(() => totalCollectionValue(ownedCards), [ownedCards]);
+  const bySet = useMemo(() => {
+    const ownedCountBySet = new Map<string, number>();
+    for (const c of ledgerCards) {
+      ownedCountBySet.set(c.setId, (ownedCountBySet.get(c.setId) ?? 0) + 1);
+    }
+    const setsById = new Map(allSets.map(s => [s.id, s]));
+    return pinnedGoals
+      .map(g => {
+        const set = setsById.get(g.setId);
+        if (!set) return null;
+        return {
+          setId: g.setId,
+          setName: set.name,
+          symbol: set.symbol,
+          owned: ownedCountBySet.get(g.setId) ?? 0,
+          total: set.cardCount,
+        };
+      })
+      .filter((s): s is NonNullable<typeof s> => s !== null);
+  }, [ledgerCards, pinnedGoals, allSets]);
   const badges = useMemo(() => {
     const stats: DashboardStats = {
       overall, byGeneration, variants, ownedCards, ownedCardIds,
-      wishedCardIds, wishlistCount, collectionValue,
+      wishedCardIds, wishlistCount, collectionValue, bySet,
     };
     const all = computeBadges(stats);
     return showValueBadges ? all : all.filter(b => !b.id.startsWith('value-'));
-  }, [overall, byGeneration, variants, ownedCards, ownedCardIds, wishedCardIds, wishlistCount, collectionValue, showValueBadges]);
+  }, [overall, byGeneration, variants, ownedCards, ownedCardIds, wishedCardIds, wishlistCount, collectionValue, bySet, showValueBadges]);
 
   const favoriteArtists = useMemo(() => topArtists(ownedCards, 5), [ownedCards]);
   const ownedCardsByDex = useMemo(() => new Map(ownedCards.map(c => [c.dexNum, c])), [ownedCards]);
@@ -187,9 +211,10 @@ export function PokedexStatsSection({
             <AchievementBadge
               key={b.id}
               icon={b.icon}
+              iconUri={b.iconUri}
               label={b.label}
               unlocked={b.unlockedNow}
-              onPress={() => setBadgeDetail({ icon: b.icon, label: b.label, description: b.description, unlocked: b.unlockedNow })}
+              onPress={() => setBadgeDetail({ icon: b.icon, iconUri: b.iconUri, label: b.label, description: b.description, unlocked: b.unlockedNow })}
             />
           ))}
         </View>

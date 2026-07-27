@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import { useSession } from '@/lib/auth';
-import { useUserDex, useOwnedCardImages, useWishedDexNums, useAllOwnedCardsDetailed } from '@/lib/collection';
+import { useUserDex, useOwnedCardImages, useWishedDexNums, useAllOwnedCardsDetailed, useOwnedDexNums } from '@/lib/collection';
 import { useTcgIndex, useTcgSets, useTcgRarities } from '@/lib/tcg-index';
 import { applyPokedexPipeline } from '@/lib/pokedex-list';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
@@ -37,6 +37,7 @@ export default function PokedexScreen() {
     heroFilter: { fontSize: 11, fontFamily: fonts.body, color: 'rgba(255,255,255,0.8)' },
   }));
   const { data: owned = new Set<number>() } = useUserDex(userId);
+  const { data: collectedDex = new Set<number>() } = useOwnedDexNums(userId);
   const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
   const { data: ownedCardsDetailed = [] } = useAllOwnedCardsDetailed(userId);
   const { data: wishedInDexSet = new Set<number>() } = useWishedDexNums(userId);
@@ -58,8 +59,8 @@ export default function PokedexScreen() {
   const items = useMemo(
     () => applyPokedexPipeline(POKEDEX, owned, tcgIndex, {
       search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort,
-    }),
-    [owned, tcgIndex, search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort],
+    }, collectedDex),
+    [owned, tcgIndex, search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort, collectedDex],
   );
 
   const filterHintParts: string[] = [];

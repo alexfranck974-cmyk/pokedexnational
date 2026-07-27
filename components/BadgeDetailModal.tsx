@@ -1,10 +1,11 @@
-import { View, Text, Pressable, Modal, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, Modal, Image, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { IoniconName } from '@/lib/badges';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 export interface BadgeDetailTarget {
   icon: IoniconName;
+  iconUri?: string;
   label: string;
   description: string;
   unlocked: boolean;
@@ -29,6 +30,7 @@ export function BadgeDetailModal({ target, onClose }: Props) {
       alignItems: 'center' as const, justifyContent: 'center' as const, marginBottom: spacing.xs,
     },
     iconWrapUnlocked: { backgroundColor: colors.primarySoft },
+    iconImg: { width: 38, height: 38 },
     label: { fontSize: 17, fontFamily: fonts.display, color: colors.text, textAlign: 'center' as const },
     statusPill: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.pill },
     statusUnlocked: { backgroundColor: colors.successBg },
@@ -48,7 +50,11 @@ export function BadgeDetailModal({ target, onClose }: Props) {
           {target && (
             <View style={styles.body}>
               <View style={[styles.iconWrap, target.unlocked && styles.iconWrapUnlocked]}>
-                <Ionicons name={target.icon} size={32} color={target.unlocked ? colors.primary : colors.textDim} />
+                {target.iconUri ? (
+                  <Image source={{ uri: target.iconUri }} style={[styles.iconImg, { opacity: target.unlocked ? 1 : 0.4 }]} resizeMode="contain" />
+                ) : (
+                  <Ionicons name={target.icon} size={32} color={target.unlocked ? colors.primary : colors.textDim} />
+                )}
               </View>
               <Text style={styles.label}>{target.label}</Text>
               <View style={[styles.statusPill, target.unlocked ? styles.statusUnlocked : styles.statusLocked]}>

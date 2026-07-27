@@ -8,6 +8,7 @@ import { Pokeball } from '@/components/Pokeball';
 interface Props {
   pokemon: Pokemon;
   owned: boolean;
+  collected?: boolean;
   ownedCardImage?: string;
   cardCount?: number;
   wishedInDex?: boolean;
@@ -15,8 +16,12 @@ interface Props {
   onZoom?: () => void;
 }
 
-export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedInDex, onPress, onZoom }: Props) {
+export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCount, wishedInDex, onPress, onZoom }: Props) {
   const useCard = owned && !!ownedCardImage;
+  // "In color" reflects owning ANY card for this species (the ledger); the card-art
+  // swap / Pokéball badge / count below stay gated on `owned` — the one specifically
+  // chosen as the official National Dex card.
+  const inColor = collected ?? owned;
   const { colors } = useTheme();
 
   const styles = useThemedStyles((colors, shadow) => ({
@@ -76,19 +81,19 @@ export function PokemonTile({ pokemon, owned, ownedCardImage, cardCount, wishedI
           </View>
         </LinearGradient>
       ) : (
-        <View style={[styles.spriteWrap, !owned && styles.spriteMissing]}>
+        <View style={[styles.spriteWrap, !inColor && styles.spriteMissing]}>
           <Image
             source={{ uri: pokemon.sprite_url }}
-            style={[styles.sprite, !owned && { tintColor: colors.textDim }]}
+            style={[styles.sprite, !inColor && { tintColor: colors.textDim }]}
             resizeMode="contain"
           />
           {badges}
         </View>
       )}
-      <Text style={[styles.num, !owned && styles.textDim]}>
+      <Text style={[styles.num, !inColor && styles.textDim]}>
         #{String(pokemon.num).padStart(4, '0')}
       </Text>
-      <Text style={[styles.name, !owned && styles.textDim]} numberOfLines={1}>
+      <Text style={[styles.name, !inColor && styles.textDim]} numberOfLines={1}>
         {getName(pokemon)}
       </Text>
       {owned && cardCount !== undefined && cardCount > 0 && (
