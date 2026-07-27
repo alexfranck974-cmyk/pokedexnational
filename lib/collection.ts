@@ -335,6 +335,10 @@ export function useToggleOwnedCard() {
       if (currentlyOwned) {
         const { error } = await supabase.from('user_owned_cards').delete().eq('user_id', userId).eq('card_id', cardId);
         if (error) throw error;
+        // A card no longer owned can't stay pointed to as anyone's official
+        // National Dex pick — clear it there too if it was (no-op otherwise).
+        const { error: officialError } = await supabase.from('user_cards').delete().eq('user_id', userId).eq('card_id', cardId);
+        if (officialError) throw officialError;
       } else {
         const { error } = await supabase.from('user_owned_cards').insert({ user_id: userId, card_id: cardId });
         if (error) throw error;
@@ -356,6 +360,9 @@ export function useToggleOwnedCard() {
       qc.invalidateQueries({ queryKey: ['all_owned_card_ids', userId] });
       qc.invalidateQueries({ queryKey: ['owned_dex_nums', userId] });
       qc.invalidateQueries({ queryKey: ['all_owned_cards_ledger_detailed', userId] });
+      qc.invalidateQueries({ queryKey: ['user_dex', userId] });
+      qc.invalidateQueries({ queryKey: ['owned_card_images', userId] });
+      qc.invalidateQueries({ queryKey: ['all_owned_cards_detailed', userId] });
     },
   });
 }

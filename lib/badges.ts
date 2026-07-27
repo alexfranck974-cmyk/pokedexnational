@@ -198,17 +198,33 @@ export const BADGES: Badge[] = [
   ...valueBadges, ...artistBadges,
 ];
 
-// One badge per pinned TCG set — dynamic (depends on which sets the user pinned),
-// so built per-call from stats.bySet rather than living in the static BADGES list.
+// Same tiered shape as milestoneBadges (national dex), applied per pinned set —
+// dynamic (depends on which sets the user pinned), so built per-call from
+// stats.bySet rather than living in the static BADGES list.
+const SET_TIERS = [
+  { pct: 25, label: 'Découverte', icon: 'compass' as const },
+  { pct: 50, label: 'Collection', icon: 'albums' as const },
+  { pct: 75, label: 'Expertise', icon: 'star' as const },
+  { pct: 90, label: 'Presque complet', icon: 'ribbon' as const },
+  { pct: 100, label: 'Set complet', icon: 'trophy' as const },
+];
+
 function buildSetBadges(bySet: SetBadgeInfo[]): Badge[] {
-  return bySet.map(s => ({
-    id: `set-${s.setId}`,
-    label: `${s.setName} complet`,
-    description: `Posséder toutes les cartes de l’extension ${s.setName}`,
-    icon: 'albums' as const,
-    iconUri: s.symbol ?? undefined,
-    unlocked: () => s.total > 0 && s.owned >= s.total,
-  }));
+  const badges: Badge[] = [];
+  for (const s of bySet) {
+    const pct = s.total > 0 ? Math.round((s.owned / s.total) * 100) : 0;
+    for (const tier of SET_TIERS) {
+      badges.push({
+        id: `set-${s.setId}-${tier.pct}`,
+        label: `${s.setName} — ${tier.label}`,
+        description: `Atteindre ${tier.pct}% de l’extension ${s.setName}`,
+        icon: tier.icon,
+        iconUri: s.symbol ?? undefined,
+        unlocked: () => pct >= tier.pct,
+      });
+    }
+  }
+  return badges;
 }
 
 export function computeBadges(stats: DashboardStats): (Badge & { unlockedNow: boolean })[] {

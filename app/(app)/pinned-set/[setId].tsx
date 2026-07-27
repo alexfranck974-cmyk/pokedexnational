@@ -43,6 +43,7 @@ export default function PinnedSetDetail() {
     [cards],
   );
   const pct = total > 0 ? Math.round((ownedCount / total) * 100) : 0;
+  const complete = total > 0 && ownedCount >= total;
   const year = set?.releaseDate ? new Date(set.releaseDate).getFullYear() : null;
 
   const { colors } = useTheme();
@@ -95,9 +96,14 @@ export default function PinnedSetDetail() {
           </View>
         </View>
         <View style={styles.heroMain}>
-          <ProgressRing pct={pct} size={64} color="white" trackColor="rgba(255,255,255,0.25)" centerLabel={`${pct}%`} />
+          <ProgressRing
+            pct={pct} size={64} color={complete ? colors.warning : 'white'}
+            trackColor="rgba(255,255,255,0.25)" centerLabel={`${pct}%`}
+          />
           <View style={{ flex: 1 }}>
-            <Text style={styles.heroName} numberOfLines={2}>{setName}</Text>
+            <Text style={styles.heroName} numberOfLines={2}>
+              {complete && <Ionicons name="trophy" size={16} color={colors.warning} />} {setName}
+            </Text>
             <Text style={styles.heroCaption}>
               {year ? `${year} · ` : ''}{ownedCount}/{total} cartes
             </Text>
