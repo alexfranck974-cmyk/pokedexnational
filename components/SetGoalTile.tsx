@@ -2,6 +2,7 @@ import { View, Image, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatRingTile } from './StatRingTile';
 import { useSetGoalProgress } from '@/lib/collection-goals';
+import { currentSetTier } from '@/lib/set-tiers';
 import { useTheme } from '@/lib/theme';
 
 interface Props {
@@ -16,21 +17,22 @@ interface Props {
 export function SetGoalTile({ userId, setId, setName, total, symbol, onPress }: Props) {
   const { data: owned = 0 } = useSetGoalProgress(userId, setId);
   const { colors } = useTheme();
-  const complete = total > 0 && owned >= total;
+  const pct = total > 0 ? Math.round((owned / total) * 100) : 0;
+  const tier = currentSetTier(pct);
   return (
     <View style={styles.wrap}>
       <StatRingTile
         label={setName} owned={owned} total={total} onPress={onPress}
-        color={complete ? colors.warning : undefined}
+        color={tier?.color}
       />
       {symbol && (
         <View style={styles.badge} pointerEvents="none">
           <Image source={{ uri: symbol }} style={styles.badgeImg} resizeMode="contain" />
         </View>
       )}
-      {complete && (
+      {tier && (
         <View style={[styles.trophy, { backgroundColor: colors.surface }]} pointerEvents="none">
-          <Ionicons name="trophy" size={12} color={colors.warning} />
+          <Ionicons name="trophy" size={12} color={tier.color} />
         </View>
       )}
     </View>

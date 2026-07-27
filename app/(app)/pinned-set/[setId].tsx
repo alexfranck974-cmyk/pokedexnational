@@ -14,6 +14,7 @@ import { useTcgSets } from '@/lib/tcg-index';
 import { useSession } from '@/lib/auth';
 import { useAllOwnedCardIds, useToggleOwnedCard } from '@/lib/collection';
 import { useBackTo } from '@/lib/navigation';
+import { currentSetTier } from '@/lib/set-tiers';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 export default function PinnedSetDetail() {
@@ -43,7 +44,7 @@ export default function PinnedSetDetail() {
     [cards],
   );
   const pct = total > 0 ? Math.round((ownedCount / total) * 100) : 0;
-  const complete = total > 0 && ownedCount >= total;
+  const tier = currentSetTier(pct);
   const year = set?.releaseDate ? new Date(set.releaseDate).getFullYear() : null;
 
   const { colors } = useTheme();
@@ -97,12 +98,12 @@ export default function PinnedSetDetail() {
         </View>
         <View style={styles.heroMain}>
           <ProgressRing
-            pct={pct} size={64} color={complete ? colors.warning : 'white'}
+            pct={pct} size={64} color={tier?.color ?? 'white'}
             trackColor="rgba(255,255,255,0.25)" centerLabel={`${pct}%`}
           />
           <View style={{ flex: 1 }}>
             <Text style={styles.heroName} numberOfLines={2}>
-              {complete && <Ionicons name="trophy" size={16} color={colors.warning} />} {setName}
+              {tier && <Ionicons name="trophy" size={16} color={tier.color} />} {setName}
             </Text>
             <Text style={styles.heroCaption}>
               {year ? `${year} · ` : ''}{ownedCount}/{total} cartes

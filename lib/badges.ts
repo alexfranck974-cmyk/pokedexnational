@@ -4,6 +4,7 @@ import { GENERATIONS } from './generations';
 import type { GenerationProgress, Progress, VariantCategory } from './dashboard-stats';
 import { topArtists } from './dashboard-stats';
 import type { OwnedCardDetail } from './collection';
+import { SET_TIERS } from './set-tiers';
 
 export type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -200,15 +201,8 @@ export const BADGES: Badge[] = [
 
 // Same tiered shape as milestoneBadges (national dex), applied per pinned set —
 // dynamic (depends on which sets the user pinned), so built per-call from
-// stats.bySet rather than living in the static BADGES list.
-const SET_TIERS = [
-  { pct: 25, label: 'Découverte', icon: 'compass' as const },
-  { pct: 50, label: 'Collection', icon: 'albums' as const },
-  { pct: 75, label: 'Expertise', icon: 'star' as const },
-  { pct: 90, label: 'Presque complet', icon: 'ribbon' as const },
-  { pct: 100, label: 'Set complet', icon: 'trophy' as const },
-];
-
+// stats.bySet rather than living in the static BADGES list. Tier definitions
+// are shared with the ring/trophy treatment on SetGoalTile/pinned-set.
 function buildSetBadges(bySet: SetBadgeInfo[]): Badge[] {
   const badges: Badge[] = [];
   for (const s of bySet) {
