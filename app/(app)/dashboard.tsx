@@ -138,6 +138,7 @@ export default function DashboardScreen() {
                     setId={g.setId}
                     setName={set.name}
                     total={set.cardCount}
+                    symbol={set.symbol}
                     onPress={() => router.push(`/pinned-set/${g.setId}`)}
                   />
                 );

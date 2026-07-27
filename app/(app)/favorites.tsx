@@ -280,10 +280,11 @@ export default function FavoritesScreen() {
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
           <Chip label="Favoris" active={subTab === 'favorites'} onPress={() => setSubTab('favorites')} />
-          <Chip label="Équipes" active={subTab === 'teams'} onPress={() => setSubTab('teams')} />
-          <Chip label="Mes listes" active={subTab === 'lists'} onPress={() => setSubTab('lists')} />
           <Chip label="Extensions" active={subTab === 'goals'} onPress={() => setSubTab('goals')} />
           <Chip label="Dresseurs" active={false} onPress={() => router.push('/trainers')} />
+          <Chip label="Mes listes" active={subTab === 'lists'} onPress={() => setSubTab('lists')} />
+          {/* "Équipes" is intentionally not surfaced for now — kept dormant (state/branch
+              still below) for a possible future deckbuilding feature, not deleted. */}
         </ScrollView>
         {subTab === 'favorites' && (
           <Text style={styles.legend}>
@@ -563,6 +564,7 @@ export default function FavoritesScreen() {
                     setId={g.setId}
                     setName={set.name}
                     total={set.cardCount}
+                    symbol={set.symbol}
                     onPress={() => router.push(`/pinned-set/${g.setId}`)}
                   />
                 );

@@ -23,7 +23,7 @@ interface TcgCard {
   supertype: string;
   subtypes?: string[];
   nationalPokedexNumbers?: number[];
-  set: { id: string; name: string; series: string; releaseDate: string };
+  set: { id: string; name: string; series: string; releaseDate: string; images?: { symbol?: string; logo?: string } };
   number: string;
   rarity?: string;
   artist?: string;
@@ -84,6 +84,8 @@ function toRow(c: TcgCard) {
     image_large: c.images.large ?? null,
     release_date: c.set.releaseDate ?? null,
     series: c.set.series ?? null,
+    set_symbol: c.set.images?.symbol ?? null,
+    set_logo: c.set.images?.logo ?? null,
     cardmarket_trend_eur: c.cardmarket?.prices?.trendPrice ?? null,
     cardmarket_avg_eur: c.cardmarket?.prices?.averageSellPrice ?? null,
     cardmarket_low_eur: c.cardmarket?.prices?.lowPrice ?? null,

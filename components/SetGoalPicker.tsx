@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { View, Text, TextInput, Pressable, FlatList, Modal, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, TextInput, Pressable, FlatList, Modal, StyleSheet, Image, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTcgSets, type TcgSetInfo } from '@/lib/tcg-index';
 import { useToggleSetGoal } from '@/lib/collection-goals';
@@ -43,6 +43,8 @@ export function SetGoalPicker({ visible, pinnedSetIds, onClose }: Props) {
     empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: spacing.xl, fontStyle: 'italic' as const },
     row: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, paddingHorizontal: 16, height: 60 },
     rowPressed: { backgroundColor: colors.surfaceAlt },
+    rowIcon: { width: 24, height: 24 },
+    rowIconPlaceholder: { width: 24, height: 24 },
     rowText: { flex: 1 },
     rowLabel: { fontSize: 14, fontFamily: fonts.bodyBold, color: colors.text },
     rowCaption: { fontSize: 12, fontFamily: fonts.mono, color: colors.textDim, marginTop: 2 },
@@ -83,6 +85,11 @@ export function SetGoalPicker({ visible, pinnedSetIds, onClose }: Props) {
                   <Pressable
                     onPress={() => toggleGoal.mutate({ setId: item.id, currentlyPinned: pinned })}
                     style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+                    {item.symbol ? (
+                      <Image source={{ uri: item.symbol }} style={styles.rowIcon} resizeMode="contain" />
+                    ) : (
+                      <View style={styles.rowIconPlaceholder} />
+                    )}
                     <View style={styles.rowText}>
                       <Text style={styles.rowLabel} numberOfLines={1}>{item.name}</Text>
                       <Text style={styles.rowCaption}>
