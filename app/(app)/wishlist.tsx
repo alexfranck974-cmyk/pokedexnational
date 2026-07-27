@@ -173,7 +173,7 @@ export default function WishlistScreen() {
             const ownedCount = item.cards.filter(c => ownedIds.has(c.id)).length;
             return (
               <Pressable
-                onPress={() => enterPokemonDetail(router, `/pokemon/${item.dexNum}?wishes=1`)}
+                onPress={() => enterPokemonDetail(router, `/pokemon/${item.dexNum}?wishes=1`, '/wishlist')}
                 style={({ pressed }) => [styles.pokemonRow, ownedCount > 0 && styles.pokemonRowOwned, pressed && { backgroundColor: colors.surfaceAlt }]}>
                 <View style={styles.pokemonSpriteWrap}>
                   {mon && <Image source={{ uri: mon.sprite_url }} style={styles.pokemonSprite} resizeMode="contain" />}
@@ -210,7 +210,7 @@ export default function WishlistScreen() {
             const owned = ownedIds.has(item.id);
             return (
               <Pressable
-                onPress={() => enterPokemonDetail(router, `/pokemon/${item.dex_num}`)}
+                onPress={() => enterPokemonDetail(router, `/pokemon/${item.dex_num}`, '/wishlist')}
                 style={({ pressed }) => [styles.tile, pressed && { transform: [{ scale: 0.97 }] }]}>
                 <View style={styles.imgWrap}>
                   {owned ? (

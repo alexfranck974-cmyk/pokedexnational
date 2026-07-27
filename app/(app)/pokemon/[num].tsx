@@ -15,6 +15,7 @@ import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForPokemon } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
 import { useUserCards, useLedgerCardsForDex, useUserWishlist, useToggleCard, useToggleWish, useCardAcquiredAt } from '@/lib/collection';
+import { useBackTo, withReturnTo } from '@/lib/navigation';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
@@ -26,8 +27,9 @@ const REGIONS: { id: 'global' | 'jp' | 'cn'; label: string; emoji: string }[] = 
 ];
 
 export default function PokemonDetail() {
-  const { num: numStr, wishes } = useLocalSearchParams<{ num: string; wishes?: string }>();
+  const { num: numStr, wishes, from } = useLocalSearchParams<{ num: string; wishes?: string; from?: string }>();
   const router = useRouter();
+  const goBack = useBackTo('/pokedex');
   const num = parseInt(numStr as string, 10);
   const p = POKEDEX.find(x => x.num === num);
   const { session } = useSession();
@@ -63,7 +65,9 @@ export default function PokemonDetail() {
 
   const prevNum = num > 1 ? num - 1 : POKEDEX.length;
   const nextNum = num < POKEDEX.length ? num + 1 : 1;
-  const goTo = (n: number) => router.replace(`/pokemon/${n}`);
+  // Carry the origin (`from`) forward across swipes so "Retour" still returns
+  // to wherever the user originally entered this screen from, not the default.
+  const goTo = (n: number) => router.replace((from ? withReturnTo(`/pokemon/${n}`, decodeURIComponent(from)) : `/pokemon/${n}`) as never);
 
   // Swipe left/right anywhere on the screen to browse the National Pokédex —
   // the arrow buttons below stay as a discoverable bonus, not the only way in.
@@ -158,9 +162,9 @@ export default function PokemonDetail() {
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={styles.hero}>
         <View style={styles.heroTopRow}>
-          <Pressable onPress={() => router.replace('/pokedex')} style={styles.back} hitSlop={8}>
+          <Pressable onPress={goBack} style={styles.back} hitSlop={8}>
             <Ionicons name="chevron-back" size={18} color="white" />
-            <Text style={styles.backText}>Pokédex</Text>
+            <Text style={styles.backText}>Retour</Text>
           </Pressable>
           <View style={styles.heroViewToggle}>
             <Pressable

@@ -9,6 +9,7 @@ import { useSession } from '@/lib/auth';
 import { useUserDex, useOwnedCardImages, useWishedDexNums, useAllOwnedCardsDetailed, useOwnedDexNums } from '@/lib/collection';
 import { useTcgIndex, useTcgSets, useTcgRarities } from '@/lib/tcg-index';
 import { applyPokedexPipeline } from '@/lib/pokedex-list';
+import { withReturnTo } from '@/lib/navigation';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { PokedexGrid } from '@/components/PokedexGrid';
 import { SearchFilterBar } from '@/components/SearchFilterBar';
@@ -100,7 +101,7 @@ export default function PokedexScreen() {
         ownedImages={ownedImages}
         wishedInDexSet={wishedInDexSet}
         columnsOverride={columns}
-        onSelect={num => router.push(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`)}
+        onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
         onLongSelect={num => {
           const idx = ownedItems.findIndex(p => p.num === num);
           if (idx !== -1) setZoomIndex(idx);

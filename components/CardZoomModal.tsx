@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Modal, Image, Text, View, PanResponder, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, useRef } from 'react';
+import { Modal, Image, Text, View, PanResponder, Platform, useWindowDimensions } from 'react-native';
 import { useThemedStyles, fonts, spacing } from '@/lib/theme';
 
 export interface ZoomableCard {
@@ -27,6 +27,30 @@ export function CardZoomModal({ card, caption, onClose, onSwipeNext, onSwipePrev
       textAlign: 'center' as const, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6,
     },
   }));
+
+  // On web, make the browser/Android back gesture close the modal instead of
+  // navigating the underlying page away: push a throwaway history entry while
+  // open, and treat popping it as a close request. Keyed on isOpen (not `card`
+  // itself) so browsing between cards via swipe doesn't push/pop per card.
+  const isOpen = card !== null;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !isOpen) return;
+    let closedViaPopState = false;
+    window.history.pushState({ cardZoomModal: true }, '');
+    const handlePopState = () => {
+      closedViaPopState = true;
+      onCloseRef.current();
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      // Closed via tap/swipe rather than the back button — consume the entry
+      // we pushed so a later real "back" press isn't silently swallowed by it.
+      if (!closedViaPopState) window.history.back();
+    };
+  }, [isOpen]);
 
   // Single responder handles both tap-to-close and swipe-to-browse — claiming it
   // on the same gesture avoids a nested Pressable racing a child PanResponder

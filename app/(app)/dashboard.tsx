@@ -10,7 +10,7 @@ import { useUserDex, useAllOwnedCardsDetailed, useAllOwnedCardsLedgerDetailed, u
 import { useShowcase } from '@/lib/favorites';
 import { useSetGoals } from '@/lib/collection-goals';
 import { useTcgSets } from '@/lib/tcg-index';
-import { enterPokemonDetail } from '@/lib/navigation';
+import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
 import { topByValue, totalCollectionValue, computeByGeneration } from '@/lib/dashboard-stats';
 import { buildEvolutionFamilies } from '@/lib/evolutions';
 import { suggestEvolutionGaps, suggestBinderPages, suggestByGeneration, suggestDexUpgrades } from '@/lib/suggestions';
@@ -109,7 +109,7 @@ export default function DashboardScreen() {
           userId={userId}
           wishedCardIds={wishedCardIds}
           wishlistCount={wishedCards.length}
-          onSelectMissing={(dexNum) => enterPokemonDetail(router, `/pokemon/${dexNum}`)}
+          onSelectMissing={(dexNum) => enterPokemonDetail(router, `/pokemon/${dexNum}`, '/dashboard')}
         />
 
         <View style={styles.section}>
@@ -139,7 +139,7 @@ export default function DashboardScreen() {
                     setName={set.name}
                     total={set.cardCount}
                     symbol={set.symbol}
-                    onPress={() => router.push(`/pinned-set/${g.setId}`)}
+                    onPress={() => router.push(withReturnTo(`/pinned-set/${g.setId}`, '/dashboard') as never)}
                   />
                 );
               })}
@@ -158,7 +158,7 @@ export default function DashboardScreen() {
             title="Compléter une ligne évolutive"
             items={evolutionSuggestions.map(s => ({
               key: String(s.num), image: s.spriteUrl, label: s.name, caption: s.reason,
-              onPress: () => enterPokemonDetail(router, `/pokemon/${s.num}`),
+              onPress: () => enterPokemonDetail(router, `/pokemon/${s.num}`, '/dashboard'),
             }))}
             emptyHint="Toutes tes lignes évolutives possédées sont complètes !"
           />
@@ -166,7 +166,7 @@ export default function DashboardScreen() {
             title="Finir une page de classeur (4×4)"
             items={binderSuggestions.map(s => ({
               key: String(s.num), image: s.spriteUrl, label: s.name, caption: s.reason,
-              onPress: () => enterPokemonDetail(router, `/pokemon/${s.num}`),
+              onPress: () => enterPokemonDetail(router, `/pokemon/${s.num}`, '/dashboard'),
             }))}
             emptyHint="Aucune page en cours de complétion pour l’instant."
           />
@@ -174,7 +174,7 @@ export default function DashboardScreen() {
             title="Génération prioritaire"
             items={generationSuggestions.map(s => ({
               key: String(s.num), image: s.spriteUrl, label: s.name, caption: s.reason,
-              onPress: () => enterPokemonDetail(router, `/pokemon/${s.num}`),
+              onPress: () => enterPokemonDetail(router, `/pokemon/${s.num}`, '/dashboard'),
             }))}
             emptyHint="Bravo, toutes les générations sont complètes !"
           />
@@ -182,7 +182,7 @@ export default function DashboardScreen() {
             title="Depuis tes collections"
             items={dexUpgradeSuggestions.map(s => ({
               key: String(s.num), image: s.spriteUrl, label: s.name, caption: s.reason,
-              onPress: () => enterPokemonDetail(router, `/pokemon/${s.num}`),
+              onPress: () => enterPokemonDetail(router, `/pokemon/${s.num}`, '/dashboard'),
             }))}
             emptyHint="Aucune carte possédée en attente de devenir ta carte officielle."
           />
@@ -195,7 +195,7 @@ export default function DashboardScreen() {
             image: c.imageSmall,
             label: c.name,
             caption: c.cardmarketTrendEur !== null ? eurFormatter.format(c.cardmarketTrendEur) : undefined,
-            onPress: () => enterPokemonDetail(router, `/pokemon/${c.dexNum}`),
+            onPress: () => enterPokemonDetail(router, `/pokemon/${c.dexNum}`, '/dashboard'),
           }))}
           emptyHint="Aucune carte avec un prix connu pour l’instant."
         />

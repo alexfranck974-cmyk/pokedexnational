@@ -13,11 +13,13 @@ import { useCardsForSet } from '@/lib/tcg';
 import { useTcgSets } from '@/lib/tcg-index';
 import { useSession } from '@/lib/auth';
 import { useAllOwnedCardIds, useToggleOwnedCard } from '@/lib/collection';
+import { useBackTo } from '@/lib/navigation';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 export default function PinnedSetDetail() {
   const { setId } = useLocalSearchParams<{ setId: string }>();
   const router = useRouter();
+  const goBack = useBackTo('/dashboard');
   const qc = useQueryClient();
   const { session } = useSession();
   const userId = session?.user.id;
@@ -75,9 +77,9 @@ export default function PinnedSetDetail() {
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={styles.hero}>
         <View style={styles.heroTopRow}>
-          <Pressable onPress={() => router.replace('/dashboard')} style={styles.back} hitSlop={8}>
+          <Pressable onPress={goBack} style={styles.back} hitSlop={8}>
             <Ionicons name="chevron-back" size={18} color="white" />
-            <Text style={styles.backText}>Dashboard</Text>
+            <Text style={styles.backText}>Retour</Text>
           </Pressable>
           <View style={styles.heroViewToggle}>
             <Pressable

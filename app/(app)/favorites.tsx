@@ -14,7 +14,7 @@ import { useSession } from '@/lib/auth';
 import { useUserDex, useOwnedCardImages, useAllOwnedCardIds } from '@/lib/collection';
 import { useFavorites, useToggleFavorite, useShowcase, useToggleShowcase } from '@/lib/favorites';
 import { toast } from '@/lib/toast';
-import { enterPokemonDetail } from '@/lib/navigation';
+import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
 import {
   useTeams, useCreateTeam, useRenameTeam, useDeleteTeam, useSetTeamSlot, useClearTeamSlot,
 } from '@/lib/teams';
@@ -281,7 +281,7 @@ export default function FavoritesScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
           <Chip label="Favoris" active={subTab === 'favorites'} onPress={() => setSubTab('favorites')} />
           <Chip label="Extensions" active={subTab === 'goals'} onPress={() => setSubTab('goals')} />
-          <Chip label="Dresseurs" active={false} onPress={() => router.push('/trainers')} />
+          <Chip label="Dresseurs" active={false} onPress={() => router.push(withReturnTo('/trainers', '/favorites') as never)} />
           <Chip label="Mes listes" active={subTab === 'lists'} onPress={() => setSubTab('lists')} />
           {/* "Équipes" is intentionally not surfaced for now — kept dormant (state/branch
               still below) for a possible future deckbuilding feature, not deleted. */}
@@ -338,7 +338,7 @@ export default function FavoritesScreen() {
                     cardImage={ownedImages.get(item.num)}
                     favorited={favorites.has(item.num)}
                     inShowcase={showcase.has(item.num)}
-                    onPress={() => enterPokemonDetail(router, `/pokemon/${item.num}`)}
+                    onPress={() => enterPokemonDetail(router, `/pokemon/${item.num}`, '/favorites')}
                     onToggleFavorite={() => toggleFavorite.mutate({ dexNum: item.num, currentlyFavorited: favorites.has(item.num) })}
                     onToggleShowcase={() => handleToggleShowcase(item.num)}
                   />
@@ -565,7 +565,7 @@ export default function FavoritesScreen() {
                     setName={set.name}
                     total={set.cardCount}
                     symbol={set.symbol}
-                    onPress={() => router.push(`/pinned-set/${g.setId}`)}
+                    onPress={() => router.push(withReturnTo(`/pinned-set/${g.setId}`, '/favorites') as never)}
                   />
                 );
               })}

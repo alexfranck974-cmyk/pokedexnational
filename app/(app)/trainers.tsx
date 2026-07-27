@@ -12,6 +12,7 @@ import type { TcgCardRow } from '@/lib/tcg';
 import { useTrainerCards } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
 import { useAllOwnedCardIds, useToggleOwnedCard } from '@/lib/collection';
+import { useBackTo } from '@/lib/navigation';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 function normalize(s: string): string {
@@ -46,6 +47,7 @@ function numColsFor(width: number): number {
 
 export default function TrainersScreen() {
   const router = useRouter();
+  const goBackToOrigin = useBackTo('/favorites');
   const { session } = useSession();
   const userId = session?.user.id;
   const { width } = useWindowDimensions();
@@ -119,7 +121,7 @@ export default function TrainersScreen() {
 
   const back = () => {
     if (selectedCharacter) setSelectedCharacter(null);
-    else router.replace('/favorites');
+    else goBackToOrigin();
   };
 
   return (
