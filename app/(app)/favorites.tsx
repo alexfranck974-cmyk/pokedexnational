@@ -22,9 +22,13 @@ import {
   useCollections, useCreateCollection, useRenameCollection, useDeleteCollection,
   useCollectionCards, useRemoveCardFromCollection,
 } from '@/lib/collections';
+import { useSetGoals } from '@/lib/collection-goals';
+import { useTcgSets } from '@/lib/tcg-index';
 import { FavoriteTile } from '@/components/FavoriteTile';
 import { TeamSlotPicker } from '@/components/TeamSlotPicker';
 import { CollectionCardPicker } from '@/components/CollectionCardPicker';
+import { SetGoalTile } from '@/components/SetGoalTile';
+import { SetGoalPicker } from '@/components/SetGoalPicker';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
@@ -88,7 +92,13 @@ export default function FavoritesScreen() {
   const deleteCollection = useDeleteCollection();
   const removeCardFromCollection = useRemoveCardFromCollection();
 
-  const [subTab, setSubTab] = useState<'favorites' | 'teams' | 'collections'>('favorites');
+  const { data: goals = [] } = useSetGoals(userId);
+  const { data: allSets = [] } = useTcgSets();
+  const setsById = useMemo(() => new Map(allSets.map(s => [s.id, s])), [allSets]);
+  const pinnedSetIds = useMemo(() => new Set(goals.map(g => g.setId)), [goals]);
+  const [goalPickerOpen, setGoalPickerOpen] = useState(false);
+
+  const [subTab, setSubTab] = useState<'favorites' | 'teams' | 'lists' | 'goals'>('favorites');
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
@@ -188,7 +198,7 @@ export default function FavoritesScreen() {
 
   const confirmTarget: ConfirmTarget | null = deleteTarget
     ? {
-        title: deleteTarget.kind === 'team' ? 'Supprimer l’équipe' : 'Supprimer la collection',
+        title: deleteTarget.kind === 'team' ? 'Supprimer l’équipe' : 'Supprimer la liste',
         message: `Supprimer "${deleteTarget.name}" ?`,
       }
     : null;
@@ -256,19 +266,25 @@ export default function FavoritesScreen() {
       position: 'absolute' as const, top: 4, right: 4, width: 24, height: 24, borderRadius: 12,
       backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
+    goalsGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm },
   }));
 
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
         <Text style={styles.title}>
-          {subTab === 'favorites' ? 'Favoris' : subTab === 'teams' ? 'Équipes' : 'Collections'}
+          {subTab === 'favorites' ? 'Favoris'
+            : subTab === 'teams' ? 'Équipes'
+            : subTab === 'lists' ? 'Mes listes'
+            : 'Extensions'}
         </Text>
-        <View style={styles.chipRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
           <Chip label="Favoris" active={subTab === 'favorites'} onPress={() => setSubTab('favorites')} />
           <Chip label="Équipes" active={subTab === 'teams'} onPress={() => setSubTab('teams')} />
-          <Chip label="Collections" active={subTab === 'collections'} onPress={() => setSubTab('collections')} />
-        </View>
+          <Chip label="Mes listes" active={subTab === 'lists'} onPress={() => setSubTab('lists')} />
+          <Chip label="Extensions" active={subTab === 'goals'} onPress={() => setSubTab('goals')} />
+          <Chip label="Dresseurs" active={false} onPress={() => router.push('/trainers')} />
+        </ScrollView>
         {subTab === 'favorites' && (
           <Text style={styles.legend}>
             ★ Favori · ✨ Vitrine (max {VITRINE_LIMIT}) — mise en avant sur ton Dashboard et ton profil public
@@ -417,7 +433,8 @@ export default function FavoritesScreen() {
             )}
           </View>
         )
-      ) : selectedCollection ? (
+      ) : subTab === 'lists' ? (
+        selectedCollection ? (
         <View style={styles.teamEditor}>
           <View style={styles.teamEditorHeader}>
             <Pressable onPress={() => { setSelectedCollectionId(null); setCollectionRenaming(false); }} hitSlop={8}>
@@ -493,7 +510,7 @@ export default function FavoritesScreen() {
         <View style={styles.teamList}>
           <View style={styles.newTeamRow}>
             <TextInput
-              placeholder="Nom de la nouvelle collection"
+              placeholder="Nom de la nouvelle liste"
               value={newCollectionName}
               onChangeText={setNewCollectionName}
               onSubmitEditing={handleCreateCollection}
@@ -506,7 +523,7 @@ export default function FavoritesScreen() {
 
           {collections.length === 0 ? (
             <View style={styles.center}>
-              <Text style={styles.emptyHint}>Aucune collection pour l’instant — crée-en une ci-dessus.</Text>
+              <Text style={styles.emptyHint}>Aucune liste pour l’instant — crée-en une ci-dessus.</Text>
             </View>
           ) : (
             <FlatList
@@ -520,6 +537,37 @@ export default function FavoritesScreen() {
                 </Pressable>
               )}
             />
+          )}
+        </View>
+        )
+      ) : (
+        <View style={styles.teamList}>
+          <Pressable onPress={() => setGoalPickerOpen(true)} style={styles.addCardsBtn}>
+            <Ionicons name="add" size={18} color="white" />
+            <Text style={styles.addCardsBtnText}>Épingler une extension</Text>
+          </Pressable>
+
+          {goals.length === 0 ? (
+            <View style={styles.center}>
+              <Text style={styles.emptyHint}>Aucune extension épinglée pour l’instant.</Text>
+            </View>
+          ) : (
+            <ScrollView contentContainerStyle={styles.goalsGrid}>
+              {goals.map(g => {
+                const set = setsById.get(g.setId);
+                if (!set) return null;
+                return (
+                  <SetGoalTile
+                    key={g.setId}
+                    userId={userId}
+                    setId={g.setId}
+                    setName={set.name}
+                    total={set.cardCount}
+                    onPress={() => router.push(`/pinned-set/${g.setId}`)}
+                  />
+                );
+              })}
+            </ScrollView>
           )}
         </View>
       )}
@@ -541,6 +589,12 @@ export default function FavoritesScreen() {
         collectionId={selectedCollectionId}
         cardIdsInCollection={collectionCardIds}
         onClose={() => setCardPickerOpen(false)}
+      />
+
+      <SetGoalPicker
+        visible={goalPickerOpen}
+        pinnedSetIds={pinnedSetIds}
+        onClose={() => setGoalPickerOpen(false)}
       />
 
       <ConfirmDialog

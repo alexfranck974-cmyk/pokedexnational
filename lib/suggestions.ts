@@ -3,6 +3,7 @@ import { getName } from './i18n';
 import type { EvolutionFamily } from './evolutions';
 import type { GenerationProgress } from './dashboard-stats';
 import { GENERATIONS } from './generations';
+import type { OwnedCardDetail } from './collection';
 
 export interface Suggestion {
   num: number;
@@ -94,4 +95,33 @@ export function suggestByGeneration(
       spriteUrl: mon.sprite_url,
       reason: `${worst.label} : ${worst.pct}% complété`,
     }));
+}
+
+// Cards owned via the ownership ledger (sets, custom lists) that aren't the Pokémon's
+// current official National Dex card — surfaced as an opt-in suggestion rather than
+// silently becoming the dex card. One suggestion per dex_num (first match wins).
+export function suggestDexUpgrades(
+  pokedex: Pokemon[],
+  ledgerCards: (OwnedCardDetail & { setName: string })[],
+  dexCardIdByDex: Map<number, string>,
+  limit = 8,
+): Suggestion[] {
+  const byNum = new Map(pokedex.map(p => [p.num, p]));
+  const seen = new Set<number>();
+  const suggestions: Suggestion[] = [];
+  for (const card of ledgerCards) {
+    if (seen.has(card.dexNum)) continue;
+    if (dexCardIdByDex.get(card.dexNum) === card.cardId) continue;
+    const mon = byNum.get(card.dexNum);
+    if (!mon) continue;
+    seen.add(card.dexNum);
+    suggestions.push({
+      num: mon.num,
+      name: getName(mon),
+      spriteUrl: mon.sprite_url,
+      reason: `Tu as ${card.name} (${card.setName})`,
+    });
+    if (suggestions.length >= limit) break;
+  }
+  return suggestions;
 }

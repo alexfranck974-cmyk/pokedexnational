@@ -22,6 +22,13 @@ export function useTcgIndex() {
   });
 }
 
+export interface TcgSetInfo {
+  id: string;
+  name: string;
+  releaseDate: string | null;
+  cardCount: number;
+}
+
 export function useTcgSets() {
   return useQuery({
     queryKey: ['tcg_sets'],
@@ -29,13 +36,15 @@ export function useTcgSets() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tcg_sets')
-        .select('set_id, set_name, release_date')
+        .select('set_id, set_name, release_date, card_count')
         .order('release_date', { ascending: false, nullsFirst: false });
       if (error) throw error;
       return (data ?? []).map(row => ({
         id: row.set_id as string,
         name: row.set_name as string,
-      }));
+        releaseDate: (row.release_date as string | null) ?? null,
+        cardCount: row.card_count as number,
+      })) as TcgSetInfo[];
     },
   });
 }

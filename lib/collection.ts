@@ -59,16 +59,28 @@ export function useToggleCard() {
     }: { cardId: string; currentlyOwned: boolean; dexNum: number; imageSmall: string }) => {
       if (!userId) throw new Error('Not signed in');
       if (currentlyOwned) {
+        // Unchecking on the Pokémon page is the one place "I don't own this card
+        // anymore" is unambiguous — clear both the dex pick and the ownership ledger.
         const { error } = await supabase.from('user_cards').delete().eq('user_id', userId).eq('card_id', cardId);
         if (error) throw error;
+        const { error: ledgerError } = await supabase.from('user_owned_cards').delete().eq('user_id', userId).eq('card_id', cardId);
+        if (ledgerError) throw ledgerError;
       } else {
         // Upsert replaces any existing card for the same (user_id, dex_num) via trigger + PK.
         // acquired_at is set explicitly: ON CONFLICT DO UPDATE only touches columns in the
         // payload, so without this the swap would silently keep the original card's old date.
+        const acquiredAt = new Date().toISOString();
         const { error } = await supabase
           .from('user_cards')
-          .upsert({ user_id: userId, card_id: cardId, acquired_at: new Date().toISOString() }, { onConflict: 'user_id,dex_num' });
+          .upsert({ user_id: userId, card_id: cardId, acquired_at: acquiredAt }, { onConflict: 'user_id,dex_num' });
         if (error) throw error;
+        // Picking a card as the official dex card means you own it — mirror into the
+        // ownership ledger. Swapping to a different card later does NOT remove the
+        // previous one from here: you can still own it, you just changed your pick.
+        const { error: ledgerError } = await supabase
+          .from('user_owned_cards')
+          .upsert({ user_id: userId, card_id: cardId, acquired_at: acquiredAt }, { onConflict: 'user_id,card_id' });
+        if (ledgerError) throw ledgerError;
         // A card just marked owned no longer belongs on the wishlist — no-op if it wasn't there.
         const { error: wishError } = await supabase.from('user_wishlist').delete().eq('user_id', userId).eq('card_id', cardId);
         if (wishError) throw wishError;
@@ -251,17 +263,83 @@ export function useWishedDexNums(userId?: string) {
   });
 }
 
+// Sourced from the ownership ledger (user_owned_cards), not user_cards: this answers
+// "do I own this exact card" regardless of whether it's the chosen National Dex card
+// for its Pokémon. Used by set goals, custom lists, the public profile, and the wishlist.
 export function useAllOwnedCardIds(userId?: string) {
   return useQuery({
     queryKey: ['all_owned_card_ids', userId],
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('user_cards')
+        .from('user_owned_cards')
         .select('card_id')
         .eq('user_id', userId!);
       if (error) throw error;
       return new Set<string>((data ?? []).map(r => r.card_id as string));
+    },
+  });
+}
+
+export function useToggleOwnedCard() {
+  const qc = useQueryClient();
+  const { session } = useSession();
+  const userId = session?.user.id;
+
+  return useMutation({
+    mutationFn: async ({ cardId, currentlyOwned }: { cardId: string; currentlyOwned: boolean }) => {
+      if (!userId) throw new Error('Not signed in');
+      if (currentlyOwned) {
+        const { error } = await supabase.from('user_owned_cards').delete().eq('user_id', userId).eq('card_id', cardId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('user_owned_cards').insert({ user_id: userId, card_id: cardId });
+        if (error) throw error;
+      }
+    },
+    onMutate: async ({ cardId, currentlyOwned }) => {
+      await qc.cancelQueries({ queryKey: ['all_owned_card_ids', userId] });
+      const prev = qc.getQueryData<Set<string>>(['all_owned_card_ids', userId]);
+      const next = new Set(prev ?? []);
+      if (currentlyOwned) next.delete(cardId); else next.add(cardId);
+      qc.setQueryData(['all_owned_card_ids', userId], next);
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['all_owned_card_ids', userId], ctx.prev);
+      toast('Impossible de sauvegarder, réessaie.');
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['all_owned_card_ids', userId] });
+    },
+  });
+}
+
+export function useAllOwnedCardsLedgerDetailed(userId?: string) {
+  return useQuery({
+    queryKey: ['all_owned_cards_ledger_detailed', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_owned_cards')
+        .select('card_id, acquired_at, tcg_cards(dex_num, name, image_small, image_large, set_name, rarity, cardmarket_trend_eur, artist)')
+        .eq('user_id', userId!);
+      if (error) throw error;
+      return (data ?? []).map(r => {
+        const card = r.tcg_cards as any;
+        return {
+          cardId: r.card_id as string,
+          dexNum: (card?.dex_num as number | undefined) ?? 0,
+          acquiredAt: r.acquired_at as string,
+          rarity: (card?.rarity as string | undefined) ?? null,
+          name: (card?.name as string | undefined) ?? '',
+          imageSmall: (card?.image_small as string | undefined) ?? '',
+          imageLarge: (card?.image_large as string | undefined) ?? null,
+          setName: (card?.set_name as string | undefined) ?? '',
+          cardmarketTrendEur: (card?.cardmarket_trend_eur as number | undefined) ?? null,
+          artist: (card?.artist as string | undefined) ?? null,
+        };
+      }) as (OwnedCardDetail & { setName: string })[];
     },
   });
 }

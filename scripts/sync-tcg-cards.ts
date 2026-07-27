@@ -20,6 +20,8 @@ const supabase = createClient(url, SUPABASE_SERVICE_ROLE_KEY, {
 interface TcgCard {
   id: string;
   name: string;
+  supertype: string;
+  subtypes?: string[];
   nationalPokedexNumbers?: number[];
   set: { id: string; name: string; series: string; releaseDate: string };
   number: string;
@@ -42,7 +44,7 @@ async function fetchPage(page: number): Promise<{ data: TcgCard[]; totalCount: n
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const res = await fetch(
-        `https://api.pokemontcg.io/v2/cards?q=nationalPokedexNumbers:[1 TO 1025]&pageSize=${PAGE_SIZE}&page=${page}`,
+        `https://api.pokemontcg.io/v2/cards?pageSize=${PAGE_SIZE}&page=${page}`,
         { headers: { 'X-Api-Key': POKEMON_TCG_API_KEY! } },
       );
       if (res.ok) return res.json();
@@ -66,11 +68,12 @@ async function fetchPage(page: number): Promise<{ data: TcgCard[]; totalCount: n
 }
 
 function toRow(c: TcgCard) {
-  const dex = c.nationalPokedexNumbers?.find(n => n >= 1 && n <= 1025);
-  if (!dex) return null;
+  const dex = c.nationalPokedexNumbers?.find(n => n >= 1 && n <= 1025) ?? null;
   return {
     id: c.id,
     name: c.name,
+    supertype: c.supertype,
+    subtypes: c.subtypes ?? null,
     dex_num: dex,
     set_id: c.set.id,
     set_name: c.set.name,
@@ -98,7 +101,7 @@ async function main() {
     try {
       const { data, totalCount } = await fetchPage(page);
       total = totalCount;
-      const rows = data.map(toRow).filter((r): r is NonNullable<typeof r> => r !== null);
+      const rows = data.map(toRow);
       if (rows.length) {
         const { error } = await supabase.from('tcg_cards').upsert(rows, { onConflict: 'id' });
         if (error) throw error;

@@ -1,28 +1,33 @@
 import { useMemo, useState } from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
 import { useSession } from '@/lib/auth';
-import { useUserDex, useAllOwnedCardsDetailed, useAllWishedCards } from '@/lib/collection';
+import { useUserDex, useAllOwnedCardsDetailed, useAllOwnedCardsLedgerDetailed, useAllWishedCards } from '@/lib/collection';
 import { useShowcase } from '@/lib/favorites';
+import { useSetGoals } from '@/lib/collection-goals';
+import { useTcgSets } from '@/lib/tcg-index';
 import { enterPokemonDetail } from '@/lib/navigation';
 import { topByValue, totalCollectionValue, computeByGeneration } from '@/lib/dashboard-stats';
 import { buildEvolutionFamilies } from '@/lib/evolutions';
-import { suggestEvolutionGaps, suggestBinderPages, suggestByGeneration } from '@/lib/suggestions';
+import { suggestEvolutionGaps, suggestBinderPages, suggestByGeneration, suggestDexUpgrades } from '@/lib/suggestions';
 import { PokedexStatsSection } from '@/components/PokedexStatsSection';
 import { ShowcaseRow } from '@/components/ShowcaseRow';
 import { VitrineCarousel } from '@/components/VitrineCarousel';
 import { CardZoomModal } from '@/components/CardZoomModal';
 import { IconBubble } from '@/components/IconBubble';
+import { SetGoalTile } from '@/components/SetGoalTile';
+import { SetGoalPicker } from '@/components/SetGoalPicker';
 import { useTheme, useThemedStyles, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
 const EVOLUTION_FAMILIES = buildEvolutionFamilies(POKEDEX);
 const eurFormatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 const SUGGESTIONS_TINT = '#f472b6';
+const OBJECTIVES_TINT = '#38bdf8';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -32,6 +37,12 @@ export default function DashboardScreen() {
   const { data: ownedCards = [] } = useAllOwnedCardsDetailed(userId);
   const { data: showcase = new Set<number>() } = useShowcase(userId);
   const { data: wishedCards = [] } = useAllWishedCards(userId);
+  const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
+  const [goalPickerOpen, setGoalPickerOpen] = useState(false);
+  const { data: goals = [] } = useSetGoals(userId);
+  const { data: allSets = [] } = useTcgSets();
+  const setsById = useMemo(() => new Map(allSets.map(s => [s.id, s])), [allSets]);
+  const pinnedSetIds = useMemo(() => new Set(goals.map(g => g.setId)), [goals]);
 
   const byGeneration = useMemo(() => computeByGeneration(POKEDEX, owned), [owned]);
   const wishedCardIds = useMemo(() => new Set(wishedCards.map((c: { id: string }) => c.id)), [wishedCards]);
@@ -49,6 +60,14 @@ export default function DashboardScreen() {
   );
   const [zoomIndex, setZoomIndex] = useState<number | null>(null);
   const ownedCardsByDex = useMemo(() => new Map(ownedCards.map(c => [c.dexNum, c])), [ownedCards]);
+  const dexCardIdByDex = useMemo(
+    () => new Map(Array.from(ownedCardsByDex.entries()).map(([num, c]) => [num, c.cardId])),
+    [ownedCardsByDex],
+  );
+  const dexUpgradeSuggestions = useMemo(
+    () => suggestDexUpgrades(POKEDEX, ledgerCards, dexCardIdByDex),
+    [ledgerCards, dexCardIdByDex],
+  );
   const vitrineCards = useMemo(() => Array.from(showcase)
     .map(dexNum => ownedCardsByDex.get(dexNum))
     .filter((c): c is NonNullable<typeof c> => !!c)
@@ -69,7 +88,13 @@ export default function DashboardScreen() {
 
     section: { gap: spacing.sm },
     sectionTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
-    sectionTitle: { fontSize: 18, fontFamily: fonts.display, color: colors.text },
+    sectionTitle: { fontSize: 18, fontFamily: fonts.display, color: colors.text, flex: 1 },
+    addGoalBtn: { padding: 2 },
+    emptyGoalCard: {
+      borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed' as const, borderRadius: 14,
+      padding: spacing.lg, alignItems: 'center' as const,
+    },
+    emptyGoalText: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
   }));
 
   return (
@@ -86,6 +111,40 @@ export default function DashboardScreen() {
           wishlistCount={wishedCards.length}
           onSelectMissing={(dexNum) => enterPokemonDetail(router, `/pokemon/${dexNum}`)}
         />
+
+        <View style={styles.section}>
+          <View style={styles.sectionTitleRow}>
+            <IconBubble size={28} color={colors.primarySoft}>
+              <Ionicons name="albums" size={15} color={OBJECTIVES_TINT} />
+            </IconBubble>
+            <Text style={styles.sectionTitle}>Objectifs de complétion</Text>
+            <Pressable onPress={() => setGoalPickerOpen(true)} hitSlop={8} style={styles.addGoalBtn}>
+              <Ionicons name="add-circle" size={22} color={colors.primary} />
+            </Pressable>
+          </View>
+          {goals.length === 0 ? (
+            <Pressable onPress={() => setGoalPickerOpen(true)} style={styles.emptyGoalCard}>
+              <Text style={styles.emptyGoalText}>Épingle une extension pour suivre sa progression ici.</Text>
+            </Pressable>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
+              {goals.map(g => {
+                const set = setsById.get(g.setId);
+                if (!set) return null;
+                return (
+                  <SetGoalTile
+                    key={g.setId}
+                    userId={userId}
+                    setId={g.setId}
+                    setName={set.name}
+                    total={set.cardCount}
+                    onPress={() => router.push(`/pinned-set/${g.setId}`)}
+                  />
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
 
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
@@ -118,6 +177,14 @@ export default function DashboardScreen() {
             }))}
             emptyHint="Bravo, toutes les générations sont complètes !"
           />
+          <ShowcaseRow
+            title="Depuis tes collections"
+            items={dexUpgradeSuggestions.map(s => ({
+              key: String(s.num), image: s.spriteUrl, label: s.name, caption: s.reason,
+              onPress: () => enterPokemonDetail(router, `/pokemon/${s.num}`),
+            }))}
+            emptyHint="Aucune carte possédée en attente de devenir ta carte officielle."
+          />
         </View>
 
         <ShowcaseRow
@@ -138,6 +205,7 @@ export default function DashboardScreen() {
         onSwipeNext={() => setZoomIndex(i => i === null ? null : (i + 1) % vitrineCards.length)}
         onSwipePrev={() => setZoomIndex(i => i === null ? null : (i - 1 + vitrineCards.length) % vitrineCards.length)}
       />
+      <SetGoalPicker visible={goalPickerOpen} pinnedSetIds={pinnedSetIds} onClose={() => setGoalPickerOpen(false)} />
     </SafeAreaView>
   );
 }

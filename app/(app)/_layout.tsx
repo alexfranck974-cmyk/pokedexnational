@@ -69,9 +69,9 @@ export default function AppLayout() {
       <Tabs.Screen
         name="favorites"
         options={{
-          title: 'Favoris',
+          title: 'Collections',
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'star' : 'star-outline'} size={size} color={focused ? colors.warning : color} />
+            <Ionicons name={focused ? 'albums' : 'albums-outline'} size={size} color={focused ? colors.warning : color} />
           ),
         }}
       />
@@ -94,6 +94,8 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen name="pokemon/[num]" options={{ href: null }} />
+      <Tabs.Screen name="pinned-set/[setId]" options={{ href: null }} />
+      <Tabs.Screen name="trainers" options={{ href: null }} />
     </Tabs>
   );
 }

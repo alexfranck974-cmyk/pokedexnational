@@ -13,6 +13,8 @@ export interface TcgCardRow {
   release_date: string | null;
   series: string | null;
   region: 'global' | 'jp' | 'cn';
+  dex_num?: number;
+  subtypes?: string[] | null;
 }
 
 export function useCardsForPokemon(dexNum: number | undefined) {
@@ -26,6 +28,52 @@ export function useCardsForPokemon(dexNum: number | undefined) {
         .select('id, name, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region')
         .eq('dex_num', dexNum!)
         .order('release_date', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as TcgCardRow[];
+    },
+  });
+}
+
+const PAGE_SIZE = 1000; // PostgREST caps a single response at this many rows regardless of .limit()
+
+export function useTrainerCards() {
+  return useQuery({
+    queryKey: ['tcg_trainer_cards'],
+    staleTime: Infinity,
+    queryFn: async () => {
+      const rows: TcgCardRow[] = [];
+      let from = 0;
+      while (true) {
+        // "Supporter" cards depict an actual Trainer character (Cynthia, Iono, Boss's
+        // Orders...) — Items/Stadiums/Tools are objects/places, not trainers themselves.
+        const { data, error } = await supabase
+          .from('tcg_cards')
+          .select('id, name, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region, subtypes')
+          .eq('supertype', 'Trainer')
+          .contains('subtypes', ['Supporter'])
+          .order('release_date', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw error;
+        rows.push(...((data ?? []) as TcgCardRow[]));
+        if (!data || data.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
+      return rows;
+    },
+  });
+}
+
+export function useCardsForSet(setId: string | undefined) {
+  return useQuery({
+    queryKey: ['tcg_cards_by_set', setId],
+    enabled: !!setId,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tcg_cards')
+        .select('id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region')
+        .eq('set_id', setId!)
+        .order('dex_num', { ascending: true });
       if (error) throw error;
       return (data ?? []) as TcgCardRow[];
     },
