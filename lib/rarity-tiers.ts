@@ -18,3 +18,11 @@ export function classifyRarity(rarity: string | null): RarityTier {
   if (!BASIC_RARITIES.has(rarity)) return 'holo';
   return 'basic';
 }
+
+// "Le set de base" per the user: an extension's cards minus its illustration-rare
+// alt-art reprints — used to decide what counts toward a type-line completion.
+const ILLUSTRATION_RARE_TIER = new Set(['Illustration Rare', 'Special Illustration Rare']);
+
+export function isIllustrationRareTier(rarity: string | null): boolean {
+  return !!rarity && ILLUSTRATION_RARE_TIER.has(rarity);
+}
