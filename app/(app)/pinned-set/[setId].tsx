@@ -5,9 +5,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
+import pokedexData from '@/data/pokedex.json';
+import type { Pokemon } from '@/lib/types';
 import { CardGallery } from '@/components/CardGallery';
 import { CardZoomModal } from '@/components/CardZoomModal';
 import { ProgressRing } from '@/components/ProgressRing';
+import { CaptureEffect, type CaptureEvent } from '@/components/CaptureEffect';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForSet } from '@/lib/tcg';
 import { useTcgSets } from '@/lib/tcg-index';
@@ -15,7 +18,12 @@ import { useSession } from '@/lib/auth';
 import { useAllOwnedCardIds, useToggleOwnedCard } from '@/lib/collection';
 import { useBackTo } from '@/lib/navigation';
 import { currentSetTier } from '@/lib/set-tiers';
+import { classifyRarity } from '@/lib/rarity-tiers';
+import { buildSetTypeGroups, typesCompletedByToggle } from '@/lib/set-type-completion';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+
+const POKEDEX = pokedexData as Pokemon[];
+const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
 
 export default function PinnedSetDetail() {
   const { setId } = useLocalSearchParams<{ setId: string }>();
@@ -32,6 +40,9 @@ export default function PinnedSetDetail() {
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [zoomCard, setZoomCard] = useState<TcgCardRow | null>(null);
+  const [captureQueue, setCaptureQueue] = useState<CaptureEvent[]>([]);
+  const currentCapture = captureQueue[0] ?? null;
+  const typeGroups = useMemo(() => buildSetTypeGroups(cards, POKEDEX_BY_DEX), [cards]);
 
   const set = useMemo(() => allSets.find(s => s.id === setId), [allSets, setId]);
   const setName = set?.name ?? setId ?? '';
@@ -131,14 +142,27 @@ export default function PinnedSetDetail() {
           ownedSet={ownedAll}
           readOnly={false}
           viewMode={viewMode}
-          onToggle={c => toggleOwned.mutate(
-            { cardId: c.id, currentlyOwned: ownedAll.has(c.id) },
-            { onSuccess: () => qc.invalidateQueries({ queryKey: ['set_goal_progress', userId, setId] }) },
-          )}
+          onToggle={c => {
+            const wasOwned = ownedAll.has(c.id);
+            if (!wasOwned) {
+              const completedTypes = typesCompletedByToggle(c, cards, POKEDEX_BY_DEX, ownedAll, typeGroups);
+              const events: CaptureEvent[] = completedTypes.map(t => ({ id: `type-${t}-${c.id}`, kind: 'type', type: t }));
+              if (events.length === 0) {
+                const tier = classifyRarity(c.rarity);
+                if (tier !== 'basic') events.push({ id: `rarity-${c.id}`, kind: 'rarity', tier, rarityLabel: c.rarity ?? '' });
+              }
+              if (events.length > 0) setCaptureQueue(q => [...q, ...events]);
+            }
+            toggleOwned.mutate(
+              { cardId: c.id, currentlyOwned: wasOwned },
+              { onSuccess: () => qc.invalidateQueries({ queryKey: ['set_goal_progress', userId, setId] }) },
+            );
+          }}
           onZoom={c => setZoomCard(c)}
         />
       )}
       <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
+      <CaptureEffect event={currentCapture} onDone={() => setCaptureQueue(q => q.slice(1))} />
     </SafeAreaView>
   );
 }

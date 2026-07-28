@@ -5,6 +5,7 @@ import type { GenerationProgress, Progress, VariantCategory } from './dashboard-
 import { topArtists } from './dashboard-stats';
 import type { OwnedCardDetail } from './collection';
 import { SET_TIERS } from './set-tiers';
+import { classifyRarity } from './rarity-tiers';
 
 export type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -81,18 +82,8 @@ const variantBadges: Badge[] = [
   progress: (stats: DashboardStats) => stats.variants[category].pct,
 }));
 
-// Rarity naming isn't strictly ordered across 30+ years of sets, so these tiers are a
-// curated heuristic rather than a canonical ranking.
-const BASIC_RARITIES = new Set(['Common', 'Uncommon', 'Promo', 'Rare']);
-const isHoloTier = (rarity: string | null) => !!rarity && !BASIC_RARITIES.has(rarity);
-
-const CHASE_RARITIES = new Set([
-  'Rare Secret', 'Rare Rainbow', 'Rare Shining', 'Rare Shiny', 'Rare Shiny GX',
-  'Shiny Rare', 'Shiny Ultra Rare', 'Ultra Rare', 'Hyper Rare', 'Mega Hyper Rare',
-  'Special Illustration Rare', 'Illustration Rare', 'Amazing Rare', 'Radiant Rare',
-  'Rare Prism Star', 'LEGEND',
-]);
-const isChaseTier = (rarity: string | null) => !!rarity && CHASE_RARITIES.has(rarity);
+const isHoloTier = (rarity: string | null) => classifyRarity(rarity) !== 'basic';
+const isChaseTier = (rarity: string | null) => classifyRarity(rarity) === 'chase';
 
 const rarityBadges: Badge[] = [
   {
