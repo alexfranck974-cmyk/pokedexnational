@@ -10,12 +10,16 @@ interface Props {
   owned: boolean;
   wished?: boolean;
   readOnly?: boolean;
+  /** Copies owned — when provided (alongside onIncrement/onDecrement) and the card is owned, shows a +/- stepper. */
+  quantity?: number;
+  onIncrement?: () => void;
+  onDecrement?: () => void;
   onToggle: () => void;
   onToggleWish?: () => void;
   onZoom?: () => void;
 }
 
-export function CardTile({ card, owned, wished, readOnly, onToggle, onToggleWish, onZoom }: Props) {
+export function CardTile({ card, owned, wished, readOnly, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles((colors, shadow) => ({
     tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, ...shadow.sm },
@@ -44,6 +48,12 @@ export function CardTile({ card, owned, wished, readOnly, onToggle, onToggleWish
     },
     heart: { fontSize: 18, color: colors.textDim, lineHeight: 22 },
     heartFilled: { color: colors.danger },
+    quantityWrap: { position: 'absolute' as const, bottom: 4, left: 0, right: 0, alignItems: 'center' as const },
+    quantityPill: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
+      backgroundColor: colors.overlay, borderRadius: radius.pill, paddingHorizontal: 4, paddingVertical: 2,
+    },
+    quantityText: { fontSize: 12, fontFamily: fonts.bodyBold, color: 'white', minWidth: 14, textAlign: 'center' as const },
   }));
 
   return (
@@ -84,6 +94,19 @@ export function CardTile({ card, owned, wished, readOnly, onToggle, onToggleWish
             style={styles.heartBtn}>
             <Text style={[styles.heart, wished && styles.heartFilled]}>{wished ? '♥' : '♡'}</Text>
           </Pressable>
+        )}
+        {owned && onIncrement && onDecrement && (
+          <View style={styles.quantityWrap} pointerEvents="box-none">
+            <View style={styles.quantityPill}>
+              <Pressable hitSlop={6} onPress={(e) => { e.stopPropagation(); onDecrement(); }}>
+                <Ionicons name="remove-circle-outline" size={18} color="white" />
+              </Pressable>
+              <Text style={styles.quantityText}>{quantity ?? 1}</Text>
+              <Pressable hitSlop={6} onPress={(e) => { e.stopPropagation(); onIncrement(); }}>
+                <Ionicons name="add-circle-outline" size={18} color="white" />
+              </Pressable>
+            </View>
+          </View>
         )}
       </View>
       <Text style={styles.set} numberOfLines={1}>{card.set_name} · {card.card_number}</Text>

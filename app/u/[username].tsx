@@ -6,8 +6,9 @@ import { Ionicons } from '@expo/vector-icons';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import { fetchPublicProfile, useSession } from '@/lib/auth';
-import { useUserDex, useOwnedCardImages, useAllOwnedCardsDetailed, useAllWishedCards, useAllOwnedCardIds } from '@/lib/collection';
+import { useUserDex, useOwnedCardImages, useAllOwnedCardsDetailed, useAllOwnedCardsLedgerDetailed, useAllWishedCards, useAllOwnedCardIds } from '@/lib/collection';
 import { useShowcase } from '@/lib/favorites';
+import { useSetGoals } from '@/lib/collection-goals';
 import { useFriendshipStatus, useSendFriendRequest, useAcceptFriendRequest, useRemoveFriendship } from '@/lib/friends';
 import { useTcgIndex, useTcgSets, useTcgRarities } from '@/lib/tcg-index';
 import { applyPokedexPipeline } from '@/lib/pokedex-list';
@@ -18,18 +19,22 @@ import { SearchFilterBar } from '@/components/SearchFilterBar';
 import { ProgressCounter } from '@/components/ProgressCounter';
 import { PokedexStatsSection } from '@/components/PokedexStatsSection';
 import { VitrineCarousel } from '@/components/VitrineCarousel';
+import { SetGoalTile } from '@/components/SetGoalTile';
+import { ReadonlyCardGrid } from '@/components/ReadonlyCardGrid';
+import { FriendSetGalleryModal, type FriendSetGalleryTarget } from '@/components/FriendSetGalleryModal';
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
 import { Pokeball } from '@/components/Pokeball';
+import { IconBubble } from '@/components/IconBubble';
 import { getName } from '@/lib/i18n';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
 
-type ProfileTab = 'pokedex' | 'stats' | 'wishlist';
+type ProfileTab = 'stats' | 'collection' | 'wishlist';
 const TABS: { key: ProfileTab; label: string }[] = [
-  { key: 'pokedex', label: 'Pokédex' },
   { key: 'stats', label: 'Statistiques' },
+  { key: 'collection', label: 'Collection' },
   { key: 'wishlist', label: 'Wishlist' },
 ];
 
@@ -40,7 +45,7 @@ export default function PublicProfile() {
   const viewerId = session?.user.id;
   const [profile, setProfile] = useState<{ id: string; display_name: string; username: string } | 'notfound'>('notfound');
   const [checking, setChecking] = useState(true);
-  const [tab, setTab] = useState<ProfileTab>('pokedex');
+  const [tab, setTab] = useState<ProfileTab>('stats');
 
   useEffect(() => {
     let alive = true;
@@ -65,6 +70,10 @@ export default function PublicProfile() {
   const { data: rarities = [] } = useTcgRarities();
   const { data: wishedCards = [] } = useAllWishedCards(userId);
   const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
+  const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
+  const { data: pinnedGoals = [] } = useSetGoals(userId);
+  const setsById = useMemo(() => new Map(sets.map(s => [s.id, s])), [sets]);
+  const [gallerySet, setGallerySet] = useState<FriendSetGalleryTarget | null>(null);
   // Grid taps zoom a single card; Vitrine taps zoom into the curated list and
   // support swiping to the next/previous showcased card without closing.
   const [zoom, setZoom] = useState<{ kind: 'grid'; card: ZoomableCard } | { kind: 'vitrine'; index: number } | null>(null);
@@ -136,6 +145,11 @@ export default function PublicProfile() {
 
     statsScroll: { padding: spacing.lg, gap: spacing.lg },
     wishlistScroll: { padding: spacing.md },
+    gridHeader: { padding: spacing.lg, gap: spacing.lg },
+    section: { gap: spacing.sm },
+    sectionTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
+    sectionTitle: { fontSize: 16, fontFamily: fonts.display, color: colors.text, flex: 1 },
+    ownedGridWrap: { height: 420 },
     empty: { fontSize: 14, fontFamily: fonts.body, color: colors.textDim, fontStyle: 'italic' as const, textAlign: 'center' as const, marginTop: spacing.xl },
 
     pokemonRow: {
@@ -209,8 +223,6 @@ export default function PublicProfile() {
         <ProgressCounter owned={ownedCount} total={items.length} />
       </View>
 
-      <VitrineCarousel items={vitrineItems} />
-
       <View style={styles.tabRow}>
         {TABS.map(t => (
           <Pressable key={t.key} onPress={() => setTab(t.key)} style={[styles.tabBtn, tab === t.key && styles.tabBtnActive]}>
@@ -219,12 +231,18 @@ export default function PublicProfile() {
         ))}
       </View>
 
-      {tab === 'pokedex' && (
+      {tab === 'stats' && (
         <>
           <PokedexGrid
             items={items}
             ownedImages={ownedImages}
             columnsOverride={columns}
+            ListHeaderComponent={
+              <View style={styles.gridHeader}>
+                <VitrineCarousel items={vitrineItems} />
+                <PokedexStatsSection userId={userId} showValueBadges={false} />
+              </View>
+            }
             onSelect={() => { /* no detail page for visitors — long-press to zoom instead */ }}
             onLongSelect={(num) => {
               const card = ownedCardsByDex.get(num);
@@ -246,14 +264,73 @@ export default function PublicProfile() {
         </>
       )}
 
-      {tab === 'stats' && (
+      {tab === 'collection' && (
         <ScrollView contentContainerStyle={styles.statsScroll}>
-          <PokedexStatsSection userId={userId} showValueBadges={false} />
+          <VitrineCarousel items={vitrineItems} />
+
+          <View style={styles.section}>
+            <View style={styles.sectionTitleRow}>
+              <IconBubble size={28} color={colors.primarySoft}>
+                <Ionicons name="albums" size={15} color={colors.primary} />
+              </IconBubble>
+              <Text style={styles.sectionTitle}>Sets en cours</Text>
+            </View>
+            {pinnedGoals.length === 0 ? (
+              <Text style={styles.empty}>Aucune extension épinglée pour l’instant.</Text>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
+                {pinnedGoals.map(g => {
+                  const set = setsById.get(g.setId);
+                  if (!set) return null;
+                  return (
+                    <SetGoalTile
+                      key={g.setId}
+                      userId={userId}
+                      setId={g.setId}
+                      setName={set.name}
+                      total={set.cardCount}
+                      symbol={set.symbol}
+                      onPress={() => {
+                        const setCards = ledgerCards.filter(c => c.setId === g.setId);
+                        setGallerySet({
+                          setName: set.name, owned: setCards.length, total: set.cardCount,
+                          cards: setCards.map(c => ({ key: c.cardId, imageSmall: c.imageSmall, imageLarge: c.imageLarge })),
+                        });
+                      }}
+                    />
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionTitleRow}>
+              <IconBubble size={28} color={colors.primarySoft}>
+                <Ionicons name="albums-outline" size={15} color={colors.primary} />
+              </IconBubble>
+              <Text style={styles.sectionTitle}>Cartes possédées ({ledgerCards.length})</Text>
+            </View>
+            {ledgerCards.length === 0 ? (
+              <Text style={styles.empty}>Aucune carte possédée pour l’instant.</Text>
+            ) : (
+              <View style={styles.ownedGridWrap}>
+                <ReadonlyCardGrid
+                  cards={ledgerCards.map(c => ({ key: c.cardId, image: c.imageSmall }))}
+                  onZoom={(key) => {
+                    const card = ledgerCards.find(c => c.cardId === key);
+                    if (card) setZoom({ kind: 'grid', card: { image_small: card.imageSmall, image_large: card.imageLarge } });
+                  }}
+                />
+              </View>
+            )}
+          </View>
         </ScrollView>
       )}
 
       {tab === 'wishlist' && (
         <ScrollView contentContainerStyle={styles.wishlistScroll}>
+          <VitrineCarousel items={vitrineItems} />
           {wishlistGroups.length === 0 ? (
             <Text style={styles.empty}>Aucune carte dans la wishlist.</Text>
           ) : (
@@ -277,9 +354,12 @@ export default function PublicProfile() {
                   </View>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pokemonThumbs}>
                     {group.cards.slice(0, 4).map(c => (
-                      <View key={c.id} style={[styles.pokemonThumbWrap, ownedCardIds.has(c.id) && styles.pokemonThumbWrapOwned]}>
+                      <Pressable
+                        key={c.id}
+                        onPress={() => setZoom({ kind: 'grid', card: { image_small: c.image_small, image_large: c.image_large } })}
+                        style={[styles.pokemonThumbWrap, ownedCardIds.has(c.id) && styles.pokemonThumbWrapOwned]}>
                         <Image source={{ uri: c.image_small }} style={styles.pokemonThumb} resizeMode="contain" />
-                      </View>
+                      </Pressable>
                     ))}
                   </ScrollView>
                 </View>
@@ -288,6 +368,7 @@ export default function PublicProfile() {
           )}
         </ScrollView>
       )}
+      <FriendSetGalleryModal target={gallerySet} onClose={() => setGallerySet(null)} />
       <CardZoomModal
         card={activeZoomCard}
         onClose={() => setZoom(null)}

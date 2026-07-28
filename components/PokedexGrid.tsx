@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactElement } from 'react';
 import { View, Text, useWindowDimensions } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { PokemonTile } from './PokemonTile';
@@ -12,6 +12,8 @@ interface Props {
   ownedImages?: Map<number, string>;
   wishedInDexSet?: Set<number>;
   columnsOverride?: 2 | 3 | 4 | null;
+  /** Scrolls together with the grid instead of sitting in a fixed header above it. */
+  ListHeaderComponent?: ReactElement | null;
   onSelect: (num: number) => void;
   onLongSelect?: (num: number) => void;
 }
@@ -26,7 +28,7 @@ function numColsFor(width: number): number {
   return 8;
 }
 
-export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverride, onSelect, onLongSelect }: Props) {
+export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverride, ListHeaderComponent, onSelect, onLongSelect }: Props) {
   const { width } = useWindowDimensions();
   const cols = columnsOverride ?? numColsFor(width);
   const styles = useThemedStyles((colors) => ({
@@ -68,6 +70,7 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverrid
       estimatedItemSize={120}
       keyExtractor={row => row.key}
       getItemType={row => row.type}
+      ListHeaderComponent={ListHeaderComponent}
       stickyHeaderIndices={stickyHeaderIndices}
       overrideItemLayout={(layout, row, _index, maxColumns) => {
         if (row.type === 'header') layout.span = maxColumns;

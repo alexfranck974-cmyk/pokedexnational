@@ -10,6 +10,10 @@ interface Props {
   wishedSet?: Set<string>;
   readOnly?: boolean;
   viewMode?: 'grid' | 'list';
+  /** Copies owned per card id — when provided (alongside onIncrement/onDecrement), tiles show a +/- stepper instead of a plain owned badge. */
+  quantities?: Map<string, number>;
+  onIncrement?: (card: TcgCardRow) => void;
+  onDecrement?: (card: TcgCardRow) => void;
   onToggle: (card: TcgCardRow) => void;
   onToggleWish?: (card: TcgCardRow) => void;
   onZoom?: (card: TcgCardRow) => void;
@@ -21,7 +25,7 @@ function numColsFor(width: number): number {
   return 6;
 }
 
-export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = 'grid', onToggle, onToggleWish, onZoom }: Props) {
+export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = 'grid', quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom }: Props) {
   const { width } = useWindowDimensions();
   if (viewMode === 'list') {
     return (
@@ -35,6 +39,9 @@ export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = '
             owned={ownedSet.has(item.id)}
             wished={wishedSet?.has(item.id)}
             readOnly={readOnly}
+            quantity={quantities?.get(item.id)}
+            onIncrement={onIncrement ? () => onIncrement(item) : undefined}
+            onDecrement={onDecrement ? () => onDecrement(item) : undefined}
             onToggle={() => onToggle(item)}
             onToggleWish={onToggleWish ? () => onToggleWish(item) : undefined}
             onZoom={onZoom ? () => onZoom(item) : undefined}
@@ -55,6 +62,9 @@ export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = '
           owned={ownedSet.has(item.id)}
           wished={wishedSet?.has(item.id)}
           readOnly={readOnly}
+          quantity={quantities?.get(item.id)}
+          onIncrement={onIncrement ? () => onIncrement(item) : undefined}
+          onDecrement={onDecrement ? () => onDecrement(item) : undefined}
           onToggle={() => onToggle(item)}
           onToggleWish={onToggleWish ? () => onToggleWish(item) : undefined}
           onZoom={onZoom ? () => onZoom(item) : undefined}

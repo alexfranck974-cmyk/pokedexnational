@@ -15,7 +15,7 @@ import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForSet } from '@/lib/tcg';
 import { useTcgSets } from '@/lib/tcg-index';
 import { useSession } from '@/lib/auth';
-import { useAllOwnedCardIds, useToggleOwnedCard } from '@/lib/collection';
+import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity } from '@/lib/collection';
 import { useBackTo } from '@/lib/navigation';
 import { currentSetTier } from '@/lib/set-tiers';
 import { classifyRarity } from '@/lib/rarity-tiers';
@@ -35,8 +35,10 @@ export default function PinnedSetDetail() {
 
   const { data: cards = [], isLoading: cardsLoading } = useCardsForSet(setId);
   const { data: ownedAll = new Set<string>() } = useAllOwnedCardIds(userId);
+  const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
   const { data: allSets = [] } = useTcgSets();
   const toggleOwned = useToggleOwnedCard();
+  const adjustQuantity = useAdjustOwnedCardQuantity();
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [zoomCard, setZoomCard] = useState<TcgCardRow | null>(null);
@@ -142,6 +144,15 @@ export default function PinnedSetDetail() {
           ownedSet={ownedAll}
           readOnly={false}
           viewMode={viewMode}
+          quantities={quantities}
+          onIncrement={c => adjustQuantity.mutate(
+            { cardId: c.id, delta: 1, currentQuantity: quantities.get(c.id) ?? 0 },
+            { onSuccess: () => qc.invalidateQueries({ queryKey: ['set_goal_progress', userId, setId] }) },
+          )}
+          onDecrement={c => adjustQuantity.mutate(
+            { cardId: c.id, delta: -1, currentQuantity: quantities.get(c.id) ?? 0 },
+            { onSuccess: () => qc.invalidateQueries({ queryKey: ['set_goal_progress', userId, setId] }) },
+          )}
           onToggle={c => {
             const wasOwned = ownedAll.has(c.id);
             if (!wasOwned) {
@@ -149,7 +160,12 @@ export default function PinnedSetDetail() {
               const events: CaptureEvent[] = completedTypes.map(t => ({ id: `type-${t}-${c.id}`, kind: 'type', type: t }));
               if (events.length === 0) {
                 const tier = classifyRarity(c.rarity);
-                if (tier !== 'basic') events.push({ id: `rarity-${c.id}`, kind: 'rarity', tier, rarityLabel: c.rarity ?? '' });
+                if (tier !== 'basic') {
+                  events.push({
+                    id: `rarity-${c.id}`, kind: 'rarity', tier, rarityLabel: c.rarity ?? '',
+                    imageSmall: c.image_small,
+                  });
+                }
               }
               if (events.length > 0) setCaptureQueue(q => [...q, ...events]);
             }

@@ -367,6 +367,81 @@ export function useToggleOwnedCard() {
   });
 }
 
+// How many copies of each card the user owns — a foundation for future trading
+// (knowing which duplicates are spare). Separate from useAllOwnedCardIds (which
+// only answers "owned or not") so screens that don't need counts stay cheap.
+export function useOwnedCardQuantities(userId?: string) {
+  return useQuery({
+    queryKey: ['owned_card_quantities', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_owned_cards')
+        .select('card_id, quantity')
+        .eq('user_id', userId!);
+      if (error) throw error;
+      return new Map<string, number>((data ?? []).map(r => [r.card_id as string, r.quantity as number]));
+    },
+  });
+}
+
+export function useAdjustOwnedCardQuantity() {
+  const qc = useQueryClient();
+  const { session } = useSession();
+  const userId = session?.user.id;
+
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ['all_owned_card_ids', userId] });
+    qc.invalidateQueries({ queryKey: ['owned_card_quantities', userId] });
+    qc.invalidateQueries({ queryKey: ['owned_dex_nums', userId] });
+    qc.invalidateQueries({ queryKey: ['all_owned_cards_ledger_detailed', userId] });
+    qc.invalidateQueries({ queryKey: ['user_dex', userId] });
+    qc.invalidateQueries({ queryKey: ['owned_card_images', userId] });
+    qc.invalidateQueries({ queryKey: ['all_owned_cards_detailed', userId] });
+  };
+
+  return useMutation({
+    mutationFn: async ({ cardId, delta, currentQuantity }: { cardId: string; delta: 1 | -1; currentQuantity: number }) => {
+      if (!userId) throw new Error('Not signed in');
+      const next = currentQuantity + delta;
+      if (next <= 0) {
+        const { error } = await supabase.from('user_owned_cards').delete().eq('user_id', userId).eq('card_id', cardId);
+        if (error) throw error;
+        // A card no longer owned can't stay pointed to as anyone's official
+        // National Dex pick — clear it there too if it was (no-op otherwise).
+        const { error: officialError } = await supabase.from('user_cards').delete().eq('user_id', userId).eq('card_id', cardId);
+        if (officialError) throw officialError;
+      } else if (currentQuantity <= 0) {
+        const { error } = await supabase.from('user_owned_cards').insert({ user_id: userId, card_id: cardId, quantity: next });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('user_owned_cards').update({ quantity: next }).eq('user_id', userId).eq('card_id', cardId);
+        if (error) throw error;
+      }
+    },
+    onMutate: async ({ cardId, delta, currentQuantity }) => {
+      await qc.cancelQueries({ queryKey: ['owned_card_quantities', userId] });
+      await qc.cancelQueries({ queryKey: ['all_owned_card_ids', userId] });
+      const prevQuantities = qc.getQueryData<Map<string, number>>(['owned_card_quantities', userId]);
+      const prevIds = qc.getQueryData<Set<string>>(['all_owned_card_ids', userId]);
+      const nextQty = currentQuantity + delta;
+      const nextQuantities = new Map(prevQuantities ?? []);
+      const nextIds = new Set(prevIds ?? []);
+      if (nextQty <= 0) { nextQuantities.delete(cardId); nextIds.delete(cardId); }
+      else { nextQuantities.set(cardId, nextQty); nextIds.add(cardId); }
+      qc.setQueryData(['owned_card_quantities', userId], nextQuantities);
+      qc.setQueryData(['all_owned_card_ids', userId], nextIds);
+      return { prevQuantities, prevIds };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prevQuantities) qc.setQueryData(['owned_card_quantities', userId], ctx.prevQuantities);
+      if (ctx?.prevIds) qc.setQueryData(['all_owned_card_ids', userId], ctx.prevIds);
+      toast('Impossible de sauvegarder, réessaie.');
+    },
+    onSettled: invalidateAll,
+  });
+}
+
 export function useAllOwnedCardsLedgerDetailed(userId?: string) {
   return useQuery({
     queryKey: ['all_owned_cards_ledger_detailed', userId],

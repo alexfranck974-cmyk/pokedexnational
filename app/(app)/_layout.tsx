@@ -1,5 +1,6 @@
 import { Redirect, Tabs } from 'expo-router';
 import { useSession } from '@/lib/auth';
+import { useIncomingRequests } from '@/lib/friends';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PokedexDeviceIcon } from '@/components/PokedexDeviceIcon';
@@ -8,6 +9,7 @@ import { useTheme } from '@/lib/theme';
 export default function AppLayout() {
   const { session, loading } = useSession();
   const { colors } = useTheme();
+  const { data: incomingRequests = [] } = useIncomingRequests(session?.user.id);
 
   if (loading) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
   if (!session) return <Redirect href="/login" />;
@@ -80,7 +82,10 @@ export default function AppLayout() {
         options={{
           title: 'Amis',
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
+            <View>
+              <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
+              {incomingRequests.length > 0 && <View style={[styles.requestDot, { borderColor: colors.surface }]} />}
+            </View>
           ),
         }}
       />
@@ -103,4 +108,8 @@ export default function AppLayout() {
 const styles = StyleSheet.create({
   iconWrap: { alignItems: 'center', justifyContent: 'center' },
   iconWrapFocused: { transform: [{ scale: 1.1 }] },
+  requestDot: {
+    position: 'absolute', top: -1, right: -3, width: 9, height: 9, borderRadius: 5,
+    backgroundColor: '#ef4444', borderWidth: 1.5,
+  },
 });

@@ -10,12 +10,16 @@ interface Props {
   owned: boolean;
   wished?: boolean;
   readOnly?: boolean;
+  /** Copies owned — when provided (alongside onIncrement/onDecrement) and the card is owned, shows a +/- stepper. */
+  quantity?: number;
+  onIncrement?: () => void;
+  onDecrement?: () => void;
   onToggle: () => void;
   onToggleWish?: () => void;
   onZoom?: () => void;
 }
 
-export function CardListRow({ card, owned, wished, readOnly, onToggle, onToggleWish, onZoom }: Props) {
+export function CardListRow({ card, owned, wished, readOnly, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles((colors) => ({
     row: {
@@ -43,6 +47,11 @@ export function CardListRow({ card, owned, wished, readOnly, onToggle, onToggleW
     actions: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
     heart: { fontSize: 22, color: colors.textDim },
     heartFilled: { color: colors.danger },
+    quantityPill: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
+      backgroundColor: colors.surfaceAlt, borderRadius: radius.pill, paddingHorizontal: 4, paddingVertical: 2,
+    },
+    quantityText: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.text, minWidth: 14, textAlign: 'center' as const },
   }));
 
   return (
@@ -78,7 +87,19 @@ export function CardListRow({ card, owned, wished, readOnly, onToggle, onToggleW
         {card.rarity && <Text style={styles.rarity} numberOfLines={1}>{card.rarity}</Text>}
       </View>
       <View style={styles.actions}>
-        {owned && <Pokeball size={22} />}
+        {owned && onIncrement && onDecrement ? (
+          <View style={styles.quantityPill}>
+            <Pressable hitSlop={6} onPress={(e) => { e.stopPropagation(); onDecrement(); }}>
+              <Ionicons name="remove-circle-outline" size={18} color={colors.textMuted} />
+            </Pressable>
+            <Text style={styles.quantityText}>{quantity ?? 1}</Text>
+            <Pressable hitSlop={6} onPress={(e) => { e.stopPropagation(); onIncrement(); }}>
+              <Ionicons name="add-circle-outline" size={18} color={colors.textMuted} />
+            </Pressable>
+          </View>
+        ) : (
+          owned && <Pokeball size={22} />
+        )}
         {!readOnly && onToggleWish && (
           <Pressable hitSlop={8} onPress={(e) => { e.stopPropagation(); onToggleWish(); }}>
             <Text style={[styles.heart, wished && styles.heartFilled]}>{wished ? '♥' : '♡'}</Text>
