@@ -14,8 +14,9 @@ import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
 import { topByValue, totalCollectionValue, computeByGeneration } from '@/lib/dashboard-stats';
 import { buildEvolutionFamilies } from '@/lib/evolutions';
 import { suggestEvolutionGaps, suggestBinderPages, suggestByGeneration, suggestDexUpgrades } from '@/lib/suggestions';
-import { PokedexStatsSection } from '@/components/PokedexStatsSection';
-import { ShowcaseRow } from '@/components/ShowcaseRow';
+import { PokedexHeroCard } from '@/components/PokedexHeroCard';
+import { BadgesSection } from '@/components/BadgesSection';
+import { SuggestionsModal } from '@/components/SuggestionsModal';
 import { VitrineCarousel } from '@/components/VitrineCarousel';
 import { CardZoomModal } from '@/components/CardZoomModal';
 import { IconBubble } from '@/components/IconBubble';
@@ -39,6 +40,7 @@ export default function DashboardScreen() {
   const { data: wishedCards = [] } = useAllWishedCards(userId);
   const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const { data: goals = [] } = useSetGoals(userId);
   const { data: allSets = [] } = useTcgSets();
   const setsById = useMemo(() => new Map(allSets.map(s => [s.id, s])), [allSets]);
@@ -90,6 +92,11 @@ export default function DashboardScreen() {
     sectionTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
     sectionTitle: { fontSize: 18, fontFamily: fonts.display, color: colors.text, flex: 1 },
     addGoalBtn: { padding: 2 },
+    suggestionsRow: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm,
+      backgroundColor: colors.surface, borderRadius: 14, padding: spacing.md,
+    },
+    suggestionsRowText: { flex: 1, fontSize: 15, fontFamily: fonts.bodyBold, color: colors.text },
     emptyGoalCard: {
       borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed' as const, borderRadius: 14,
       padding: spacing.lg, alignItems: 'center' as const,
@@ -105,10 +112,8 @@ export default function DashboardScreen() {
 
         <VitrineCarousel items={vitrineItems} />
 
-        <PokedexStatsSection
+        <PokedexHeroCard
           userId={userId}
-          wishedCardIds={wishedCardIds}
-          wishlistCount={wishedCards.length}
           onSelectMissing={(dexNum) => enterPokemonDetail(router, `/pokemon/${dexNum}`, '/dashboard')}
         />
 
@@ -147,57 +152,18 @@ export default function DashboardScreen() {
           )}
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionTitleRow}>
-            <IconBubble size={28} color={colors.primarySoft}>
-              <Ionicons name="flag" size={15} color={SUGGESTIONS_TINT} />
-            </IconBubble>
-            <Text style={styles.sectionTitle}>Prochaines cartes à obtenir</Text>
-          </View>
-          <ShowcaseRow
-            title="Compléter une ligne évolutive"
-            items={evolutionSuggestions.map(s => ({
-              key: String(s.num), image: s.spriteUrl, label: s.name, caption: s.reason,
-              onPress: () => enterPokemonDetail(router, `/pokemon/${s.num}`, '/dashboard'),
-            }))}
-            emptyHint="Toutes tes lignes évolutives possédées sont complètes !"
-          />
-          <ShowcaseRow
-            title="Finir une page de classeur (4×4)"
-            items={binderSuggestions.map(s => ({
-              key: String(s.num), image: s.spriteUrl, label: s.name, caption: s.reason,
-              onPress: () => enterPokemonDetail(router, `/pokemon/${s.num}`, '/dashboard'),
-            }))}
-            emptyHint="Aucune page en cours de complétion pour l’instant."
-          />
-          <ShowcaseRow
-            title="Génération prioritaire"
-            items={generationSuggestions.map(s => ({
-              key: String(s.num), image: s.spriteUrl, label: s.name, caption: s.reason,
-              onPress: () => enterPokemonDetail(router, `/pokemon/${s.num}`, '/dashboard'),
-            }))}
-            emptyHint="Bravo, toutes les générations sont complètes !"
-          />
-          <ShowcaseRow
-            title="Depuis tes collections"
-            items={dexUpgradeSuggestions.map(s => ({
-              key: String(s.num), image: s.spriteUrl, label: s.name, caption: s.reason,
-              onPress: () => enterPokemonDetail(router, `/pokemon/${s.num}`, '/dashboard'),
-            }))}
-            emptyHint="Aucune carte possédée en attente de devenir ta carte officielle."
-          />
-        </View>
+        <Pressable onPress={() => setSuggestionsOpen(true)} style={styles.suggestionsRow}>
+          <IconBubble size={28} color={colors.primarySoft}>
+            <Ionicons name="flag" size={15} color={SUGGESTIONS_TINT} />
+          </IconBubble>
+          <Text style={styles.suggestionsRowText}>Prochains achats</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
+        </Pressable>
 
-        <ShowcaseRow
-          title="Tes cartes les plus chères"
-          items={mostValuable.map(c => ({
-            key: c.cardId,
-            image: c.imageSmall,
-            label: c.name,
-            caption: c.cardmarketTrendEur !== null ? eurFormatter.format(c.cardmarketTrendEur) : undefined,
-            onPress: () => enterPokemonDetail(router, `/pokemon/${c.dexNum}`, '/dashboard'),
-          }))}
-          emptyHint="Aucune carte avec un prix connu pour l’instant."
+        <BadgesSection
+          userId={userId}
+          wishedCardIds={wishedCardIds}
+          wishlistCount={wishedCards.length}
         />
       </ScrollView>
       <CardZoomModal
@@ -207,6 +173,16 @@ export default function DashboardScreen() {
         onSwipePrev={() => setZoomIndex(i => i === null ? null : (i - 1 + vitrineCards.length) % vitrineCards.length)}
       />
       <SetGoalPicker visible={goalPickerOpen} pinnedSetIds={pinnedSetIds} onClose={() => setGoalPickerOpen(false)} />
+      <SuggestionsModal
+        visible={suggestionsOpen}
+        onClose={() => setSuggestionsOpen(false)}
+        evolutionSuggestions={evolutionSuggestions}
+        binderSuggestions={binderSuggestions}
+        generationSuggestions={generationSuggestions}
+        dexUpgradeSuggestions={dexUpgradeSuggestions}
+        mostValuable={mostValuable}
+        onSelectPokemon={(dexNum) => enterPokemonDetail(router, `/pokemon/${dexNum}`, '/dashboard')}
+      />
     </SafeAreaView>
   );
 }

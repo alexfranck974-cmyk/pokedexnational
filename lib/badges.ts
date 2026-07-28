@@ -36,6 +36,8 @@ export interface Badge {
   /** When set, rendered instead of `icon` (e.g. a set's real symbol image). */
   iconUri?: string;
   unlocked: (stats: DashboardStats) => boolean;
+  /** 0-100 progress toward this specific badge's threshold, when meaningfully computable. */
+  progress?: (stats: DashboardStats) => number;
 }
 
 const regionName = (label: string) => label.split('·')[1]?.trim() ?? label;
@@ -47,6 +49,7 @@ const generationBadges: Badge[] = GENERATIONS.map(g => ({
   description: `Compléter tous les Pokémon de ${regionName(g.label)}`,
   icon: 'ribbon',
   unlocked: (stats) => isComplete(stats.byGeneration.find(gp => gp.gen === g.gen) ?? { owned: 0, total: 0, pct: 0 }),
+  progress: (stats) => stats.byGeneration.find(gp => gp.gen === g.gen)?.pct ?? 0,
 }));
 
 const milestoneBadges: Badge[] = [
@@ -60,6 +63,7 @@ const milestoneBadges: Badge[] = [
   description: `Atteindre ${pct}% du Pokédex National`,
   icon,
   unlocked: (stats: DashboardStats) => stats.overall.pct >= pct,
+  progress: (stats: DashboardStats) => Math.min(100, Math.round((stats.overall.pct / pct) * 100)),
 }));
 
 const variantBadges: Badge[] = [
@@ -74,6 +78,7 @@ const variantBadges: Badge[] = [
   description,
   icon: 'sparkles' as const,
   unlocked: (stats: DashboardStats) => isComplete(stats.variants[category]),
+  progress: (stats: DashboardStats) => stats.variants[category].pct,
 }));
 
 // Rarity naming isn't strictly ordered across 30+ years of sets, so these tiers are a
@@ -181,6 +186,7 @@ const valueBadges: Badge[] = [
   description: `Atteindre ${threshold}€ de valeur de collection estimée`,
   icon,
   unlocked: (stats: DashboardStats) => stats.collectionValue >= threshold,
+  progress: (stats: DashboardStats) => Math.min(100, Math.round((stats.collectionValue / threshold) * 100)),
 }));
 
 const artistBadges: Badge[] = [
@@ -215,13 +221,34 @@ function buildSetBadges(bySet: SetBadgeInfo[]): Badge[] {
         icon: tier.icon,
         iconUri: s.symbol ?? undefined,
         unlocked: () => pct >= tier.pct,
+        progress: () => Math.min(100, Math.round((pct / tier.pct) * 100)),
       });
     }
   }
   return badges;
 }
 
-export function computeBadges(stats: DashboardStats): (Badge & { unlockedNow: boolean })[] {
+export interface ComputedBadge extends Badge {
+  unlockedNow: boolean;
+  progressNow?: number;
+}
+
+export function computeBadges(stats: DashboardStats): ComputedBadge[] {
   const all = [...BADGES, ...buildSetBadges(stats.bySet)];
-  return all.map(badge => ({ ...badge, unlockedNow: badge.unlocked(stats) }));
+  return all.map(badge => ({
+    ...badge,
+    unlockedNow: badge.unlocked(stats),
+    progressNow: badge.progress?.(stats),
+  }));
+}
+
+// Among locked badges with a measurable progress score, the one closest to
+// unlocking — used for the dashboard's "next almost-unlocked" teaser.
+export function pickAlmostUnlocked(badges: ComputedBadge[]): ComputedBadge | undefined {
+  let best: ComputedBadge | undefined;
+  for (const b of badges) {
+    if (b.unlockedNow || b.progressNow === undefined) continue;
+    if (!best || b.progressNow > (best.progressNow ?? 0)) best = b;
+  }
+  return best;
 }

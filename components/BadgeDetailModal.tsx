@@ -2,6 +2,7 @@ import { View, Text, Pressable, Modal, Image, useWindowDimensions } from 'react-
 import { Ionicons } from '@expo/vector-icons';
 import type { IoniconName } from '@/lib/badges';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useModalBackClose } from '@/lib/useModalBackClose';
 
 export interface BadgeDetailTarget {
   icon: IoniconName;
@@ -20,6 +21,7 @@ export function BadgeDetailModal({ target, onClose }: Props) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const { colors } = useTheme();
+  useModalBackClose(target !== null, onClose);
   const styles = useThemedStyles((colors) => ({
     backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' as const, alignItems: 'center' as const },
     sheet: { width: '100%' as const, backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
