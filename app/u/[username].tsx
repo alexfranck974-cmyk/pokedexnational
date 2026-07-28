@@ -14,13 +14,13 @@ import { useTcgIndex, useTcgSets, useTcgRarities } from '@/lib/tcg-index';
 import { applyPokedexPipeline } from '@/lib/pokedex-list';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { groupWishlistByPokemon, type WishlistCard } from '@/lib/wishlist-list';
+import { enterPokemonDetail } from '@/lib/navigation';
 import { PokedexGrid } from '@/components/PokedexGrid';
 import { SearchFilterBar } from '@/components/SearchFilterBar';
 import { ProgressCounter } from '@/components/ProgressCounter';
 import { PokedexStatsSection } from '@/components/PokedexStatsSection';
 import { VitrineCarousel } from '@/components/VitrineCarousel';
 import { SetGoalTile } from '@/components/SetGoalTile';
-import { ReadonlyCardGrid } from '@/components/ReadonlyCardGrid';
 import { FriendSetGalleryModal, type FriendSetGalleryTarget } from '@/components/FriendSetGalleryModal';
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
 import { Pokeball } from '@/components/Pokeball';
@@ -110,10 +110,10 @@ export default function PublicProfile() {
     [owned, tcgIndex, search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort],
   );
 
-  const wishlistGroups = useMemo(
-    () => groupWishlistByPokemon(wishedCards as WishlistCard[], ownedCardIds),
-    [wishedCards, ownedCardIds],
-  );
+  const wishlistGroups = useMemo(() => {
+    const sorted = [...(wishedCards as WishlistCard[])].sort((a, b) => a.dex_num - b.dex_num);
+    return groupWishlistByPokemon(sorted, ownedCardIds);
+  }, [wishedCards, ownedCardIds]);
 
   const { colors } = useTheme();
   const styles = useThemedStyles((colors, shadow) => ({
@@ -149,7 +149,6 @@ export default function PublicProfile() {
     section: { gap: spacing.sm },
     sectionTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
     sectionTitle: { fontSize: 16, fontFamily: fonts.display, color: colors.text, flex: 1 },
-    ownedGridWrap: { height: 420 },
     empty: { fontSize: 14, fontFamily: fonts.body, color: colors.textDim, fontStyle: 'italic' as const, textAlign: 'center' as const, marginTop: spacing.xl },
 
     pokemonRow: {
@@ -158,6 +157,7 @@ export default function PublicProfile() {
       borderLeftWidth: 3, borderLeftColor: 'transparent',
     },
     pokemonRowOwned: { borderLeftColor: colors.success },
+    pokemonMain: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, flex: 1 },
     pokemonSpriteWrap: { width: 40, height: 40, position: 'relative' as const },
     pokemonSprite: { width: 40, height: 40 },
     pokemonOwnedBadge: {
@@ -291,7 +291,11 @@ export default function PublicProfile() {
                       total={set.cardCount}
                       symbol={set.symbol}
                       onPress={() => {
-                        const setCards = ledgerCards.filter(c => c.setId === g.setId);
+                        // "Le format classique" — same numeric-aware card_number sort
+                        // the pinned-set screen itself uses within an extension.
+                        const setCards = ledgerCards
+                          .filter(c => c.setId === g.setId)
+                          .sort((a, b) => a.cardNumber.localeCompare(b.cardNumber, undefined, { numeric: true }));
                         setGallerySet({
                           setName: set.name, owned: setCards.length, total: set.cardCount,
                           cards: setCards.map(c => ({ key: c.cardId, imageSmall: c.imageSmall, imageLarge: c.imageLarge })),
@@ -301,28 +305,6 @@ export default function PublicProfile() {
                   );
                 })}
               </ScrollView>
-            )}
-          </View>
-
-          <View style={styles.section}>
-            <View style={styles.sectionTitleRow}>
-              <IconBubble size={28} color={colors.primarySoft}>
-                <Ionicons name="albums-outline" size={15} color={colors.primary} />
-              </IconBubble>
-              <Text style={styles.sectionTitle}>Cartes possédées ({ledgerCards.length})</Text>
-            </View>
-            {ledgerCards.length === 0 ? (
-              <Text style={styles.empty}>Aucune carte possédée pour l’instant.</Text>
-            ) : (
-              <View style={styles.ownedGridWrap}>
-                <ReadonlyCardGrid
-                  cards={ledgerCards.map(c => ({ key: c.cardId, image: c.imageSmall }))}
-                  onZoom={(key) => {
-                    const card = ledgerCards.find(c => c.cardId === key);
-                    if (card) setZoom({ kind: 'grid', card: { image_small: card.imageSmall, image_large: card.imageLarge } });
-                  }}
-                />
-              </View>
             )}
           </View>
         </ScrollView>
@@ -339,19 +321,23 @@ export default function PublicProfile() {
               const groupOwnedCount = group.cards.filter(c => ownedCardIds.has(c.id)).length;
               return (
                 <View key={group.dexNum} style={[styles.pokemonRow, groupOwnedCount > 0 && styles.pokemonRowOwned]}>
-                  <View style={styles.pokemonSpriteWrap}>
-                    {mon && <Image source={{ uri: mon.sprite_url }} style={styles.pokemonSprite} resizeMode="contain" />}
-                    {groupOwnedCount > 0 && <View style={styles.pokemonOwnedBadge}><Pokeball size={13} /></View>}
-                  </View>
-                  <View style={styles.pokemonInfo}>
-                    <Text style={styles.pokemonName} numberOfLines={1}>
-                      #{String(group.dexNum).padStart(4, '0')} · {mon ? getName(mon) : group.dexNum}
-                    </Text>
-                    <Text style={styles.pokemonSub}>
-                      {group.cards.length} carte{group.cards.length > 1 ? 's' : ''} en wishlist
-                      {groupOwnedCount > 0 ? ` · ${groupOwnedCount} déjà possédée${groupOwnedCount > 1 ? 's' : ''}` : ''}
-                    </Text>
-                  </View>
+                  <Pressable
+                    style={styles.pokemonMain}
+                    onPress={() => enterPokemonDetail(router, `/pokemon/${group.dexNum}`, `/u/${username}`)}>
+                    <View style={styles.pokemonSpriteWrap}>
+                      {mon && <Image source={{ uri: mon.sprite_url }} style={styles.pokemonSprite} resizeMode="contain" />}
+                      {groupOwnedCount > 0 && <View style={styles.pokemonOwnedBadge}><Pokeball size={13} /></View>}
+                    </View>
+                    <View style={styles.pokemonInfo}>
+                      <Text style={styles.pokemonName} numberOfLines={1}>
+                        #{String(group.dexNum).padStart(4, '0')} · {mon ? getName(mon) : group.dexNum}
+                      </Text>
+                      <Text style={styles.pokemonSub}>
+                        {group.cards.length} carte{group.cards.length > 1 ? 's' : ''} en wishlist
+                        {groupOwnedCount > 0 ? ` · ${groupOwnedCount} déjà possédée${groupOwnedCount > 1 ? 's' : ''}` : ''}
+                      </Text>
+                    </View>
+                  </Pressable>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pokemonThumbs}>
                     {group.cards.slice(0, 4).map(c => (
                       <Pressable

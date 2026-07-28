@@ -449,7 +449,7 @@ export function useAllOwnedCardsLedgerDetailed(userId?: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_owned_cards')
-        .select('card_id, acquired_at, tcg_cards(dex_num, name, image_small, image_large, set_id, set_name, rarity, cardmarket_trend_eur, artist)')
+        .select('card_id, acquired_at, tcg_cards(dex_num, name, image_small, image_large, set_id, set_name, card_number, rarity, cardmarket_trend_eur, artist)')
         .eq('user_id', userId!);
       if (error) throw error;
       return (data ?? []).map(r => {
@@ -464,10 +464,11 @@ export function useAllOwnedCardsLedgerDetailed(userId?: string) {
           imageLarge: (card?.image_large as string | undefined) ?? null,
           setId: (card?.set_id as string | undefined) ?? '',
           setName: (card?.set_name as string | undefined) ?? '',
+          cardNumber: (card?.card_number as string | undefined) ?? '',
           cardmarketTrendEur: (card?.cardmarket_trend_eur as number | undefined) ?? null,
           artist: (card?.artist as string | undefined) ?? null,
         };
-      }) as (OwnedCardDetail & { setId: string; setName: string })[];
+      }) as (OwnedCardDetail & { setId: string; setName: string; cardNumber: string })[];
     },
   });
 }
