@@ -16,10 +16,10 @@ function getContext(): AudioContext | null {
   return sharedContext;
 }
 
-function tone(context: AudioContext, freq: number, startTime: number, duration: number, peakGain: number) {
+function tone(context: AudioContext, freq: number, startTime: number, duration: number, peakGain: number, type: OscillatorType = 'sine') {
   const osc = context.createOscillator();
   const gain = context.createGain();
-  osc.type = 'sine';
+  osc.type = type;
   osc.frequency.setValueAtTime(freq, startTime);
   gain.gain.setValueAtTime(0, startTime);
   gain.gain.linearRampToValueAtTime(peakGain, startTime + 0.02);
@@ -30,25 +30,37 @@ function tone(context: AudioContext, freq: number, startTime: number, duration: 
   osc.stop(startTime + duration + 0.02);
 }
 
+// A short rising 4-note run into a held, harmonized top note — evokes the
+// classic "gotcha!" capture fanfare from the games without transcribing its
+// actual copyrighted melody. Reused across all three tiers, just trimmed or
+// embellished to match how big a deal the capture is.
+function captureFanfare(context: AudioContext, now: number, scale: number, richness: number) {
+  const step = 0.085 * scale;
+  tone(context, 659.25, now, step * 1.1, 0.06 * richness);            // E5
+  tone(context, 783.99, now + step, step * 1.1, 0.06 * richness);     // G5
+  tone(context, 1046.5, now + step * 2, step * 1.1, 0.07 * richness); // C6
+  const holdStart = now + step * 3;
+  const holdDuration = 0.4 * scale;
+  tone(context, 1318.5, holdStart, holdDuration, 0.09 * richness);       // E6 — held finish
+  tone(context, 1975.5, holdStart, holdDuration, 0.035 * richness, 'triangle'); // B6 harmony sparkle
+  return holdStart + holdDuration;
+}
+
 export function playChime(kind: ChimeKind) {
   const context = getContext();
   if (!context) return;
   const now = context.currentTime;
   if (kind === 'holo') {
-    // A single soft shimmer — deliberately understated so a fairly common tier
-    // doesn't feel spammy on every pull.
-    tone(context, 1318.5, now, 0.18, 0.05); // E6
+    // An abbreviated two-note taste of the fanfare — enough to read as
+    // "captured" without being loud on a fairly common tier.
+    tone(context, 783.99, now, 0.12, 0.05);        // G5
+    tone(context, 1046.5, now + 0.08, 0.22, 0.06); // C6
   } else if (kind === 'type') {
-    // Gentle ascending triad for completing a type line.
-    tone(context, 523.25, now, 0.22, 0.06);        // C5
-    tone(context, 659.25, now + 0.09, 0.22, 0.06); // E5
-    tone(context, 783.99, now + 0.18, 0.30, 0.07); // G5
+    captureFanfare(context, now, 1, 1);
   } else {
-    // Brighter 5-note "star" arpeggio for a chase-tier pull.
-    tone(context, 659.25, now, 0.16, 0.06);        // E5
-    tone(context, 830.61, now + 0.07, 0.16, 0.06); // Ab5
-    tone(context, 987.77, now + 0.14, 0.16, 0.07); // B5
-    tone(context, 1318.5, now + 0.21, 0.22, 0.08); // E6
-    tone(context, 1568.0, now + 0.30, 0.35, 0.07); // G6 sparkle finish
+    // Chase-tier: the full fanfare plus a sparkly flourish tail on top.
+    const fanfareEnd = captureFanfare(context, now, 1.05, 1.2);
+    tone(context, 1567.98, fanfareEnd - 0.05, 0.20, 0.05, 'triangle');
+    tone(context, 2093.0, fanfareEnd + 0.05, 0.28, 0.05, 'triangle');
   }
 }
