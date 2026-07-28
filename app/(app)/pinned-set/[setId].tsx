@@ -24,6 +24,7 @@ import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
+const COLUMN_CYCLE: (3 | 4 | null)[] = [null, 3, 4];
 
 export default function PinnedSetDetail() {
   const { setId } = useLocalSearchParams<{ setId: string }>();
@@ -41,6 +42,7 @@ export default function PinnedSetDetail() {
   const adjustQuantity = useAdjustOwnedCardQuantity();
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [columns, setColumns] = useState<3 | 4 | null>(null);
   const [zoomCard, setZoomCard] = useState<TcgCardRow | null>(null);
   const [captureQueue, setCaptureQueue] = useState<CaptureEvent[]>([]);
   const currentCapture = captureQueue[0] ?? null;
@@ -73,6 +75,7 @@ export default function PinnedSetDetail() {
       backgroundColor: 'rgba(255,255,255,0.18)',
     },
     viewBtnActive: { backgroundColor: 'white' },
+    columnsLabel: { fontSize: 12, fontFamily: fonts.monoBold, color: 'white' },
     heroMain: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md },
     heroName: { fontSize: 20, fontFamily: fonts.display, color: 'white' },
     heroCaption: { fontSize: 12, fontFamily: fonts.mono, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
@@ -107,6 +110,17 @@ export default function PinnedSetDetail() {
               style={[styles.viewBtn, viewMode === 'list' && styles.viewBtnActive]}>
               <Ionicons name="list" size={15} color={viewMode === 'list' ? colors.primary : 'white'} />
             </Pressable>
+            {viewMode === 'grid' && (
+              <Pressable
+                onPress={() => setColumns(c => COLUMN_CYCLE[(COLUMN_CYCLE.indexOf(c) + 1) % COLUMN_CYCLE.length])}
+                style={styles.viewBtn}>
+                {columns ? (
+                  <Text style={styles.columnsLabel}>×{columns}</Text>
+                ) : (
+                  <Ionicons name="grid-outline" size={15} color="white" />
+                )}
+              </Pressable>
+            )}
           </View>
         </View>
         <View style={styles.heroMain}>
@@ -144,6 +158,7 @@ export default function PinnedSetDetail() {
           ownedSet={ownedAll}
           readOnly={false}
           viewMode={viewMode}
+          columnsOverride={columns}
           quantities={quantities}
           onIncrement={c => adjustQuantity.mutate(
             { cardId: c.id, delta: 1, currentQuantity: quantities.get(c.id) ?? 0 },

@@ -10,6 +10,8 @@ interface Props {
   wishedSet?: Set<string>;
   readOnly?: boolean;
   viewMode?: 'grid' | 'list';
+  /** Overrides the width-based default column count in grid mode. */
+  columnsOverride?: 3 | 4 | null;
   /** Copies owned per card id — when provided (alongside onIncrement/onDecrement), tiles show a +/- stepper instead of a plain owned badge. */
   quantities?: Map<string, number>;
   onIncrement?: (card: TcgCardRow) => void;
@@ -25,7 +27,7 @@ function numColsFor(width: number): number {
   return 6;
 }
 
-export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = 'grid', quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom }: Props) {
+export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = 'grid', columnsOverride, quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom }: Props) {
   const { width } = useWindowDimensions();
   if (viewMode === 'list') {
     return (
@@ -53,7 +55,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = '
   return (
     <FlashList
       data={cards}
-      numColumns={numColsFor(width)}
+      numColumns={columnsOverride ?? numColsFor(width)}
       estimatedItemSize={200}
       keyExtractor={c => c.id}
       renderItem={({ item }) => (
