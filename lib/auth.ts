@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
@@ -43,6 +44,22 @@ export async function signUp(email: string, password: string, username: string, 
 
 export async function signOut() {
   await supabase.auth.signOut();
+}
+
+// Native mobile isn't wired up for deep links yet (no EAS build/scheme handling
+// in place) — restrict the redirect to web, where Supabase's detectSessionInUrl
+// picks the recovery token back up automatically on /reset-password.
+export async function requestPasswordReset(email: string) {
+  const redirectTo = Platform.OS === 'web'
+    ? `${process.env.EXPO_PUBLIC_APP_URL}/reset-password`
+    : undefined;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) throw error;
+}
+
+export async function updatePassword(newPassword: string) {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
 }
 
 // viewerId lets an accepted friend (or the profile's own owner) see a
