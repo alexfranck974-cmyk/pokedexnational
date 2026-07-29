@@ -5,8 +5,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import pokedexData from '@/data/pokedex.json';
-import type { Pokemon } from '@/lib/types';
 import { CardGallery } from '@/components/CardGallery';
 import { CardZoomModal } from '@/components/CardZoomModal';
 import { ProgressRing } from '@/components/ProgressRing';
@@ -22,8 +20,6 @@ import { classifyRarity } from '@/lib/rarity-tiers';
 import { buildSetTypeGroups, typesCompletedByToggle } from '@/lib/set-type-completion';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
-const POKEDEX = pokedexData as Pokemon[];
-const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
 const COLUMN_CYCLE: (3 | 4 | null)[] = [null, 3, 4];
 
 export default function PinnedSetDetail() {
@@ -46,7 +42,7 @@ export default function PinnedSetDetail() {
   const [zoomCard, setZoomCard] = useState<TcgCardRow | null>(null);
   const [captureQueue, setCaptureQueue] = useState<CaptureEvent[]>([]);
   const currentCapture = captureQueue[0] ?? null;
-  const typeGroups = useMemo(() => buildSetTypeGroups(cards, POKEDEX_BY_DEX), [cards]);
+  const typeGroups = useMemo(() => buildSetTypeGroups(cards), [cards]);
 
   const set = useMemo(() => allSets.find(s => s.id === setId), [allSets, setId]);
   const setName = set?.name ?? setId ?? '';
@@ -171,7 +167,7 @@ export default function PinnedSetDetail() {
           onToggle={c => {
             const wasOwned = ownedAll.has(c.id);
             if (!wasOwned) {
-              const completedTypes = typesCompletedByToggle(c, cards, POKEDEX_BY_DEX, ownedAll, typeGroups);
+              const completedTypes = typesCompletedByToggle(c, cards, ownedAll, typeGroups);
               const events: CaptureEvent[] = completedTypes.map(t => ({ id: `type-${t}-${c.id}`, kind: 'type', type: t }));
               if (events.length === 0) {
                 const tier = classifyRarity(c.rarity);

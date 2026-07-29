@@ -22,6 +22,7 @@ interface TcgCard {
   name: string;
   supertype: string;
   subtypes?: string[];
+  types?: string[];
   nationalPokedexNumbers?: number[];
   set: { id: string; name: string; series: string; releaseDate: string; images?: { symbol?: string; logo?: string } };
   number: string;
@@ -74,6 +75,7 @@ function toRow(c: TcgCard) {
     name: c.name,
     supertype: c.supertype,
     subtypes: c.subtypes ?? null,
+    types: c.types ?? null,
     dex_num: dex,
     set_id: c.set.id,
     set_name: c.set.name,

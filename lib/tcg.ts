@@ -15,6 +15,8 @@ export interface TcgCardRow {
   region: 'global' | 'jp' | 'cn';
   dex_num?: number;
   subtypes?: string[] | null;
+  /** The TCG's own printed energy type(s) (e.g. "Water", "Lightning", "Colorless") — distinct from the video game's 18 types. */
+  types?: string[] | null;
 }
 
 export function useCardsForPokemon(dexNum: number | undefined) {
@@ -71,7 +73,7 @@ export function useCardsForSet(setId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tcg_cards')
-        .select('id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region')
+        .select('id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region, types')
         .eq('set_id', setId!)
         .order('dex_num', { ascending: true });
       if (error) throw error;

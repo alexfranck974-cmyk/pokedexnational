@@ -1,14 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { PokemonType } from '@/lib/types';
-import { TYPE_COLORS, TYPE_LABEL_FR } from '@/lib/types-colors';
+import { TYPE_COLORS } from '@/lib/types-colors';
+import { tcgTypeLabelFr, tcgTypeAsPokemonType } from '@/lib/tcg-types';
 import { TypeIcon } from './TypeIcon';
 import { playChime } from '@/lib/chime';
 import { fonts } from '@/lib/theme';
 
 export type CaptureEvent =
-  | { id: string; kind: 'type'; type: PokemonType }
+  // `type` is the TCG card's own printed energy type (e.g. "Water", "Colorless"),
+  // not a video-game PokemonType — see lib/tcg-types.ts.
+  | { id: string; kind: 'type'; type: string }
   | { id: string; kind: 'rarity'; tier: 'holo' | 'chase'; rarityLabel: string; imageSmall: string };
 
 interface Props {
@@ -29,6 +31,7 @@ const CARD_ZOOM_WIDTH = 138;
 const CARD_ZOOM_HEIGHT = CARD_ZOOM_WIDTH / CARD_RATIO;
 
 const GOLD = '#fbbf24';
+const NEUTRAL = '#9ca3af';
 
 export function CaptureEffect({ event, onDone }: Props) {
   const appear = useRef(new Animated.Value(0)).current;
@@ -82,10 +85,12 @@ export function CaptureEffect({ event, onDone }: Props) {
 
   const isType = event.kind === 'type';
   const isChase = event.kind === 'rarity' && event.tier === 'chase';
-  const accent = isType ? TYPE_COLORS[event.type] : GOLD;
-  const title = isType ? `Type ${TYPE_LABEL_FR[event.type]} complet !` : `✨ ${event.rarityLabel} !`;
+  // "Colorless" has no video-game type equivalent — falls back to a neutral tint/icon.
+  const pokemonType = isType ? tcgTypeAsPokemonType(event.type) : undefined;
+  const accent = isType ? (pokemonType ? TYPE_COLORS[pokemonType] : NEUTRAL) : GOLD;
+  const title = isType ? `Type ${tcgTypeLabelFr(event.type)} complet !` : `✨ ${event.rarityLabel} !`;
   const subtitle = isType
-    ? `Tous les Pokémon de type ${TYPE_LABEL_FR[event.type]} sont capturés dans ce set`
+    ? `Tous les Pokémon de type ${tcgTypeLabelFr(event.type)} sont capturés dans ce set`
     : 'Une pépite pour ta collection';
   // The chase-tier card zoom is bigger than the circular type badge, so
   // particles need a wider radius to clear its edges instead of overlapping it.
@@ -126,7 +131,7 @@ export function CaptureEffect({ event, onDone }: Props) {
                 { backgroundColor: accent + '22', borderColor: accent },
                 { opacity: appear, transform: [{ scale: appear.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }] },
               ]}>
-              <TypeIcon type={event.type} size={72} />
+              {pokemonType ? <TypeIcon type={pokemonType} size={72} /> : <Ionicons name="ellipse" size={56} color={accent} />}
             </Animated.View>
           )}
         </View>
