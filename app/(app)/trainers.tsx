@@ -45,6 +45,8 @@ function numColsFor(width: number): number {
   return 7;
 }
 
+type TrainerStatusFilter = 'all' | 'owned' | 'missing';
+
 export default function TrainersScreen() {
   const router = useRouter();
   const goBackToOrigin = useBackTo('/favorites');
@@ -57,6 +59,8 @@ export default function TrainersScreen() {
   const toggleOwned = useToggleOwnedCard();
 
   const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<TrainerStatusFilter>('all');
   const [selectedSetIds, setSelectedSetIds] = useState<Set<string> | null>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -81,9 +85,14 @@ export default function TrainersScreen() {
 
   const visibleGroups = useMemo(() => {
     const q = normalize(search.trim());
-    if (!q) return groups;
-    return groups.filter(g => normalize(g.key).includes(q));
-  }, [groups, search]);
+    return groups.filter(g => {
+      if (q && !normalize(g.key).includes(q)) return false;
+      const owned = g.cards.some(c => ownedAll.has(c.id));
+      if (statusFilter === 'owned' && !owned) return false;
+      if (statusFilter === 'missing' && owned) return false;
+      return true;
+    });
+  }, [groups, search, statusFilter, ownedAll]);
 
   const selectedGroup = useMemo(
     () => selectedCharacter ? groups.find(g => g.key === selectedCharacter) ?? null : null,
@@ -105,10 +114,22 @@ export default function TrainersScreen() {
     viewBtnActive: { backgroundColor: 'white' },
     heroTitle: { fontSize: 20, fontFamily: fonts.display, color: 'white' },
     heroCaption: { fontSize: 12, fontFamily: fonts.mono, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
-    search: {
-      margin: spacing.md, marginBottom: 0, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md,
-      padding: 12, fontSize: 15, fontFamily: fonts.body, backgroundColor: colors.surfaceAlt, color: colors.text,
+    statusRow: { flexDirection: 'row' as const, gap: 6, margin: spacing.md, marginBottom: 0 },
+    chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
+    chipActive: { backgroundColor: colors.primary },
+    chipText: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
+    chipTextActive: { color: 'white', fontFamily: fonts.bodyBold },
+    searchOverlay: { position: 'absolute' as const, right: spacing.lg, bottom: spacing.lg, alignItems: 'flex-end' as const, gap: spacing.sm },
+    searchFab: {
+      width: 52, height: 52, borderRadius: 26, backgroundColor: colors.surface, borderWidth: 1,
+      borderColor: colors.border, alignItems: 'center' as const, justifyContent: 'center' as const, ...shadow.md,
     },
+    floatingSearch: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, backgroundColor: colors.surface,
+      borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm, width: 240, ...shadow.md,
+    },
+    floatingSearchInput: { flex: 1, fontSize: 15, fontFamily: fonts.body, color: colors.text, padding: 0 },
     empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: 24, fontStyle: 'italic' as const },
     grid: { padding: spacing.sm },
     tile: { flex: 1, padding: 6, alignItems: 'center' as const },
@@ -160,13 +181,17 @@ export default function TrainersScreen() {
 
       {!selectedCharacter && (
         <>
-          <TextInput
-            placeholder="Chercher un dresseur"
-            value={search}
-            onChangeText={setSearch}
-            autoCapitalize="none"
-            style={styles.search}
-          />
+          <View style={styles.statusRow}>
+            <Pressable onPress={() => setStatusFilter('all')} style={[styles.chip, statusFilter === 'all' && styles.chipActive]}>
+              <Text style={[styles.chipText, statusFilter === 'all' && styles.chipTextActive]}>Tous</Text>
+            </Pressable>
+            <Pressable onPress={() => setStatusFilter('owned')} style={[styles.chip, statusFilter === 'owned' && styles.chipActive]}>
+              <Text style={[styles.chipText, statusFilter === 'owned' && styles.chipTextActive]}>Possédés</Text>
+            </Pressable>
+            <Pressable onPress={() => setStatusFilter('missing')} style={[styles.chip, statusFilter === 'missing' && styles.chipActive]}>
+              <Text style={[styles.chipText, statusFilter === 'missing' && styles.chipTextActive]}>Manquants</Text>
+            </Pressable>
+          </View>
           <CardFilterTree cards={cards} selectedSetIds={selectedSetIds} onChange={setSelectedSetIds} />
         </>
       )}
@@ -206,6 +231,30 @@ export default function TrainersScreen() {
             );
           }}
         />
+      )}
+      {!selectedCharacter && (
+        <View style={styles.searchOverlay} pointerEvents="box-none">
+          {searchOpen && (
+            <View style={styles.floatingSearch}>
+              <Ionicons name="search" size={18} color={colors.textMuted} />
+              <TextInput
+                placeholder="Chercher un dresseur"
+                value={search}
+                onChangeText={setSearch}
+                autoCapitalize="none"
+                autoFocus
+                style={styles.floatingSearchInput}
+                onBlur={() => { if (!search) setSearchOpen(false); }}
+              />
+              <Pressable onPress={() => { setSearch(''); setSearchOpen(false); }} hitSlop={8}>
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </Pressable>
+            </View>
+          )}
+          <Pressable onPress={() => setSearchOpen(o => !o)} style={styles.searchFab}>
+            <Ionicons name="search" size={22} color={search ? colors.primary : colors.text} />
+          </Pressable>
+        </View>
       )}
       <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
     </SafeAreaView>
