@@ -264,6 +264,7 @@ export default function PublicProfile() {
             sets={sets} rarities={rarities}
             onReset={() => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); }}
             columns={columns} onColumns={setColumns}
+            bottomInset={spacing.lg}
           />
         </>
       )}

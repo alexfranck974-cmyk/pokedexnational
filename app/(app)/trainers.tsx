@@ -13,7 +13,7 @@ import { useTrainerCards } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
 import { useAllOwnedCardIds, useToggleOwnedCard } from '@/lib/collection';
 import { useBackTo } from '@/lib/navigation';
-import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE, SCREEN_FAB_CLEARANCE } from '@/lib/theme';
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -119,7 +119,7 @@ export default function TrainersScreen() {
     chipActive: { backgroundColor: colors.primary },
     chipText: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
     chipTextActive: { color: 'white', fontFamily: fonts.bodyBold },
-    searchOverlay: { position: 'absolute' as const, right: spacing.lg, bottom: spacing.lg, alignItems: 'flex-end' as const, gap: spacing.sm },
+    searchOverlay: { position: 'absolute' as const, right: spacing.lg, bottom: SCREEN_FAB_CLEARANCE, alignItems: 'flex-end' as const, gap: spacing.sm },
     searchFab: {
       width: 52, height: 52, borderRadius: 26, backgroundColor: colors.surface, borderWidth: 1,
       borderColor: colors.border, alignItems: 'center' as const, justifyContent: 'center' as const, ...shadow.md,

@@ -23,6 +23,11 @@ export const spacing = {
 // padding/margin to clear it (bar bottom offset + bar height + a small gap above it).
 export const TAB_BAR_CLEARANCE = 100;
 
+// Screen-level floating buttons (search/filter/columns FABs in SearchFilterBar,
+// FavoritesFilterBar) anchor bottom-right like the global Settings FAB above the tab
+// bar (app/(app)/_layout.tsx) — this clears both so the two stacks never overlap.
+export const SCREEN_FAB_CLEARANCE = 142;
+
 // Fredoka carries headers and the hero number — Karla is body text — JetBrains Mono (tabular)
 // renders every counted value (dex n°, %, card counts) like a Pokédex screen readout.
 export const fonts = {

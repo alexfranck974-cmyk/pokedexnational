@@ -5,7 +5,7 @@ import type { PokemonType } from '@/lib/types';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
 import { GENERATIONS } from '@/lib/generations';
-import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts } from '@/lib/theme';
+import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts, SCREEN_FAB_CLEARANCE } from '@/lib/theme';
 
 interface Props {
   search: string;                       onSearch: (v: string) => void;
@@ -19,13 +19,15 @@ interface Props {
   rarities: string[];
   onReset: () => void;
   columns: 2 | 3 | 4 | null;            onColumns: (v: 2 | 3 | 4 | null) => void;
+  /** Clearance above the floating tab bar + Settings FAB (app/(app)/_layout.tsx). Screens without that chrome (e.g. the public profile) pass spacing.lg instead. */
+  bottomInset?: number;
 }
 
 const COLUMN_CYCLE: (2 | 3 | 4 | null)[] = [null, 2, 3, 4];
 
-function makeStyles(colors: ColorTokens, shadow: ShadowTokens) {
+function makeStyles(colors: ColorTokens, shadow: ShadowTokens, bottomInset: number = SCREEN_FAB_CLEARANCE) {
   return {
-    overlay: { position: 'absolute' as const, left: 0, right: 0, top: 0, bottom: 0, alignItems: 'flex-end' as const, justifyContent: 'flex-end' as const, padding: spacing.lg, gap: spacing.md },
+    overlay: { position: 'absolute' as const, left: 0, right: 0, top: 0, bottom: 0, alignItems: 'flex-end' as const, justifyContent: 'flex-end' as const, paddingHorizontal: spacing.lg, paddingBottom: bottomInset, gap: spacing.md },
 
     floatingSearch: { alignSelf: 'stretch' as const, flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, ...shadow.md },
     floatingSearchInput: { flex: 1, fontSize: 15, fontFamily: fonts.body, color: colors.text, padding: 0 },
@@ -125,7 +127,7 @@ export function SearchFilterBar(p: Props) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const { colors } = useTheme();
-  const styles = useThemedStyles(makeStyles);
+  const styles = useThemedStyles((colors, shadow) => makeStyles(colors, shadow, p.bottomInset));
   const hasFilters = p.statusFilter !== 'all' || p.typeFilter || p.setFilter || p.rarityFilter || p.generationFilter !== null;
 
   const typeOptions: PickerOption[] = (Object.keys(TYPE_LABEL_FR) as PokemonType[])

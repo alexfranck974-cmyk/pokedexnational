@@ -5,7 +5,7 @@ import type { PokemonType } from '@/lib/types';
 import type { WishStatusFilter, WishSortKey } from '@/lib/wishlist-list';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
 import { GENERATIONS } from '@/lib/generations';
-import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts } from '@/lib/theme';
+import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts, SCREEN_FAB_CLEARANCE } from '@/lib/theme';
 
 interface Props {
   search: string;                       onSearch: (v: string) => void;
@@ -22,7 +22,7 @@ interface Props {
 
 function makeStyles(colors: ColorTokens, shadow: ShadowTokens) {
   return {
-    overlay: { position: 'absolute' as const, left: 0, right: 0, top: 0, bottom: 0, alignItems: 'flex-end' as const, justifyContent: 'flex-end' as const, padding: spacing.lg, gap: spacing.md },
+    overlay: { position: 'absolute' as const, left: 0, right: 0, top: 0, bottom: 0, alignItems: 'flex-end' as const, justifyContent: 'flex-end' as const, paddingHorizontal: spacing.lg, paddingBottom: SCREEN_FAB_CLEARANCE, gap: spacing.md },
 
     floatingSearch: { alignSelf: 'stretch' as const, flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, ...shadow.md },
     floatingSearchInput: { flex: 1, fontSize: 15, fontFamily: fonts.body, color: colors.text, padding: 0 },
