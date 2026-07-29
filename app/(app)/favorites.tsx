@@ -11,7 +11,7 @@ import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { useSession } from '@/lib/auth';
-import { useUserDex, useOwnedCardImages, useAllOwnedCardIds } from '@/lib/collection';
+import { useUserDex, useOwnedCardImages, useAllOwnedCardIds, useAllOwnedCardsDetailed } from '@/lib/collection';
 import { useFavorites, useToggleFavorite, useShowcase, useToggleShowcase } from '@/lib/favorites';
 import { toast } from '@/lib/toast';
 import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
@@ -74,6 +74,8 @@ export default function FavoritesScreen() {
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
   const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
+  const { data: ownedCardsDetailed = [] } = useAllOwnedCardsDetailed(userId);
+  const artistByDex = useMemo(() => new Map(ownedCardsDetailed.map(c => [c.dexNum, c.artist])), [ownedCardsDetailed]);
   const { data: favorites = new Set<number>() } = useFavorites(userId);
   const toggleFavorite = useToggleFavorite();
   const { data: showcase = new Set<number>() } = useShowcase(userId);
@@ -125,7 +127,13 @@ export default function FavoritesScreen() {
   const visibleFavoritePokemon = useMemo(() => {
     const q = normalize(favSearch.trim());
     let list = ownedPokemon.filter(p => {
-      if (q && !normalize(getName(p)).includes(q) && !String(p.num).includes(q)) return false;
+      if (q) {
+        const artist = artistByDex.get(p.num);
+        const nameMatch = normalize(getName(p)).includes(q);
+        const numMatch = String(p.num).includes(q);
+        const artistMatch = !!artist && normalize(artist).includes(q);
+        if (!nameMatch && !numMatch && !artistMatch) return false;
+      }
       if (favStatusFilter === 'favorites' && !favorites.has(p.num)) return false;
       if (favStatusFilter === 'vitrine' && !showcase.has(p.num)) return false;
       return true;
@@ -145,7 +153,7 @@ export default function FavoritesScreen() {
       }
     });
     return list;
-  }, [ownedPokemon, favSearch, favStatusFilter, favSort, favorites, showcase, favoriteRecency]);
+  }, [ownedPokemon, favSearch, favStatusFilter, favSort, favorites, showcase, favoriteRecency, artistByDex]);
   const selectedTeam = teams.find(t => t.id === selectedTeamId) ?? null;
   const selectedCollection = collections.find(c => c.id === selectedCollectionId) ?? null;
   const { data: collectionCards = [] } = useCollectionCards(selectedCollectionId ?? undefined);
@@ -279,9 +287,9 @@ export default function FavoritesScreen() {
             : 'Extensions'}
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          <Chip label="Favoris" active={subTab === 'favorites'} onPress={() => setSubTab('favorites')} />
           <Chip label="Extensions" active={subTab === 'goals'} onPress={() => setSubTab('goals')} />
           <Chip label="Dresseurs" active={false} onPress={() => router.push(withReturnTo('/trainers', '/favorites') as never)} />
+          <Chip label="Favoris" active={subTab === 'favorites'} onPress={() => setSubTab('favorites')} />
           <Chip label="Mes listes" active={subTab === 'lists'} onPress={() => setSubTab('lists')} />
           {/* "Équipes" is intentionally not surfaced for now — kept dormant (state/branch
               still below) for a possible future deckbuilding feature, not deleted. */}
@@ -303,7 +311,7 @@ export default function FavoritesScreen() {
           <>
             <View style={styles.favControls}>
               <TextInput
-                placeholder="Rechercher (nom, n°)"
+                placeholder="Rechercher (nom, n°, artiste)"
                 value={favSearch}
                 onChangeText={setFavSearch}
                 autoCapitalize="none"
