@@ -29,6 +29,7 @@ import { TeamSlotPicker } from '@/components/TeamSlotPicker';
 import { CollectionCardPicker } from '@/components/CollectionCardPicker';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
+import { FavoritesFilterBar } from '@/components/FavoritesFilterBar';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
@@ -37,8 +38,8 @@ const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
 const TEAM_SIZE = 6;
 const VITRINE_LIMIT = 6;
 
-type FavStatusFilter = 'all' | 'favorites' | 'vitrine';
-type FavSortKey = 'fav-recent' | 'num-asc' | 'num-desc' | 'name-asc' | 'name-desc';
+export type FavStatusFilter = 'all' | 'favorites' | 'vitrine';
+export type FavSortKey = 'fav-recent' | 'num-asc' | 'num-desc' | 'name-asc' | 'name-desc';
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -218,14 +219,6 @@ export default function FavoritesScreen() {
     title: { fontSize: 22, fontFamily: fonts.display, color: colors.text },
     chipRow: { flexDirection: 'row' as const, gap: spacing.xs },
     legend: { fontSize: 12, fontFamily: fonts.body, color: colors.textDim },
-    favControls: {
-      padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border, gap: spacing.sm,
-    },
-    favSearch: {
-      borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12,
-      fontSize: 15, fontFamily: fonts.body, backgroundColor: colors.surfaceAlt, color: colors.text,
-    },
     emptyTitle: { fontSize: 18, fontFamily: fonts.display, textAlign: 'center' as const, color: colors.text },
     emptyHint: { fontSize: 14, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
 
@@ -309,27 +302,6 @@ export default function FavoritesScreen() {
           </View>
         ) : (
           <>
-            <View style={styles.favControls}>
-              <TextInput
-                placeholder="Rechercher (nom, n°, artiste)"
-                value={favSearch}
-                onChangeText={setFavSearch}
-                autoCapitalize="none"
-                style={styles.favSearch}
-              />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-                <Chip label="Tous" active={favStatusFilter === 'all'} onPress={() => setFavStatusFilter('all')} />
-                <Chip label="★ Favoris" active={favStatusFilter === 'favorites'} onPress={() => setFavStatusFilter('favorites')} />
-                <Chip label="✨ Vitrine" active={favStatusFilter === 'vitrine'} onPress={() => setFavStatusFilter('vitrine')} />
-              </ScrollView>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-                <Chip label="★ récent" active={favSort === 'fav-recent'} onPress={() => setFavSort('fav-recent')} />
-                <Chip label="N° ↑" active={favSort === 'num-asc'} onPress={() => setFavSort('num-asc')} />
-                <Chip label="N° ↓" active={favSort === 'num-desc'} onPress={() => setFavSort('num-desc')} />
-                <Chip label="A→Z" active={favSort === 'name-asc'} onPress={() => setFavSort('name-asc')} />
-                <Chip label="Z→A" active={favSort === 'name-desc'} onPress={() => setFavSort('name-desc')} />
-              </ScrollView>
-            </View>
             {visibleFavoritePokemon.length === 0 ? (
               <View style={styles.center}>
                 <Text style={styles.emptyHint}>Aucun résultat avec ces filtres.</Text>
@@ -353,6 +325,11 @@ export default function FavoritesScreen() {
                 )}
               />
             )}
+            <FavoritesFilterBar
+              search={favSearch} onSearch={setFavSearch}
+              statusFilter={favStatusFilter} onStatus={setFavStatusFilter}
+              sort={favSort} onSort={setFavSort}
+            />
           </>
         )
       ) : subTab === 'teams' ? (
