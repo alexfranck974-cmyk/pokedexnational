@@ -32,7 +32,7 @@ import { SetGoalPicker } from '@/components/SetGoalPicker';
 import { FavoritesFilterBar } from '@/components/FavoritesFilterBar';
 import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
-import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
@@ -268,7 +268,7 @@ export default function FavoritesScreen() {
       position: 'absolute' as const, top: 4, right: 4, width: 24, height: 24, borderRadius: 12,
       backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
-    goalsGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm },
+    goalsGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm, paddingBottom: TAB_BAR_CLEARANCE },
   }));
 
   return (
@@ -313,6 +313,7 @@ export default function FavoritesScreen() {
                 data={visibleFavoritePokemon}
                 numColumns={numColsFor(width)}
                 estimatedItemSize={120}
+                contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
                 keyExtractor={p => String(p.num)}
                 renderItem={({ item }) => (
                   <FavoriteTile
@@ -409,6 +410,7 @@ export default function FavoritesScreen() {
             ) : (
               <FlatList
                 data={teams}
+                contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
                 keyExtractor={t => t.id}
                 renderItem={({ item }) => (
                   <Pressable onPress={() => setSelectedTeamId(item.id)} style={({ pressed }) => [styles.teamRow, pressed && styles.teamRowPressed]}>
@@ -461,6 +463,7 @@ export default function FavoritesScreen() {
               data={collectionCards}
               numColumns={numColsFor(width)}
               estimatedItemSize={200}
+              contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
               keyExtractor={c => c.cardId}
               renderItem={({ item }) => {
                 const isOwned = ownedCardIds.has(item.cardId);
@@ -516,6 +519,7 @@ export default function FavoritesScreen() {
           ) : (
             <FlatList
               data={collections}
+              contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
               keyExtractor={c => c.id}
               renderItem={({ item }) => (
                 <Pressable onPress={() => setSelectedCollectionId(item.id)} style={({ pressed }) => [styles.teamRow, pressed && styles.teamRowPressed]}>

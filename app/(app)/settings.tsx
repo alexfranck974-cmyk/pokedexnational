@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase';
 import * as Clipboard from 'expo-clipboard';
 import { IconBubble } from '@/components/IconBubble';
 import { QRCodeModal } from '@/components/QRCodeModal';
-import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 
 export default function Settings() {
   const router = useRouter();
@@ -19,7 +19,7 @@ export default function Settings() {
   const { colors, mode, toggleMode } = useTheme();
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
-    scroll: { padding: spacing.lg, gap: spacing.lg },
+    scroll: { padding: spacing.lg, paddingBottom: spacing.lg + TAB_BAR_CLEARANCE, gap: spacing.lg },
     hero: {
       flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md,
       padding: spacing.lg, borderRadius: radius.lg, ...shadow.sm,

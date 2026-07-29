@@ -5,7 +5,7 @@ import { PokemonTile } from './PokemonTile';
 import type { PokemonWithState } from '@/lib/pokedex-list';
 import { GENERATIONS, GEN_COLORS, GEN_EMOJI } from '@/lib/generations';
 import { withAlpha } from '@/lib/color-utils';
-import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 
 interface Props {
   items: PokemonWithState[];
@@ -71,6 +71,7 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverrid
       keyExtractor={row => row.key}
       getItemType={row => row.type}
       ListHeaderComponent={ListHeaderComponent}
+      contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
       stickyHeaderIndices={stickyHeaderIndices}
       overrideItemLayout={(layout, row, _index, maxColumns) => {
         if (row.type === 'header') layout.span = maxColumns;

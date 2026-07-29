@@ -22,7 +22,7 @@ import { CardZoomModal } from '@/components/CardZoomModal';
 import { IconBubble } from '@/components/IconBubble';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
-import { useTheme, useThemedStyles, spacing, fonts } from '@/lib/theme';
+import { useTheme, useThemedStyles, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
 const EVOLUTION_FAMILIES = buildEvolutionFamilies(POKEDEX);
@@ -84,7 +84,7 @@ export default function DashboardScreen() {
   const { colors } = useTheme();
   const styles = useThemedStyles((colors) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
-    scroll: { padding: spacing.lg, gap: spacing.lg },
+    scroll: { padding: spacing.lg, paddingBottom: spacing.lg + TAB_BAR_CLEARANCE, gap: spacing.lg },
     h1: { fontSize: 30, fontFamily: fonts.display, color: colors.text },
     collectionValue: { fontSize: 15, fontFamily: fonts.monoBold, color: colors.success },
 

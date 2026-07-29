@@ -13,7 +13,7 @@ import { useTrainerCards } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
 import { useAllOwnedCardIds, useToggleOwnedCard } from '@/lib/collection';
 import { useBackTo } from '@/lib/navigation';
-import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -131,7 +131,7 @@ export default function TrainersScreen() {
     },
     floatingSearchInput: { flex: 1, fontSize: 15, fontFamily: fonts.body, color: colors.text, padding: 0 },
     empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: 24, fontStyle: 'italic' as const },
-    grid: { padding: spacing.sm },
+    grid: { padding: spacing.sm, paddingBottom: TAB_BAR_CLEARANCE },
     tile: { flex: 1, padding: 6, alignItems: 'center' as const },
     tileImg: { width: '100%' as const, aspectRatio: 0.72, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
     tileImgMissing: { opacity: 0.55 },

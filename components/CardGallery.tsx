@@ -3,6 +3,7 @@ import { useWindowDimensions } from 'react-native';
 import { CardTile } from './CardTile';
 import { CardListRow } from './CardListRow';
 import type { TcgCardRow } from '@/lib/tcg';
+import { TAB_BAR_CLEARANCE } from '@/lib/theme';
 
 interface Props {
   cards: TcgCardRow[];
@@ -34,6 +35,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = '
       <FlashList
         data={cards}
         estimatedItemSize={100}
+        contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
         keyExtractor={c => c.id}
         renderItem={({ item }) => (
           <CardListRow
@@ -57,6 +59,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = '
       data={cards}
       numColumns={columnsOverride ?? numColsFor(width)}
       estimatedItemSize={200}
+      contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
       keyExtractor={c => c.id}
       renderItem={({ item }) => (
         <CardTile

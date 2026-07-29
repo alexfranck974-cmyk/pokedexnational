@@ -4,7 +4,12 @@ import { useIncomingRequests } from '@/lib/friends';
 import { View, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PokedexDeviceIcon } from '@/components/PokedexDeviceIcon';
+import { withAlpha } from '@/lib/color-utils';
 import { useTheme, radius, spacing } from '@/lib/theme';
+
+const BAR_SIDE_INSET = spacing.lg;
+const BAR_BOTTOM_OFFSET = spacing.lg;
+const BAR_HEIGHT = 62;
 
 export default function AppLayout() {
   const router = useRouter();
@@ -21,8 +26,21 @@ export default function AppLayout() {
         screenOptions={{
           headerShown: false,
           tabBarStyle: {
-            backgroundColor: colors.surface,
-            borderTopColor: colors.border,
+            position: 'absolute',
+            left: BAR_SIDE_INSET,
+            right: BAR_SIDE_INSET,
+            bottom: BAR_BOTTOM_OFFSET,
+            height: BAR_HEIGHT,
+            borderRadius: radius.xl,
+            backgroundColor: withAlpha(colors.surface, 0.86),
+            borderTopWidth: 0,
+            borderWidth: 1,
+            borderColor: withAlpha(colors.border, 0.6),
+            shadowColor: '#000',
+            shadowOpacity: 0.12,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 8,
           },
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textMuted,
@@ -84,7 +102,7 @@ export default function AppLayout() {
       </Tabs>
       <Pressable
         onPress={() => router.push('/settings')}
-        style={[styles.settingsFab, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}>
         <Ionicons name="settings-outline" size={22} color={colors.text} />
       </Pressable>
     </View>
@@ -99,7 +117,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#ef4444', borderWidth: 1.5,
   },
   settingsFab: {
-    position: 'absolute', right: spacing.md, bottom: 78, width: 44, height: 44, borderRadius: radius.pill,
+    position: 'absolute', right: BAR_SIDE_INSET, bottom: BAR_BOTTOM_OFFSET + BAR_HEIGHT + spacing.sm,
+    width: 44, height: 44, borderRadius: radius.pill,
     borderWidth: 1, alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 4,
   },

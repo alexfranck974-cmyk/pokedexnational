@@ -18,6 +18,11 @@ export const spacing = {
   xl: 24,
 };
 
+// Floating tab bar is `position: absolute` (app/(app)/_layout.tsx), so React Navigation
+// no longer auto-reserves space for it — scrollable screen content needs this much bottom
+// padding/margin to clear it (bar bottom offset + bar height + a small gap above it).
+export const TAB_BAR_CLEARANCE = 100;
+
 // Fredoka carries headers and the hero number — Karla is body text — JetBrains Mono (tabular)
 // renders every counted value (dex n°, %, card counts) like a Pokédex screen readout.
 export const fonts = {

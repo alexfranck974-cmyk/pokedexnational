@@ -13,7 +13,7 @@ import {
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
 import { IconBubble } from '@/components/IconBubble';
 import { QRCodeModal } from '@/components/QRCodeModal';
-import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 
 function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   const { colors } = useTheme();
@@ -70,7 +70,7 @@ export default function FriendsScreen() {
       borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12,
       fontSize: 15, fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt,
     },
-    body: { padding: spacing.md, gap: spacing.lg },
+    body: { padding: spacing.md, paddingBottom: spacing.md + TAB_BAR_CLEARANCE, gap: spacing.lg },
     sectionTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
     sectionTitle: { fontSize: 15, fontFamily: fonts.display, color: colors.text },
     sectionCount: { fontSize: 12, fontFamily: fonts.mono, color: colors.textMuted },

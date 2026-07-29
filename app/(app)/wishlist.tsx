@@ -11,7 +11,7 @@ import {
   applyWishlistPipeline, groupWishlistByPokemon,
   type WishStatusFilter, type WishSortKey, type WishlistCard, type WishlistGroup,
 } from '@/lib/wishlist-list';
-import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
 import { WishlistFilterBar } from '@/components/WishlistFilterBar';
 import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
@@ -177,6 +177,7 @@ export default function WishlistScreen() {
         <FlashList
           data={grouped}
           estimatedItemSize={76}
+          contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
           keyExtractor={(g: WishlistGroup) => String(g.dexNum)}
           renderItem={({ item }: { item: WishlistGroup }) => {
             const mon = POKEDEX_BY_DEX.get(item.dexNum);
@@ -215,6 +216,7 @@ export default function WishlistScreen() {
           data={filtered}
           numColumns={numColsFor(width)}
           estimatedItemSize={200}
+          contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
           keyExtractor={c => c.id}
           renderItem={({ item }) => {
             const owned = ownedIds.has(item.id);
