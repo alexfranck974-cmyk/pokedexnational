@@ -243,7 +243,11 @@ export default function PublicProfile() {
                 <PokedexStatsSection userId={userId} showValueBadges={false} />
               </View>
             }
-            onSelect={() => { /* no detail page for visitors — long-press to zoom instead */ }}
+            onSelect={(num) => {
+              // No detail page for visitors — a tap zooms the owned card directly instead.
+              const card = ownedCardsByDex.get(num);
+              if (card) setZoom({ kind: 'grid', card: { image_small: card.imageSmall, image_large: card.imageLarge } });
+            }}
             onLongSelect={(num) => {
               const card = ownedCardsByDex.get(num);
               if (card) setZoom({ kind: 'grid', card: { image_small: card.imageSmall, image_large: card.imageLarge } });
