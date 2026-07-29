@@ -1,12 +1,13 @@
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, Tabs, useRouter } from 'expo-router';
 import { useSession } from '@/lib/auth';
 import { useIncomingRequests } from '@/lib/friends';
-import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { View, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PokedexDeviceIcon } from '@/components/PokedexDeviceIcon';
-import { useTheme } from '@/lib/theme';
+import { useTheme, radius, spacing } from '@/lib/theme';
 
 export default function AppLayout() {
+  const router = useRouter();
   const { session, loading } = useSession();
   const { colors } = useTheme();
   const { data: incomingRequests = [] } = useIncomingRequests(session?.user.id);
@@ -15,93 +16,78 @@ export default function AppLayout() {
   if (!session) return <Redirect href="/login" />;
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-        },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
-      }}
-    >
-      {/*
-        Pokédex listed first (its Tabs.Screen order = the navigator's implicit
-        initial route, no explicit initialRouteName is set). Tab-to-tab
-        navigation collapses via history.replaceState rather than pushing new
-        entries, so the mobile back gesture always bottoms out on whichever tab
-        is initial — putting Pokédex first makes that Pokédex instead of
-        Dashboard, notably for the pokemon/[num] hidden route reached from
-        Dashboard/Wishlist/Favoris.
-      */}
-      <Tabs.Screen
-        name="pokedex"
-        options={{
-          title: 'Pokédex',
-          tabBarIcon: ({ focused, size }) => (
-            <View style={[styles.iconWrap, focused && styles.iconWrapFocused]}>
-              <PokedexDeviceIcon size={size - 2} />
-            </View>
-          ),
+    <View style={{ flex: 1 }}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: colors.surface,
+            borderTopColor: colors.border,
+          },
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.textMuted,
         }}
-      />
-      <Tabs.Screen
-        name="dashboard"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'trophy' : 'trophy-outline'} size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="wishlist"
-        options={{
-          title: 'Wishlist',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons
-              name={focused ? 'heart' : 'heart-outline'}
-              size={size}
-              color={focused ? colors.danger : color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="favorites"
-        options={{
-          title: 'Collections',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'albums' : 'albums-outline'} size={size} color={focused ? colors.warning : color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="friends"
-        options={{
-          title: 'Amis',
-          tabBarIcon: ({ focused, color, size }) => (
-            <View>
-              <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
-              {incomingRequests.length > 0 && <View style={[styles.requestDot, { borderColor: colors.surface }]} />}
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'settings' : 'settings-outline'} size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen name="pokemon/[num]" options={{ href: null }} />
-      <Tabs.Screen name="pinned-set/[setId]" options={{ href: null }} />
-      <Tabs.Screen name="trainers" options={{ href: null }} />
-    </Tabs>
+      >
+        {/*
+          Dashboard listed first (its Tabs.Screen order = the navigator's implicit
+          initial route, no explicit initialRouteName is set). Tab-to-tab
+          navigation collapses via history.replaceState rather than pushing new
+          entries, so the mobile back gesture always bottoms out on whichever tab
+          is initial — putting Dashboard first makes that Dashboard, notably for
+          the pokemon/[num] hidden route reached from Pokédex/Wishlist/Favoris.
+        */}
+        <Tabs.Screen
+          name="dashboard"
+          options={{
+            title: 'Dashboard',
+            tabBarIcon: ({ focused, color, size }) => (
+              <Ionicons name={focused ? 'trophy' : 'trophy-outline'} size={size} color={color} />
+            ),
+          }}
+        />
+        {/*
+          "Pokédex" now stands for the whole card-management group — the tab
+          itself lands on the National Pokédex, and PokedexSectionTabs (rendered
+          inside pokedex.tsx/wishlist.tsx/favorites.tsx) switches between it,
+          Collection (favorites route) and Wishlist via real navigation, not a
+          nested tab bar — see the restructuring plan for why.
+        */}
+        <Tabs.Screen
+          name="pokedex"
+          options={{
+            title: 'Pokédex',
+            tabBarIcon: ({ focused, size }) => (
+              <View style={[styles.iconWrap, focused && styles.iconWrapFocused]}>
+                <PokedexDeviceIcon size={size - 2} />
+              </View>
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="friends"
+          options={{
+            title: 'Social',
+            tabBarIcon: ({ focused, color, size }) => (
+              <View>
+                <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
+                {incomingRequests.length > 0 && <View style={[styles.requestDot, { borderColor: colors.surface }]} />}
+              </View>
+            ),
+          }}
+        />
+        <Tabs.Screen name="wishlist" options={{ href: null }} />
+        <Tabs.Screen name="favorites" options={{ href: null }} />
+        <Tabs.Screen name="settings" options={{ href: null }} />
+        <Tabs.Screen name="pokemon/[num]" options={{ href: null }} />
+        <Tabs.Screen name="pinned-set/[setId]" options={{ href: null }} />
+        <Tabs.Screen name="trainers" options={{ href: null }} />
+      </Tabs>
+      <Pressable
+        onPress={() => router.push('/settings')}
+        style={[styles.settingsFab, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Ionicons name="settings-outline" size={22} color={colors.text} />
+      </Pressable>
+    </View>
   );
 }
 
@@ -111,5 +97,10 @@ const styles = StyleSheet.create({
   requestDot: {
     position: 'absolute', top: -1, right: -3, width: 9, height: 9, borderRadius: 5,
     backgroundColor: '#ef4444', borderWidth: 1.5,
+  },
+  settingsFab: {
+    position: 'absolute', right: spacing.md, bottom: 78, width: 44, height: 44, borderRadius: radius.pill,
+    borderWidth: 1, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 4,
   },
 });

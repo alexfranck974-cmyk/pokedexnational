@@ -30,6 +30,7 @@ import { CollectionCardPicker } from '@/components/CollectionCardPicker';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
 import { FavoritesFilterBar } from '@/components/FavoritesFilterBar';
+import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
@@ -272,6 +273,7 @@ export default function FavoritesScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
+      <PokedexSectionTabs active="collection" />
       <View style={styles.header}>
         <Text style={styles.title}>
           {subTab === 'favorites' ? 'Favoris'

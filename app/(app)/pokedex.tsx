@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -12,6 +12,7 @@ import { applyPokedexPipeline } from '@/lib/pokedex-list';
 import { withReturnTo } from '@/lib/navigation';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { PokedexGrid } from '@/components/PokedexGrid';
+import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { SearchFilterBar } from '@/components/SearchFilterBar';
 import { ProgressRing } from '@/components/ProgressRing';
 import { CardZoomModal } from '@/components/CardZoomModal';
@@ -83,19 +84,18 @@ export default function PokedexScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <Pressable onPress={() => router.push('/dashboard')}>
-        <LinearGradient
-          colors={[colors.primaryBg, colors.primaryDark, colors.primary]}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={styles.hero}>
-          <ProgressRing pct={pct} size={56} strokeWidth={7} color="white" trackColor="rgba(255,255,255,0.25)" centerLabel={`${pct}%`} />
-          <View style={styles.heroText}>
-            <Text style={styles.heroTitle}>Pokédex National</Text>
-            <Text style={styles.heroCount}>{ownedCount} / {items.length}</Text>
-            {filterHint && <Text style={styles.heroFilter}>Filtre : {filterHint}</Text>}
-          </View>
-        </LinearGradient>
-      </Pressable>
+      <LinearGradient
+        colors={[colors.primaryBg, colors.primaryDark, colors.primary]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={styles.hero}>
+        <ProgressRing pct={pct} size={56} strokeWidth={7} color="white" trackColor="rgba(255,255,255,0.25)" centerLabel={`${pct}%`} />
+        <View style={styles.heroText}>
+          <Text style={styles.heroTitle}>Pokédex National</Text>
+          <Text style={styles.heroCount}>{ownedCount} / {items.length}</Text>
+          {filterHint && <Text style={styles.heroFilter}>Filtre : {filterHint}</Text>}
+        </View>
+      </LinearGradient>
+      <PokedexSectionTabs active="pokedex" />
       <PokedexGrid
         items={items}
         ownedImages={ownedImages}

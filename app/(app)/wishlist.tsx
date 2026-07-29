@@ -14,6 +14,7 @@ import {
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
 import { WishlistFilterBar } from '@/components/WishlistFilterBar';
+import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { enterPokemonDetail } from '@/lib/navigation';
 import { getName } from '@/lib/i18n';
 import type { Pokemon, PokemonType } from '@/lib/types';
@@ -123,20 +124,29 @@ export default function WishlistScreen() {
   }));
 
   if (isLoading) {
-    return <SafeAreaView style={styles.center}><ActivityIndicator /></SafeAreaView>;
+    return (
+      <SafeAreaView style={styles.screen}>
+        <PokedexSectionTabs active="wishlist" />
+        <View style={styles.center}><ActivityIndicator /></View>
+      </SafeAreaView>
+    );
   }
 
   if (cards.length === 0) {
     return (
-      <SafeAreaView style={styles.center}>
-        <Text style={styles.emptyTitle}>Aucune carte dans ta wishlist</Text>
-        <Text style={styles.emptyHint}>Ajoute-en depuis la page détail d'un Pokémon (icône ♥).</Text>
+      <SafeAreaView style={styles.screen}>
+        <PokedexSectionTabs active="wishlist" />
+        <View style={styles.center}>
+          <Text style={styles.emptyTitle}>Aucune carte dans ta wishlist</Text>
+          <Text style={styles.emptyHint}>Ajoute-en depuis la page détail d'un Pokémon (icône ♥).</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.screen}>
+      <PokedexSectionTabs active="wishlist" />
       <LinearGradient
         colors={[colors.primaryBg, colors.primaryDark, colors.primary]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
