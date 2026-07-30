@@ -28,8 +28,12 @@ export function RingMenuItem({ tint, size = 64, pct, centerLabel, centerSub, lab
   const { scale, pressIn, pressOut } = usePressSpring();
   const styles = useThemedStyles((colors) => ({
     wrap: { alignItems: 'center' as const, gap: spacing.xs },
+    // backgroundColor is near-invisible (2% alpha) rather than fully transparent
+    // — Android's elevation shadow often doesn't render on a fully transparent
+    // view, this gives it something to light.
     glow: {
       width: size, height: size, borderRadius: size / 2,
+      backgroundColor: withAlpha(colors.bg, 0.02),
       shadowColor: tint, shadowOpacity: 0.4, shadowRadius: 16, shadowOffset: { width: 0, height: 0 }, elevation: 8,
     },
     staticRing: {

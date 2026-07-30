@@ -20,6 +20,7 @@ import { IconBubble } from './IconBubble';
 import { TYPE_COLORS, TYPE_LABEL_FR } from '@/lib/types-colors';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { usePressSpring } from '@/lib/use-press-spring';
+import { withAlpha } from '@/lib/color-utils';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -101,11 +102,14 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
     hero: {
       paddingVertical: spacing.lg, gap: spacing.sm, alignItems: 'center' as const,
     },
-    // Purely a shadow carrier — round + transparent — so the glow follows the
-    // ring's circular shape instead of the square bounding box a plain shadow
-    // on the ring's own wrapper would produce.
+    // Purely a shadow carrier — round, so the glow follows the ring's circular
+    // shape instead of the square bounding box a plain shadow on the ring's
+    // own wrapper would produce. backgroundColor is near-invisible (2% alpha)
+    // rather than fully transparent — Android's elevation shadow often doesn't
+    // render on a fully transparent view, this gives it something to light.
     ringGlow: {
       width: 196, height: 196, borderRadius: 98,
+      backgroundColor: withAlpha(colors.bg, 0.02),
       shadowColor: colors.primary, shadowOpacity: 0.45, shadowRadius: 28,
       shadowOffset: { width: 0, height: 0 }, elevation: 12,
     },
