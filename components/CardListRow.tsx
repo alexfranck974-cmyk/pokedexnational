@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
+import { hapticCardAdded } from '@/lib/haptics';
 
 interface Props {
   card: TcgCardRow;
@@ -55,7 +56,7 @@ export function CardListRow({ card, owned, wished, readOnly, quantity, onIncreme
   }));
 
   return (
-    <Pressable onPress={readOnly ? undefined : onToggle}
+    <Pressable onPress={readOnly ? undefined : () => { if (!owned) hapticCardAdded(); onToggle(); }}
       onLongPress={onZoom}
       delayLongPress={350}
       style={({ pressed }) => [
