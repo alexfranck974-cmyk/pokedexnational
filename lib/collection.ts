@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { useSession } from './auth';
 import { toast } from './toast';
+import { postFriendNewsIfNotable } from './friend-news';
 
 export function useUserDex(userId?: string) {
   return useQuery({
@@ -55,8 +56,8 @@ export function useToggleCard() {
 
   return useMutation({
     mutationFn: async ({
-      cardId, currentlyOwned,
-    }: { cardId: string; currentlyOwned: boolean; dexNum: number; imageSmall: string }) => {
+      cardId, currentlyOwned, rarity,
+    }: { cardId: string; currentlyOwned: boolean; dexNum: number; imageSmall: string; rarity?: string | null }) => {
       if (!userId) throw new Error('Not signed in');
       if (currentlyOwned) {
         // Unchecking on the Pokémon page is the one place "I don't own this card
@@ -84,6 +85,7 @@ export function useToggleCard() {
         // A card just marked owned no longer belongs on the wishlist — no-op if it wasn't there.
         const { error: wishError } = await supabase.from('user_wishlist').delete().eq('user_id', userId).eq('card_id', cardId);
         if (wishError) throw wishError;
+        await postFriendNewsIfNotable(userId, cardId, rarity ?? null);
       }
     },
     onMutate: async ({ cardId, currentlyOwned, dexNum, imageSmall }) => {
@@ -330,7 +332,7 @@ export function useToggleOwnedCard() {
   const userId = session?.user.id;
 
   return useMutation({
-    mutationFn: async ({ cardId, currentlyOwned }: { cardId: string; currentlyOwned: boolean }) => {
+    mutationFn: async ({ cardId, currentlyOwned, rarity }: { cardId: string; currentlyOwned: boolean; rarity?: string | null }) => {
       if (!userId) throw new Error('Not signed in');
       if (currentlyOwned) {
         const { error } = await supabase.from('user_owned_cards').delete().eq('user_id', userId).eq('card_id', cardId);
@@ -342,6 +344,7 @@ export function useToggleOwnedCard() {
       } else {
         const { error } = await supabase.from('user_owned_cards').insert({ user_id: userId, card_id: cardId });
         if (error) throw error;
+        await postFriendNewsIfNotable(userId, cardId, rarity ?? null);
       }
     },
     onMutate: async ({ cardId, currentlyOwned }) => {
@@ -401,7 +404,7 @@ export function useAdjustOwnedCardQuantity() {
   };
 
   return useMutation({
-    mutationFn: async ({ cardId, delta, currentQuantity }: { cardId: string; delta: 1 | -1; currentQuantity: number }) => {
+    mutationFn: async ({ cardId, delta, currentQuantity, rarity }: { cardId: string; delta: 1 | -1; currentQuantity: number; rarity?: string | null }) => {
       if (!userId) throw new Error('Not signed in');
       const next = currentQuantity + delta;
       if (next <= 0) {
@@ -414,6 +417,7 @@ export function useAdjustOwnedCardQuantity() {
       } else if (currentQuantity <= 0) {
         const { error } = await supabase.from('user_owned_cards').insert({ user_id: userId, card_id: cardId, quantity: next });
         if (error) throw error;
+        await postFriendNewsIfNotable(userId, cardId, rarity ?? null);
       } else {
         const { error } = await supabase.from('user_owned_cards').update({ quantity: next }).eq('user_id', userId).eq('card_id', cardId);
         if (error) throw error;

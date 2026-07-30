@@ -157,7 +157,7 @@ export default function PinnedSetDetail() {
           columnsOverride={columns}
           quantities={quantities}
           onIncrement={c => adjustQuantity.mutate(
-            { cardId: c.id, delta: 1, currentQuantity: quantities.get(c.id) ?? 0 },
+            { cardId: c.id, delta: 1, currentQuantity: quantities.get(c.id) ?? 0, rarity: c.rarity },
             { onSuccess: () => qc.invalidateQueries({ queryKey: ['set_goal_progress', userId, setId] }) },
           )}
           onDecrement={c => adjustQuantity.mutate(
@@ -181,7 +181,7 @@ export default function PinnedSetDetail() {
               if (events.length > 0) setCaptureQueue(q => [...q, ...events]);
             }
             toggleOwned.mutate(
-              { cardId: c.id, currentlyOwned: wasOwned },
+              { cardId: c.id, currentlyOwned: wasOwned, rarity: c.rarity },
               { onSuccess: () => qc.invalidateQueries({ queryKey: ['set_goal_progress', userId, setId] }) },
             );
           }}

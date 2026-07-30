@@ -222,7 +222,7 @@ export function TrainersPanel({ userId }: Props) {
           ownedSet={ownedAll}
           readOnly={false}
           viewMode={viewMode}
-          onToggle={c => toggleOwned.mutate({ cardId: c.id, currentlyOwned: ownedAll.has(c.id) })}
+          onToggle={c => toggleOwned.mutate({ cardId: c.id, currentlyOwned: ownedAll.has(c.id), rarity: c.rarity })}
           onZoom={c => setZoomCard(c)}
         />
       ) : visibleGroups.length === 0 ? (
