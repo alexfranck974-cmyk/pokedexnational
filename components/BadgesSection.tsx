@@ -6,7 +6,7 @@ import { useSetGoals } from '@/lib/collection-goals';
 import { useVariantCards, useTcgSets } from '@/lib/tcg-index';
 import {
   computeOverallProgress, computeByGeneration,
-  bucketVariantCards, computeVariantProgress, totalCollectionValue,
+  bucketVariantCards, computeVariantProgress, totalCollectionValue, computeSetGoalsProgress,
 } from '@/lib/dashboard-stats';
 import { computeBadges, pickAlmostUnlocked, type DashboardStats } from '@/lib/badges';
 import pokedexData from '@/data/pokedex.json';
@@ -52,26 +52,10 @@ export function BadgesSection({
     [variantBuckets, ownedCardIds],
   );
   const collectionValue = useMemo(() => totalCollectionValue(ownedCards), [ownedCards]);
-  const bySet = useMemo(() => {
-    const ownedCountBySet = new Map<string, number>();
-    for (const c of ledgerCards) {
-      ownedCountBySet.set(c.setId, (ownedCountBySet.get(c.setId) ?? 0) + 1);
-    }
-    const setsById = new Map(allSets.map(s => [s.id, s]));
-    return pinnedGoals
-      .map(g => {
-        const set = setsById.get(g.setId);
-        if (!set) return null;
-        return {
-          setId: g.setId,
-          setName: set.name,
-          symbol: set.symbol,
-          owned: ownedCountBySet.get(g.setId) ?? 0,
-          total: set.cardCount,
-        };
-      })
-      .filter((s): s is NonNullable<typeof s> => s !== null);
-  }, [ledgerCards, pinnedGoals, allSets]);
+  const bySet = useMemo(
+    () => computeSetGoalsProgress(pinnedGoals, ledgerCards, allSets),
+    [ledgerCards, pinnedGoals, allSets],
+  );
 
   const badges = useMemo(() => {
     const stats: DashboardStats = {

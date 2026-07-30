@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, Animated, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
@@ -101,17 +100,22 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
 
   const styles = useThemedStyles((colors, shadow) => ({
     hero: {
-      borderRadius: radius.bubble, padding: spacing.xl,
-      gap: spacing.sm, alignItems: 'center' as const,
-      shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 18,
-      shadowOffset: { width: 0, height: 8 }, elevation: 8,
+      paddingVertical: spacing.lg, gap: spacing.sm, alignItems: 'center' as const,
+    },
+    // Purely a shadow carrier — round + transparent — so the glow follows the
+    // ring's circular shape instead of the square bounding box a plain shadow
+    // on the ring's own wrapper would produce.
+    ringGlow: {
+      width: 196, height: 196, borderRadius: 98,
+      shadowColor: colors.primary, shadowOpacity: 0.45, shadowRadius: 28,
+      shadowOffset: { width: 0, height: 0 }, elevation: 12,
     },
     heroTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6 },
-    heroLabel: { fontSize: 17, fontFamily: fonts.display, color: 'white' },
+    heroLabel: { fontSize: 17, fontFamily: fonts.display, color: colors.text },
     heroTeaser: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, marginTop: 2 },
-    heroTeaserText: { fontSize: 12, fontFamily: fonts.body, color: 'rgba(255,255,255,0.85)', fontWeight: '600' as const },
-    heroTeaserDot: { fontSize: 12, color: 'rgba(255,255,255,0.5)' },
-    heroHint: { fontSize: 11, fontFamily: fonts.body, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+    heroTeaserText: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted, fontWeight: '600' as const },
+    heroTeaserDot: { fontSize: 12, color: colors.textDim },
+    heroHint: { fontSize: 11, fontFamily: fonts.body, color: colors.textDim, marginTop: 2 },
 
     card: {
       backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, ...shadow.sm,
@@ -137,17 +141,15 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
         onPress={() => { setStatsTab('generation'); setStatsOpen(true); }}
         onPressIn={pressIn}
         onPressOut={pressOut}>
-        <Animated.View style={{ transform: [{ scale }] }}>
-        <LinearGradient
-          colors={[colors.primaryBg, colors.primaryDark, colors.primary]}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={styles.hero}>
-          <ProgressRing
-            pct={overall.pct} size={196} strokeWidth={20} color="white" trackColor="rgba(255,255,255,0.25)"
-            centerLabel={`${overall.pct}%`} centerSub={`${overall.owned}/${overall.total}`}
-          />
+        <Animated.View style={[styles.hero, { transform: [{ scale }] }]}>
+          <View style={styles.ringGlow}>
+            <ProgressRing
+              pct={overall.pct} size={196} strokeWidth={20} color={colors.primary} trackColor={colors.surfaceAlt}
+              centerLabel={`${overall.pct}%`} centerSub={`${overall.owned}/${overall.total}`}
+            />
+          </View>
           <View style={styles.heroTitleRow}>
-            <Ionicons name="trophy" size={16} color="white" />
+            <Ionicons name="trophy" size={16} color={colors.primary} />
             <Text style={styles.heroLabel}>Pokédex National</Text>
           </View>
           <View style={styles.heroTeaser}>
@@ -156,7 +158,6 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
             <Text style={styles.heroTeaserText}>{gensComplete}/9 générations complètes</Text>
           </View>
           <Text style={styles.heroHint}>Touche pour voir le détail</Text>
-        </LinearGradient>
         </Animated.View>
       </Pressable>
 

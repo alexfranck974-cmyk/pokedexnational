@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { View, Text, ScrollView, Pressable, Animated, Easing } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,7 @@ import { useShowcase } from '@/lib/favorites';
 import { useSetGoals } from '@/lib/collection-goals';
 import { useTcgSets } from '@/lib/tcg-index';
 import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
-import { topByValue, totalCollectionValue, computeByGeneration } from '@/lib/dashboard-stats';
+import { topByValue, totalCollectionValue, computeByGeneration, computeSetGoalsProgress, averageProgress } from '@/lib/dashboard-stats';
 import { buildEvolutionFamilies } from '@/lib/evolutions';
 import { suggestEvolutionGaps, suggestBinderPages, suggestByGeneration, suggestDexUpgrades } from '@/lib/suggestions';
 import { PokedexHeroCard } from '@/components/PokedexHeroCard';
@@ -21,9 +21,15 @@ import { VitrineCarousel } from '@/components/VitrineCarousel';
 import { CardZoomModal } from '@/components/CardZoomModal';
 import { IconBubble } from '@/components/IconBubble';
 import { Bubble } from '@/components/Bubble';
+import { ProgressRing } from '@/components/ProgressRing';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
 import { useTheme, useThemedStyles, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
+
+// SetGoalTile's rendered height (ring + 2 text lines + tile padding) — fixed rather
+// than measured via onLayout so the accordion animation doesn't depend on a layout
+// pass completing first.
+const COLLECTION_ROW_HEIGHT = 130;
 
 const POKEDEX = pokedexData as Pokemon[];
 const EVOLUTION_FAMILIES = buildEvolutionFamilies(POKEDEX);
@@ -46,6 +52,20 @@ export default function DashboardScreen() {
   const { data: allSets = [] } = useTcgSets();
   const setsById = useMemo(() => new Map(allSets.map(s => [s.id, s])), [allSets]);
   const pinnedSetIds = useMemo(() => new Set(goals.map(g => g.setId)), [goals]);
+  const goalsProgress = useMemo(() => computeSetGoalsProgress(goals, ledgerCards, allSets), [goals, ledgerCards, allSets]);
+  const collectionAvgPct = useMemo(() => averageProgress(goalsProgress), [goalsProgress]);
+  const [collectionExpanded, setCollectionExpanded] = useState(false);
+  const collectionAccordionHeight = useRef(new Animated.Value(0)).current;
+  const toggleCollectionExpanded = () => {
+    const next = !collectionExpanded;
+    setCollectionExpanded(next);
+    Animated.timing(collectionAccordionHeight, {
+      toValue: next ? COLLECTION_ROW_HEIGHT : 0,
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  };
 
   const byGeneration = useMemo(() => computeByGeneration(POKEDEX, owned), [owned]);
   const wishedCardIds = useMemo(() => new Set(wishedCards.map((c: { id: string }) => c.id)), [wishedCards]);
@@ -92,8 +112,10 @@ export default function DashboardScreen() {
     pairRow: { flexDirection: 'row' as const, gap: spacing.md, alignItems: 'stretch' as const },
     pairItem: { flex: 1 },
     sectionTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
-    sectionTitle: { fontSize: 18, fontFamily: fonts.display, color: colors.text, flex: 1 },
+    sectionTitle: { fontSize: 15, fontFamily: fonts.display, color: colors.text, flex: 1 },
     addGoalBtn: { padding: 2 },
+    avgRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.xs, paddingTop: spacing.xs },
+    avgLabel: { flex: 1, fontSize: 12, fontFamily: fonts.bodyBold, color: colors.text },
     suggestionsRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
     suggestionsRowText: { flex: 1, fontSize: 15, fontFamily: fonts.bodyBold, color: colors.text },
     emptyGoalText: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const, padding: spacing.sm },
@@ -118,7 +140,7 @@ export default function DashboardScreen() {
               <IconBubble size={28} color={colors.primarySoft}>
                 <Ionicons name="albums" size={15} color={OBJECTIVES_TINT} />
               </IconBubble>
-              <Text style={styles.sectionTitle} numberOfLines={1}>Objectifs</Text>
+              <Text style={styles.sectionTitle} numberOfLines={1}>Collection</Text>
               <Pressable onPress={() => setGoalPickerOpen(true)} hitSlop={8} style={styles.addGoalBtn}>
                 <Ionicons name="add-circle" size={22} color={colors.primary} />
               </Pressable>
@@ -128,23 +150,34 @@ export default function DashboardScreen() {
                 <Text style={styles.emptyGoalText}>Épingle une extension pour suivre sa progression ici.</Text>
               </Pressable>
             ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, paddingTop: spacing.sm }}>
-                {goals.map(g => {
-                  const set = setsById.get(g.setId);
-                  if (!set) return null;
-                  return (
-                    <SetGoalTile
-                      key={g.setId}
-                      userId={userId}
-                      setId={g.setId}
-                      setName={set.name}
-                      total={set.cardCount}
-                      symbol={set.symbol}
-                      onPress={() => router.push(withReturnTo(`/pinned-set/${g.setId}`, '/dashboard') as never)}
-                    />
-                  );
-                })}
-              </ScrollView>
+              <>
+                <Pressable onPress={toggleCollectionExpanded} style={styles.avgRow}>
+                  <ProgressRing pct={collectionAvgPct} size={40} strokeWidth={5} color={OBJECTIVES_TINT} centerLabel={`${collectionAvgPct}%`} />
+                  <Text style={styles.avgLabel} numberOfLines={1}>
+                    {goals.length} extension{goals.length > 1 ? 's' : ''}
+                  </Text>
+                  <Ionicons name={collectionExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textDim} />
+                </Pressable>
+                <Animated.View style={{ height: collectionAccordionHeight, overflow: 'hidden' as const }}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, paddingTop: spacing.sm }}>
+                    {goals.map(g => {
+                      const set = setsById.get(g.setId);
+                      if (!set) return null;
+                      return (
+                        <SetGoalTile
+                          key={g.setId}
+                          userId={userId}
+                          setId={g.setId}
+                          setName={set.name}
+                          total={set.cardCount}
+                          symbol={set.symbol}
+                          onPress={() => router.push(withReturnTo(`/pinned-set/${g.setId}`, '/dashboard') as never)}
+                        />
+                      );
+                    })}
+                  </ScrollView>
+                </Animated.View>
+              </>
             )}
           </Bubble>
 
