@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase';
 import * as Clipboard from 'expo-clipboard';
 import { IconBubble } from '@/components/IconBubble';
 import { QRCodeModal } from '@/components/QRCodeModal';
-import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE, PALETTE_ORDER, PALETTE_META } from '@/lib/theme';
 import { useMotion } from '@/lib/motion';
 
 export default function Settings() {
@@ -17,7 +17,7 @@ export default function Settings() {
   const { session } = useSession();
   const [qrOpen, setQrOpen] = useState(false);
   const userId = session?.user.id;
-  const { colors, mode, toggleMode } = useTheme();
+  const { colors, mode, toggleMode, palette, setPalette } = useTheme();
   const { animationsEnabled, setAnimationsEnabled } = useMotion();
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
@@ -47,6 +47,13 @@ export default function Settings() {
     btnText: { fontFamily: fonts.bodyBold, color: 'white' },
     legalRow: { flexDirection: 'row' as const, justifyContent: 'center' as const, gap: spacing.md, marginTop: spacing.xs },
     legalLink: { fontSize: 13, fontFamily: fonts.body, color: colors.textDim, textDecorationLine: 'underline' as const },
+    paletteSwatches: { flexDirection: 'row' as const, gap: spacing.sm },
+    paletteDot: {
+      width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: 'transparent',
+      alignItems: 'center' as const, justifyContent: 'center' as const,
+    },
+    paletteDotSelected: { borderColor: colors.text },
+    paletteName: { fontSize: 12, fontFamily: fonts.body, color: colors.textDim, marginTop: 2 },
   }));
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
@@ -138,6 +145,31 @@ export default function Settings() {
             <Text style={styles.label}>Thème sombre</Text>
           </View>
           <Switch value={mode === 'dark'} onValueChange={toggleMode} />
+        </View>
+
+        <View style={styles.row}>
+          <View style={styles.rowHead}>
+            <IconBubble size={28} color={colors.primarySoft}>
+              <Ionicons name="color-palette" size={14} color={colors.primary} />
+            </IconBubble>
+            <Text style={styles.label}>Palette de couleurs</Text>
+          </View>
+          <View style={styles.paletteSwatches}>
+            {PALETTE_ORDER.map(id => {
+              const meta = PALETTE_META[id];
+              const selected = palette === id;
+              return (
+                <Pressable
+                  key={id}
+                  onPress={() => setPalette(id)}
+                  style={[styles.paletteDot, { backgroundColor: meta.swatch }, selected && styles.paletteDotSelected]}
+                  accessibilityLabel={meta.label}>
+                  {selected && <Ionicons name="checkmark" size={16} color="white" />}
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={styles.paletteName}>{PALETTE_META[palette].label}</Text>
         </View>
 
         <View style={styles.rowInline}>
