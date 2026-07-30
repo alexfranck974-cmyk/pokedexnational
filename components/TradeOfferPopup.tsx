@@ -1,5 +1,5 @@
 import { View, Text, Image, Pressable } from 'react-native';
-import { type TradeOfferItem, useAcceptTrade, useDeclineTrade, useCancelTrade } from '@/lib/trades';
+import { type TradeOfferItem, useAcceptTrade, useDeclineTrade, useCancelTrade, eurFormatter } from '@/lib/trades';
 import { TradeIcon } from './TradeIcon';
 import { BubbleSheet } from './BubbleSheet';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
@@ -25,6 +25,10 @@ export function TradeOfferPopup({ item, onClose }: Props) {
     img: { width: 100, height: 100 / 0.72, borderRadius: 6 },
     label: { fontSize: 11, fontFamily: fonts.monoBold, color: colors.textDim, textTransform: 'uppercase' as const },
     name: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
+    value: { fontSize: 12, fontFamily: fonts.monoBold, color: colors.success },
+    delta: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
+    deltaPositive: { color: colors.success, fontFamily: fonts.bodyBold },
+    deltaNegative: { color: colors.danger, fontFamily: fonts.bodyBold },
     actions: { flexDirection: 'row' as const, gap: spacing.sm, marginTop: spacing.xs },
     btn: {
       flexDirection: 'row' as const, gap: 6, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
@@ -61,14 +65,26 @@ export function TradeOfferPopup({ item, onClose }: Props) {
             <Text style={styles.label}>Tu donnes</Text>
             <Image source={{ uri: give.imageSmall }} style={styles.img} resizeMode="contain" />
             <Text style={styles.name} numberOfLines={2}>{give.name}</Text>
+            {give.cardmarketTrendEur != null && <Text style={styles.value}>{eurFormatter.format(give.cardmarketTrendEur)}</Text>}
           </View>
           <TradeIcon size={28} color={TINT} />
           <View style={styles.card}>
             <Text style={styles.label}>Tu reçois</Text>
             <Image source={{ uri: receive.imageSmall }} style={styles.img} resizeMode="contain" />
             <Text style={styles.name} numberOfLines={2}>{receive.name}</Text>
+            {receive.cardmarketTrendEur != null && <Text style={styles.value}>{eurFormatter.format(receive.cardmarketTrendEur)}</Text>}
           </View>
         </View>
+        {give.cardmarketTrendEur != null && receive.cardmarketTrendEur != null && (
+          <Text style={styles.delta}>
+            {(() => {
+              const delta = receive.cardmarketTrendEur! - give.cardmarketTrendEur!;
+              if (Math.abs(delta) < 0.01) return 'Échange équilibré';
+              const deltaStyle = delta > 0 ? styles.deltaPositive : styles.deltaNegative;
+              return <Text style={deltaStyle}>{delta > 0 ? '+' : ''}{eurFormatter.format(delta)} pour toi</Text>;
+            })()}
+          </Text>
+        )}
         <View style={styles.actions}>
           {incoming ? (
             <>

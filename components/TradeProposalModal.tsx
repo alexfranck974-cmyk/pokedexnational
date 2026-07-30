@@ -5,7 +5,7 @@ import { useSession } from '@/lib/auth';
 import {
   useOwnedCardQuantities, useAllOwnedCardsLedgerDetailed, useAllWishedCards, type OwnedCardDetail,
 } from '@/lib/collection';
-import { useProposeTrade } from '@/lib/trades';
+import { useProposeTrade, eurFormatter } from '@/lib/trades';
 import { TradeIcon } from './TradeIcon';
 import { BubbleSheet } from './BubbleSheet';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
@@ -23,6 +23,7 @@ export interface PickedCard {
   cardId: string;
   name: string;
   imageSmall: string;
+  cardmarketTrendEur?: number | null;
 }
 
 interface Props {
@@ -94,6 +95,10 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
     confirmImg: { width: 100, height: 100 / 0.72, borderRadius: 6 },
     confirmName: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
     confirmLabel: { fontSize: 11, fontFamily: fonts.monoBold, color: colors.textDim, textTransform: 'uppercase' as const },
+    confirmValue: { fontSize: 12, fontFamily: fonts.monoBold, color: colors.success },
+    deltaText: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
+    deltaTextPositive: { color: colors.success, fontFamily: fonts.bodyBold },
+    deltaTextNegative: { color: colors.danger, fontFamily: fonts.bodyBold },
     btn: {
       flexDirection: 'row' as const, gap: 6, backgroundColor: TINT, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
       borderRadius: radius.pill, alignItems: 'center' as const, justifyContent: 'center' as const, marginTop: spacing.sm,
@@ -156,14 +161,30 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
               <Text style={styles.confirmLabel}>Tu donnes</Text>
               <Image source={{ uri: offeredCard!.imageSmall }} style={styles.confirmImg} resizeMode="contain" />
               <Text style={styles.confirmName} numberOfLines={2}>{offeredCard!.name}</Text>
+              {offeredCard!.cardmarketTrendEur != null && (
+                <Text style={styles.confirmValue}>{eurFormatter.format(offeredCard!.cardmarketTrendEur)}</Text>
+              )}
             </View>
             <TradeIcon size={28} color={TINT} />
             <View style={styles.confirmCard}>
               <Text style={styles.confirmLabel}>Tu reçois</Text>
               <Image source={{ uri: requestedCard!.imageSmall }} style={styles.confirmImg} resizeMode="contain" />
               <Text style={styles.confirmName} numberOfLines={2}>{requestedCard!.name}</Text>
+              {requestedCard!.cardmarketTrendEur != null && (
+                <Text style={styles.confirmValue}>{eurFormatter.format(requestedCard!.cardmarketTrendEur)}</Text>
+              )}
             </View>
           </View>
+          {offeredCard!.cardmarketTrendEur != null && requestedCard!.cardmarketTrendEur != null && (
+            <Text style={styles.deltaText}>
+              {(() => {
+                const delta = requestedCard!.cardmarketTrendEur! - offeredCard!.cardmarketTrendEur!;
+                if (Math.abs(delta) < 0.01) return 'Échange équilibré';
+                const style = delta > 0 ? styles.deltaTextPositive : styles.deltaTextNegative;
+                return <Text style={style}>{delta > 0 ? '+' : ''}{eurFormatter.format(delta)} pour toi</Text>;
+              })()}
+            </Text>
+          )}
           <Pressable
             onPress={() => {
               if (!target || !offeredCard || !requestedCard) return;

@@ -8,7 +8,10 @@ export interface TradeCard {
   name: string;
   imageSmall: string;
   imageLarge: string | null;
+  cardmarketTrendEur: number | null;
 }
+
+export const eurFormatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 
 export interface TradeOfferItem {
   id: string;
@@ -20,7 +23,7 @@ export interface TradeOfferItem {
   createdAt: string;
 }
 
-const CARD_FIELDS = 'id, name, image_small, image_large';
+const CARD_FIELDS = 'id, name, image_small, image_large, cardmarket_trend_eur';
 
 function toTradeCard(row: any): TradeCard {
   return {
@@ -28,6 +31,7 @@ function toTradeCard(row: any): TradeCard {
     name: row?.name ?? '',
     imageSmall: row?.image_small ?? '',
     imageLarge: row?.image_large ?? null,
+    cardmarketTrendEur: row?.cardmarket_trend_eur ?? null,
   };
 }
 

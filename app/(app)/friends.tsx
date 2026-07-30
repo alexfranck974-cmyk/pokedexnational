@@ -374,7 +374,7 @@ export default function FriendsScreen() {
                   <Pressable
                     key={`${a.friendId}-${a.card.id}-${i}`}
                     onPress={() => openTradeWith(a.friendId, a.friendName, {
-                      requested: { cardId: a.card.id, name: a.card.name, imageSmall: a.card.imageSmall },
+                      requested: { cardId: a.card.id, name: a.card.name, imageSmall: a.card.imageSmall, cardmarketTrendEur: a.card.cardmarketTrendEur },
                     })}
                     style={styles.row}>
                     <Avatar name={a.friendName} />
@@ -406,7 +406,7 @@ export default function FriendsScreen() {
                       key={`${w.friendId}-${w.card.id}-${i}`}
                       disabled={!canFulfill}
                       onPress={() => openTradeWith(w.friendId, w.friendName, {
-                        offered: { cardId: w.card.id, name: w.card.name, imageSmall: w.card.imageSmall },
+                        offered: { cardId: w.card.id, name: w.card.name, imageSmall: w.card.imageSmall, cardmarketTrendEur: w.card.cardmarketTrendEur },
                       })}
                       style={[styles.row, !canFulfill && { opacity: 0.5 }]}>
                       <Avatar name={w.friendName} />
