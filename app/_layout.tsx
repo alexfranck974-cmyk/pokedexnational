@@ -1,9 +1,9 @@
 import * as Sentry from '@sentry/react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useEffect, useMemo } from 'react';
-import { Platform } from 'react-native';
+import { AppState, type AppStateStatus, Platform } from 'react-native';
 import { RootSiblingParent } from 'react-native-root-siblings';
 import { useFonts, Fredoka_700Bold } from '@expo-google-fonts/fredoka';
 import { Karla_400Regular, Karla_700Bold } from '@expo-google-fonts/karla';
@@ -37,6 +37,19 @@ function RootLayout() {
     JetBrainsMono_500Medium,
     JetBrainsMono_700Bold,
   });
+
+  // `refetchOnWindowFocus` only fires from real browser focus/visibilitychange
+  // events on web — React Native has no such event, so without forwarding
+  // AppState changes into React Query's focus manager, foregrounding the app
+  // on iOS/Android never refetches anything (e.g. incoming friend requests
+  // received while backgrounded stay on stale cached data indefinitely).
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const subscription = AppState.addEventListener('change', (status: AppStateStatus) => {
+      focusManager.setFocused(status === 'active');
+    });
+    return () => subscription.remove();
+  }, []);
 
   // Long-press opens the card zoom view app-wide — on web that gesture is
   // also the browser's own trigger for its native "save image" context menu
