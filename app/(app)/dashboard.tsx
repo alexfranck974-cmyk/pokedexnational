@@ -19,12 +19,10 @@ import { BadgesSection } from '@/components/BadgesSection';
 import { SuggestionsModal } from '@/components/SuggestionsModal';
 import { VitrineCarousel } from '@/components/VitrineCarousel';
 import { CardZoomModal } from '@/components/CardZoomModal';
-import { IconBubble } from '@/components/IconBubble';
-import { ProgressRing } from '@/components/ProgressRing';
+import { RingMenuItem } from '@/components/RingMenuItem';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
 import { useTheme, useThemedStyles, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
-import { usePressSpring } from '@/lib/use-press-spring';
 
 // SetGoalTile's rendered height (ring + 2 text lines + tile padding) — fixed rather
 // than measured via onLayout so the accordion animation doesn't depend on a layout
@@ -91,6 +89,8 @@ export default function DashboardScreen() {
     () => suggestDexUpgrades(POKEDEX, ledgerCards, dexCardIdByDex),
     [ledgerCards, dexCardIdByDex],
   );
+  const totalSuggestions = evolutionSuggestions.length + binderSuggestions.length
+    + generationSuggestions.length + dexUpgradeSuggestions.length + mostValuable.length;
   const vitrineCards = useMemo(() => Array.from(showcase)
     .map(dexNum => ownedCardsByDex.get(dexNum))
     .filter((c): c is NonNullable<typeof c> => !!c)
@@ -101,7 +101,6 @@ export default function DashboardScreen() {
     onPress: () => setZoomIndex(i),
   })), [vitrineCards]);
   const zoomCard = zoomIndex !== null ? vitrineCards[zoomIndex] : null;
-  const achatsPress = usePressSpring();
 
   const { colors } = useTheme();
   const styles = useThemedStyles((colors) => ({
@@ -110,20 +109,17 @@ export default function DashboardScreen() {
     h1: { fontSize: 30, fontFamily: fonts.display, color: colors.text },
     collectionValue: { fontSize: 15, fontFamily: fonts.monoBold, color: colors.success },
 
-    pairRow: { flexDirection: 'row' as const, gap: spacing.xl, alignItems: 'flex-start' as const },
-    pairItem: { flex: 1, gap: spacing.sm },
-    sectionTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
-    sectionTitle: { fontSize: 15, fontFamily: fonts.display, color: colors.text, flex: 1 },
-    addGoalBtn: { padding: 2 },
-    avgRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.xs },
-    avgRingGlow: {
-      width: 40, height: 40, borderRadius: 20,
-      shadowColor: OBJECTIVES_TINT, shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 0 }, elevation: 6,
+    // Loose zigzag rather than a straight row — a "nebula" cluster feel without
+    // true randomness, which would be unreliable to keep readable/tappable
+    // across phone and desktop widths.
+    nebula: { flexDirection: 'row' as const, justifyContent: 'space-around' as const, alignItems: 'flex-start' as const },
+    nebulaItemMid: { marginTop: 26 },
+    nebulaItemLast: { marginTop: 8 },
+    addBadge: {
+      position: 'absolute' as const, bottom: -2, right: -2, width: 22, height: 22, borderRadius: 11,
+      backgroundColor: colors.primary, alignItems: 'center' as const, justifyContent: 'center' as const,
+      borderWidth: 2, borderColor: colors.bg,
     },
-    avgLabel: { flex: 1, fontSize: 12, fontFamily: fonts.bodyBold, color: colors.text },
-    suggestionsRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
-    suggestionsRowText: { flex: 1, fontSize: 15, fontFamily: fonts.bodyBold, color: colors.text },
-    emptyGoalText: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
   }));
 
   return (
@@ -139,74 +135,58 @@ export default function DashboardScreen() {
           onSelectMissing={(dexNum) => enterPokemonDetail(router, `/pokemon/${dexNum}`, '/dashboard')}
         />
 
-        <View style={styles.pairRow}>
-          <View style={styles.pairItem}>
-            <View style={styles.sectionTitleRow}>
-              <IconBubble size={28} color={colors.primarySoft}>
-                <Ionicons name="albums" size={15} color={OBJECTIVES_TINT} />
-              </IconBubble>
-              <Text style={styles.sectionTitle} numberOfLines={1}>Collection</Text>
-              <Pressable onPress={() => setGoalPickerOpen(true)} hitSlop={8} style={styles.addGoalBtn}>
-                <Ionicons name="add-circle" size={22} color={colors.primary} />
+        <View style={styles.nebula}>
+          <RingMenuItem
+            tint={OBJECTIVES_TINT}
+            pct={goals.length > 0 ? collectionAvgPct : undefined}
+            centerLabel={goals.length > 0 ? `${collectionAvgPct}%` : '+'}
+            label="Collection"
+            onPress={() => goals.length === 0 ? setGoalPickerOpen(true) : toggleCollectionExpanded()}
+            badge={
+              <Pressable onPress={() => setGoalPickerOpen(true)} hitSlop={6} style={styles.addBadge}>
+                <Ionicons name="add" size={13} color="white" />
               </Pressable>
-            </View>
-            {goals.length === 0 ? (
-              <Pressable onPress={() => setGoalPickerOpen(true)}>
-                <Text style={styles.emptyGoalText}>Épingle une extension pour suivre sa progression ici.</Text>
-              </Pressable>
-            ) : (
-              <>
-                <Pressable onPress={toggleCollectionExpanded} style={styles.avgRow}>
-                  <View style={styles.avgRingGlow}>
-                    <ProgressRing pct={collectionAvgPct} size={40} strokeWidth={5} color={OBJECTIVES_TINT} centerLabel={`${collectionAvgPct}%`} />
-                  </View>
-                  <Text style={styles.avgLabel} numberOfLines={1}>
-                    {goals.length} extension{goals.length > 1 ? 's' : ''}
-                  </Text>
-                  <Ionicons name={collectionExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textDim} />
-                </Pressable>
-                <Animated.View style={{ height: collectionAccordionHeight, overflow: 'hidden' as const }}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
-                    {goals.map(g => {
-                      const set = setsById.get(g.setId);
-                      if (!set) return null;
-                      return (
-                        <SetGoalTile
-                          key={g.setId}
-                          userId={userId}
-                          setId={g.setId}
-                          setName={set.name}
-                          total={set.cardCount}
-                          symbol={set.symbol}
-                          onPress={() => router.push(withReturnTo(`/pinned-set/${g.setId}`, '/dashboard') as never)}
-                        />
-                      );
-                    })}
-                  </ScrollView>
-                </Animated.View>
-              </>
-            )}
+            }
+          />
+          <View style={styles.nebulaItemMid}>
+            <BadgesSection
+              userId={userId}
+              wishedCardIds={wishedCardIds}
+              wishlistCount={wishedCards.length}
+            />
           </View>
-
-          <Pressable
-            onPress={() => setSuggestionsOpen(true)}
-            onPressIn={achatsPress.pressIn}
-            onPressOut={achatsPress.pressOut}
-            style={styles.pairItem}>
-            <Animated.View style={[styles.suggestionsRow, { transform: [{ scale: achatsPress.scale }] }]}>
-              <IconBubble size={28} color={colors.primarySoft}>
-                <Ionicons name="flag" size={15} color={SUGGESTIONS_TINT} />
-              </IconBubble>
-              <Text style={styles.suggestionsRowText} numberOfLines={1}>Achats</Text>
-            </Animated.View>
-          </Pressable>
+          <View style={styles.nebulaItemLast}>
+            <RingMenuItem
+              tint={SUGGESTIONS_TINT}
+              centerLabel={String(totalSuggestions)}
+              centerSub="idées"
+              label="Achats"
+              onPress={() => setSuggestionsOpen(true)}
+            />
+          </View>
         </View>
 
-        <BadgesSection
-          userId={userId}
-          wishedCardIds={wishedCardIds}
-          wishlistCount={wishedCards.length}
-        />
+        {goals.length > 0 && (
+          <Animated.View style={{ height: collectionAccordionHeight, overflow: 'hidden' as const }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
+              {goals.map(g => {
+                const set = setsById.get(g.setId);
+                if (!set) return null;
+                return (
+                  <SetGoalTile
+                    key={g.setId}
+                    userId={userId}
+                    setId={g.setId}
+                    setName={set.name}
+                    total={set.cardCount}
+                    symbol={set.symbol}
+                    onPress={() => router.push(withReturnTo(`/pinned-set/${g.setId}`, '/dashboard') as never)}
+                  />
+                );
+              })}
+            </ScrollView>
+          </Animated.View>
+        )}
       </ScrollView>
       <CardZoomModal
         card={zoomCard ? { image_small: zoomCard.imageSmall, image_large: zoomCard.imageLarge } : null}

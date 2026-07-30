@@ -232,14 +232,3 @@ export function computeBadges(stats: DashboardStats): ComputedBadge[] {
     progressNow: badge.progress?.(stats),
   }));
 }
-
-// Among locked badges with a measurable progress score, the one closest to
-// unlocking — used for the dashboard's "next almost-unlocked" teaser.
-export function pickAlmostUnlocked(badges: ComputedBadge[]): ComputedBadge | undefined {
-  let best: ComputedBadge | undefined;
-  for (const b of badges) {
-    if (b.unlockedNow || b.progressNow === undefined) continue;
-    if (!best || b.progressNow > (best.progressNow ?? 0)) best = b;
-  }
-  return best;
-}
