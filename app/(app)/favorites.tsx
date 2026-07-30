@@ -29,6 +29,7 @@ import { TeamSlotPicker } from '@/components/TeamSlotPicker';
 import { CollectionCardPicker } from '@/components/CollectionCardPicker';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
+import { TrainersPanel } from '@/components/TrainersPanel';
 import { FavoritesFilterBar } from '@/components/FavoritesFilterBar';
 import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
@@ -103,7 +104,7 @@ export default function FavoritesScreen() {
   const pinnedSetIds = useMemo(() => new Set(goals.map(g => g.setId)), [goals]);
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
 
-  const [subTab, setSubTab] = useState<'favorites' | 'teams' | 'lists' | 'goals'>('favorites');
+  const [subTab, setSubTab] = useState<'favorites' | 'teams' | 'lists' | 'goals' | 'trainers'>('favorites');
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
@@ -283,11 +284,12 @@ export default function FavoritesScreen() {
           {subTab === 'favorites' ? 'Favoris'
             : subTab === 'teams' ? 'Équipes'
             : subTab === 'lists' ? 'Mes listes'
+            : subTab === 'trainers' ? 'Dresseurs'
             : 'Extensions'}
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
           <Chip label="Extensions" active={subTab === 'goals'} onPress={() => setSubTab('goals')} />
-          <Chip label="Dresseurs" active={false} onPress={() => router.push(withReturnTo('/trainers', '/favorites') as never)} />
+          <Chip label="Dresseurs" active={subTab === 'trainers'} onPress={() => setSubTab('trainers')} />
           <Chip label="Favoris" active={subTab === 'favorites'} onPress={() => setSubTab('favorites')} />
           <Chip label="Mes listes" active={subTab === 'lists'} onPress={() => setSubTab('lists')} />
           {/* "Équipes" is intentionally not surfaced for now — kept dormant (state/branch
@@ -539,6 +541,8 @@ export default function FavoritesScreen() {
           )}
         </View>
         )
+      ) : subTab === 'trainers' ? (
+        <TrainersPanel userId={userId} />
       ) : (
         <View style={styles.teamList}>
           <Pressable onPress={() => setGoalPickerOpen(true)} style={styles.addCardsBtn}>

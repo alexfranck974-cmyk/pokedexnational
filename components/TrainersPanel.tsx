@@ -1,18 +1,13 @@
 import { useMemo, useState } from 'react';
 import { View, Text, TextInput, ActivityIndicator, Pressable, Image, useWindowDimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { CardGallery } from '@/components/CardGallery';
-import { CardFilterTree } from '@/components/CardFilterTree';
-import { CardZoomModal } from '@/components/CardZoomModal';
+import { CardGallery } from './CardGallery';
+import { CardFilterTree } from './CardFilterTree';
+import { CardZoomModal } from './CardZoomModal';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useTrainerCards } from '@/lib/tcg';
-import { useSession } from '@/lib/auth';
 import { useAllOwnedCardIds, useToggleOwnedCard } from '@/lib/collection';
-import { useBackTo } from '@/lib/navigation';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 
@@ -48,13 +43,17 @@ function numColsFor(width: number): number {
 
 type TrainerStatusFilter = 'all' | 'owned' | 'missing';
 
-export default function TrainersScreen() {
-  const router = useRouter();
-  const goBackToOrigin = useBackTo('/favorites');
-  const { session } = useSession();
-  const userId = session?.user.id;
-  const { width } = useWindowDimensions();
+interface Props {
+  userId?: string;
+}
 
+// Embedded inline as one of Favoris' subtabs (not a routed page) so switching
+// between Extensions/Dresseurs/Favoris/Mes listes feels like one continuous
+// screen — own header handles just the "grid vs selected character" state,
+// the outer Favoris header still owns the persistent tab row above it.
+export function TrainersPanel({ userId }: Props) {
+  const { width } = useWindowDimensions();
+  const { colors } = useTheme();
   const { data: cards = [], isLoading: cardsLoading } = useTrainerCards();
   const { data: ownedAll = new Set<string>() } = useAllOwnedCardIds(userId);
   const toggleOwned = useToggleOwnedCard();
@@ -105,32 +104,31 @@ export default function TrainersScreen() {
     [groups, selectedCharacter],
   );
 
-  const { colors } = useTheme();
-  const styles = useThemedStyles((colors, shadow) => ({
-    screen: { flex: 1, backgroundColor: colors.bg },
-    hero: { padding: spacing.md, gap: spacing.sm, ...shadow.sm },
-    heroTopRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
+  const styles = useThemedStyles((colors) => ({
+    header: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
     back: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 2, padding: 4 },
-    backText: { color: 'white', fontSize: 14, fontFamily: fonts.body },
-    heroViewToggle: { flexDirection: 'row' as const, gap: 6 },
+    headerTitle: { flex: 1, fontSize: 16, fontFamily: fonts.display, color: colors.text },
+    viewToggle: { flexDirection: 'row' as const, gap: 6 },
     viewBtn: {
       width: 30, height: 30, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const,
-      backgroundColor: 'rgba(255,255,255,0.18)',
+      backgroundColor: colors.surfaceAlt,
     },
-    viewBtnActive: { backgroundColor: 'white' },
-    heroTitle: { fontSize: 20, fontFamily: fonts.display, color: 'white' },
-    heroCaption: { fontSize: 12, fontFamily: fonts.mono, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+    viewBtnActive: { backgroundColor: colors.primary },
+    searchBtn: {
+      width: 30, height: 30, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const,
+      backgroundColor: colors.surfaceAlt,
+    },
+    searchRow: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm,
+      marginHorizontal: spacing.md, marginTop: spacing.sm, backgroundColor: colors.surfaceAlt,
+      borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    },
+    searchInput: { flex: 1, fontSize: 15, fontFamily: fonts.body, color: colors.text, padding: 0 },
     statusRow: { flexDirection: 'row' as const, gap: 6, margin: spacing.md, marginBottom: 0 },
     chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
     chipActive: { backgroundColor: colors.primary },
     chipText: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
     chipTextActive: { color: 'white', fontFamily: fonts.bodyBold },
-    headerSearchRow: {
-      flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, marginTop: spacing.xs,
-      backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: radius.lg,
-      paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-    },
-    headerSearchInput: { flex: 1, fontSize: 15, fontFamily: fonts.body, color: 'white', padding: 0 },
     empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: 24, fontStyle: 'italic' as const },
     grid: { padding: spacing.sm, paddingBottom: TAB_BAR_CLEARANCE },
     tile: { flex: 1, padding: 6, alignItems: 'center' as const },
@@ -151,68 +149,53 @@ export default function TrainersScreen() {
     tileNameMissing: { color: colors.textMuted },
   }));
 
-  const back = () => {
-    if (selectedCharacter) setSelectedCharacter(null);
-    else goBackToOrigin();
-  };
-
   return (
-    <SafeAreaView style={styles.screen}>
-      <LinearGradient
-        colors={[colors.primaryBg, colors.primaryDark, colors.primary]}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={styles.hero}>
-        <View style={styles.heroTopRow}>
-          <Pressable onPress={back} style={styles.back} hitSlop={8}>
-            <Ionicons name="chevron-back" size={18} color="white" />
-            <Text style={styles.backText}>{selectedCharacter ? 'Dresseurs' : 'Collections'}</Text>
-          </Pressable>
-          {selectedCharacter ? (
-            <View style={styles.heroViewToggle}>
-              <Pressable
-                onPress={() => setViewMode('grid')}
-                style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>
-                <Ionicons name="grid" size={15} color={viewMode === 'grid' ? colors.primary : 'white'} />
+    <View style={{ flex: 1 }}>
+      <View style={styles.header}>
+        {selectedCharacter ? (
+          <>
+            <Pressable onPress={() => setSelectedCharacter(null)} style={styles.back} hitSlop={8}>
+              <Ionicons name="chevron-back" size={20} color={colors.primary} />
+            </Pressable>
+            <Text style={styles.headerTitle} numberOfLines={1}>{selectedCharacter}</Text>
+            <View style={styles.viewToggle}>
+              <Pressable onPress={() => setViewMode('grid')} style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>
+                <Ionicons name="grid" size={15} color={viewMode === 'grid' ? 'white' : colors.textMuted} />
               </Pressable>
-              <Pressable
-                onPress={() => setViewMode('list')}
-                style={[styles.viewBtn, viewMode === 'list' && styles.viewBtnActive]}>
-                <Ionicons name="list" size={15} color={viewMode === 'list' ? colors.primary : 'white'} />
+              <Pressable onPress={() => setViewMode('list')} style={[styles.viewBtn, viewMode === 'list' && styles.viewBtnActive]}>
+                <Ionicons name="list" size={15} color={viewMode === 'list' ? 'white' : colors.textMuted} />
               </Pressable>
             </View>
-          ) : (
-            <Pressable onPress={() => setSearchOpen(o => !o)} style={styles.viewBtn}>
-              <Ionicons name={searchOpen ? 'close' : 'search'} size={16} color="white" />
+          </>
+        ) : (
+          <>
+            <Text style={styles.headerTitle}>{groups.length} dresseur{groups.length > 1 ? 's' : ''}</Text>
+            <Pressable onPress={() => setSearchOpen(o => !o)} style={styles.searchBtn}>
+              <Ionicons name={searchOpen ? 'close' : 'search'} size={16} color={colors.text} />
+            </Pressable>
+          </>
+        )}
+      </View>
+
+      {!selectedCharacter && searchOpen && (
+        <View style={styles.searchRow}>
+          <Ionicons name="search" size={16} color={colors.textMuted} />
+          <TextInput
+            placeholder="Chercher un dresseur"
+            value={search}
+            onChangeText={setSearch}
+            autoCapitalize="none"
+            autoFocus
+            style={styles.searchInput}
+            onBlur={() => { if (!search) setSearchOpen(false); }}
+          />
+          {search.length > 0 && (
+            <Pressable onPress={() => { setSearch(''); setSearchOpen(false); }} hitSlop={8}>
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </Pressable>
           )}
         </View>
-        <Text style={styles.heroTitle}>{selectedCharacter ?? 'Cartes Dresseur'}</Text>
-        <Text style={styles.heroCaption}>
-          {selectedGroup
-            ? `${selectedGroup.cards.length} carte${selectedGroup.cards.length > 1 ? 's' : ''}`
-            : `${groups.length} dresseur${groups.length > 1 ? 's' : ''}`}
-        </Text>
-        {!selectedCharacter && searchOpen && (
-          <View style={styles.headerSearchRow}>
-            <Ionicons name="search" size={16} color="rgba(255,255,255,0.75)" />
-            <TextInput
-              placeholder="Chercher un dresseur"
-              placeholderTextColor="rgba(255,255,255,0.6)"
-              value={search}
-              onChangeText={setSearch}
-              autoCapitalize="none"
-              autoFocus
-              style={styles.headerSearchInput}
-              onBlur={() => { if (!search) setSearchOpen(false); }}
-            />
-            {search.length > 0 && (
-              <Pressable onPress={() => { setSearch(''); setSearchOpen(false); }} hitSlop={8}>
-                <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.75)" />
-              </Pressable>
-            )}
-          </View>
-        )}
-      </LinearGradient>
+      )}
 
       {!selectedCharacter && (
         <>
@@ -274,6 +257,6 @@ export default function TrainersScreen() {
         />
       )}
       <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
-    </SafeAreaView>
+    </View>
   );
 }

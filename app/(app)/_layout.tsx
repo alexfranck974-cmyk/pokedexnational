@@ -99,7 +99,6 @@ export default function AppLayout() {
         <Tabs.Screen name="settings" options={{ href: null }} />
         <Tabs.Screen name="pokemon/[num]" options={{ href: null }} />
         <Tabs.Screen name="pinned-set/[setId]" options={{ href: null }} />
-        <Tabs.Screen name="trainers" options={{ href: null }} />
       </Tabs>
       <Pressable
         onPress={() => router.push('/settings')}
