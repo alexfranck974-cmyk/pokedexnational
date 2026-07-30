@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View, Text, Pressable, Animated, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import pokedexData from '@/data/pokedex.json';
@@ -19,6 +19,7 @@ import { TypeIcon } from './TypeIcon';
 import { IconBubble } from './IconBubble';
 import { TYPE_COLORS, TYPE_LABEL_FR } from '@/lib/types-colors';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { usePressSpring } from '@/lib/use-press-spring';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -67,9 +68,7 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
   const [breakdown, setBreakdown] = useState<BreakdownTarget | null>(null);
   const [statsOpen, setStatsOpen] = useState(false);
   const [statsTab, setStatsTab] = useState<StatsTab>('generation');
-  const scale = useRef(new Animated.Value(1)).current;
-  const pressIn = () => Animated.spring(scale, { toValue: 0.97, friction: 6, tension: 120, useNativeDriver: true }).start();
-  const pressOut = () => Animated.spring(scale, { toValue: 1, friction: 6, tension: 120, useNativeDriver: true }).start();
+  const { scale, pressIn, pressOut } = usePressSpring();
 
   const overall = useMemo(() => computeOverallProgress(POKEDEX, owned), [owned]);
   const byGeneration = useMemo(() => computeByGeneration(POKEDEX, owned), [owned]);

@@ -16,7 +16,6 @@ import { BadgeDetailModal, type BadgeDetailTarget } from './BadgeDetailModal';
 import { AllBadgesModal } from './AllBadgesModal';
 import { ProgressRing } from './ProgressRing';
 import { IconBubble } from './IconBubble';
-import { Bubble } from './Bubble';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
@@ -93,7 +92,6 @@ export function BadgesSection({
 
   return (
     <>
-    <Bubble tint={colors.warning}>
       <View style={styles.section}>
       <View style={styles.sectionTitleRow}>
         <IconBubble size={28} color={colors.primarySoft}>
@@ -141,7 +139,6 @@ export function BadgesSection({
       )}
 
       </View>
-      </Bubble>
       <AllBadgesModal
         visible={allBadgesOpen}
         badges={badges}
