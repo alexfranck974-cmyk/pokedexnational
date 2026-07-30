@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useUserDex, useAllOwnedCardIds, useAllOwnedCardsDetailed, useAllOwnedCardsLedgerDetailed } from '@/lib/collection';
 import { useSetGoals } from '@/lib/collection-goals';
@@ -16,6 +16,7 @@ import { BadgeDetailModal, type BadgeDetailTarget } from './BadgeDetailModal';
 import { AllBadgesModal } from './AllBadgesModal';
 import { ProgressRing } from './ProgressRing';
 import { IconBubble } from './IconBubble';
+import { Bubble } from './Bubble';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
@@ -91,12 +92,12 @@ export function BadgesSection({
     seeAll: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.primary },
     empty: {
       fontSize: 13, fontFamily: fonts.body, color: colors.textMuted, fontStyle: 'italic' as const,
-      backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, textAlign: 'center' as const,
+      textAlign: 'center' as const, padding: spacing.sm,
     },
-    grid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm },
+    previewRow: { flexDirection: 'row' as const, gap: spacing.sm, paddingTop: spacing.sm },
     almostCard: {
       flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm,
-      backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm, ...shadow.sm,
+      backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.sm,
     },
     almostCardPressed: { backgroundColor: colors.surfaceAlt },
     almostTextWrap: { flex: 1, gap: 2 },
@@ -104,11 +105,15 @@ export function BadgesSection({
     almostHint: { fontSize: 11, fontFamily: fonts.body, color: colors.textMuted },
   }));
 
+  const preview = unlocked.slice(0, 6);
+
   return (
-    <View style={styles.section}>
+    <>
+    <Bubble tint={colors.warning}>
+      <View style={styles.section}>
       <View style={styles.sectionTitleRow}>
-        <IconBubble size={28} color={colors.dangerBg}>
-          <Ionicons name="ribbon" size={15} color={colors.danger} />
+        <IconBubble size={28} color={colors.primarySoft}>
+          <Ionicons name="ribbon" size={15} color={colors.warning} />
         </IconBubble>
         <Text style={styles.sectionTitle}>Badges</Text>
         <Pressable onPress={() => setAllBadgesOpen(true)} hitSlop={8}>
@@ -119,8 +124,8 @@ export function BadgesSection({
       {unlocked.length === 0 ? (
         <Text style={styles.empty}>Aucun badge débloqué pour l’instant — commence ta collection !</Text>
       ) : (
-        <View style={styles.grid}>
-          {unlocked.map(b => (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.previewRow}>
+          {preview.map(b => (
             <AchievementBadge
               key={b.id}
               icon={b.icon}
@@ -130,7 +135,7 @@ export function BadgesSection({
               onPress={() => setBadgeDetail({ icon: b.icon, iconUri: b.iconUri, label: b.label, description: b.description, unlocked: true })}
             />
           ))}
-        </View>
+        </ScrollView>
       )}
 
       {almostUnlocked && (
@@ -151,12 +156,14 @@ export function BadgesSection({
         </Pressable>
       )}
 
+      </View>
+      </Bubble>
       <AllBadgesModal
         visible={allBadgesOpen}
         badges={badges}
         onClose={() => setAllBadgesOpen(false)}
       />
       <BadgeDetailModal target={badgeDetail} onClose={() => setBadgeDetail(null)} />
-    </View>
+    </>
   );
 }

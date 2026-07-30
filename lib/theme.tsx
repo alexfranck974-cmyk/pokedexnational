@@ -7,6 +7,7 @@ export const radius = {
   md: 10,
   lg: 14,
   xl: 20,
+  bubble: 28,
   pill: 999,
 };
 

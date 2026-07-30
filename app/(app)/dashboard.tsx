@@ -20,6 +20,7 @@ import { SuggestionsModal } from '@/components/SuggestionsModal';
 import { VitrineCarousel } from '@/components/VitrineCarousel';
 import { CardZoomModal } from '@/components/CardZoomModal';
 import { IconBubble } from '@/components/IconBubble';
+import { Bubble } from '@/components/Bubble';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
 import { useTheme, useThemedStyles, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
@@ -88,20 +89,12 @@ export default function DashboardScreen() {
     h1: { fontSize: 30, fontFamily: fonts.display, color: colors.text },
     collectionValue: { fontSize: 15, fontFamily: fonts.monoBold, color: colors.success },
 
-    section: { gap: spacing.sm },
     sectionTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
     sectionTitle: { fontSize: 18, fontFamily: fonts.display, color: colors.text, flex: 1 },
     addGoalBtn: { padding: 2 },
-    suggestionsRow: {
-      flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm,
-      backgroundColor: colors.surface, borderRadius: 14, padding: spacing.md,
-    },
+    suggestionsRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
     suggestionsRowText: { flex: 1, fontSize: 15, fontFamily: fonts.bodyBold, color: colors.text },
-    emptyGoalCard: {
-      borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed' as const, borderRadius: 14,
-      padding: spacing.lg, alignItems: 'center' as const,
-    },
-    emptyGoalText: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
+    emptyGoalText: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const, padding: spacing.sm },
   }));
 
   return (
@@ -117,7 +110,7 @@ export default function DashboardScreen() {
           onSelectMissing={(dexNum) => enterPokemonDetail(router, `/pokemon/${dexNum}`, '/dashboard')}
         />
 
-        <View style={styles.section}>
+        <Bubble tint={OBJECTIVES_TINT}>
           <View style={styles.sectionTitleRow}>
             <IconBubble size={28} color={colors.primarySoft}>
               <Ionicons name="albums" size={15} color={OBJECTIVES_TINT} />
@@ -128,11 +121,11 @@ export default function DashboardScreen() {
             </Pressable>
           </View>
           {goals.length === 0 ? (
-            <Pressable onPress={() => setGoalPickerOpen(true)} style={styles.emptyGoalCard}>
+            <Pressable onPress={() => setGoalPickerOpen(true)}>
               <Text style={styles.emptyGoalText}>Épingle une extension pour suivre sa progression ici.</Text>
             </Pressable>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, paddingTop: spacing.sm }}>
               {goals.map(g => {
                 const set = setsById.get(g.setId);
                 if (!set) return null;
@@ -150,15 +143,17 @@ export default function DashboardScreen() {
               })}
             </ScrollView>
           )}
-        </View>
+        </Bubble>
 
-        <Pressable onPress={() => setSuggestionsOpen(true)} style={styles.suggestionsRow}>
-          <IconBubble size={28} color={colors.primarySoft}>
-            <Ionicons name="flag" size={15} color={SUGGESTIONS_TINT} />
-          </IconBubble>
-          <Text style={styles.suggestionsRowText}>Prochains achats</Text>
-          <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
-        </Pressable>
+        <Bubble tint={SUGGESTIONS_TINT} onPress={() => setSuggestionsOpen(true)}>
+          <View style={styles.suggestionsRow}>
+            <IconBubble size={28} color={colors.primarySoft}>
+              <Ionicons name="flag" size={15} color={SUGGESTIONS_TINT} />
+            </IconBubble>
+            <Text style={styles.suggestionsRowText}>Prochains achats</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
+          </View>
+        </Bubble>
 
         <BadgesSection
           userId={userId}

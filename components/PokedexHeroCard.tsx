@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { View, Text, Pressable, Animated, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import pokedexData from '@/data/pokedex.json';
@@ -68,6 +68,9 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
   const [breakdown, setBreakdown] = useState<BreakdownTarget | null>(null);
   const [statsOpen, setStatsOpen] = useState(false);
   const [statsTab, setStatsTab] = useState<StatsTab>('generation');
+  const scale = useRef(new Animated.Value(1)).current;
+  const pressIn = () => Animated.spring(scale, { toValue: 0.97, friction: 6, tension: 120, useNativeDriver: true }).start();
+  const pressOut = () => Animated.spring(scale, { toValue: 1, friction: 6, tension: 120, useNativeDriver: true }).start();
 
   const overall = useMemo(() => computeOverallProgress(POKEDEX, owned), [owned]);
   const byGeneration = useMemo(() => computeByGeneration(POKEDEX, owned), [owned]);
@@ -98,8 +101,10 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
 
   const styles = useThemedStyles((colors, shadow) => ({
     hero: {
-      borderRadius: radius.lg, padding: spacing.xl,
-      gap: spacing.sm, alignItems: 'center' as const, ...shadow.md,
+      borderRadius: radius.bubble, padding: spacing.xl,
+      gap: spacing.sm, alignItems: 'center' as const,
+      shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 18,
+      shadowOffset: { width: 0, height: 8 }, elevation: 8,
     },
     heroTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6 },
     heroLabel: { fontSize: 17, fontFamily: fonts.display, color: 'white' },
@@ -128,7 +133,11 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
 
   return (
     <>
-      <Pressable onPress={() => { setStatsTab('generation'); setStatsOpen(true); }}>
+      <Pressable
+        onPress={() => { setStatsTab('generation'); setStatsOpen(true); }}
+        onPressIn={pressIn}
+        onPressOut={pressOut}>
+        <Animated.View style={{ transform: [{ scale }] }}>
         <LinearGradient
           colors={[colors.primaryBg, colors.primaryDark, colors.primary]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -148,6 +157,7 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
           </View>
           <Text style={styles.heroHint}>Touche pour voir le détail</Text>
         </LinearGradient>
+        </Animated.View>
       </Pressable>
 
       <StatsTabsModal
