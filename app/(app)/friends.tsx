@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TextInput, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Image, Pressable, FlatList, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -10,6 +10,8 @@ import {
   useSendFriendRequest, useAcceptFriendRequest, useRemoveFriendship,
   type FriendProfile, type FriendRequest,
 } from '@/lib/friends';
+import { useFriendNewsFeed, type FriendNewsItem } from '@/lib/friend-news';
+import { FriendNewsPopup } from '@/components/FriendNewsPopup';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
 import { IconBubble } from '@/components/IconBubble';
 import { QRCodeModal } from '@/components/QRCodeModal';
@@ -38,6 +40,8 @@ export default function FriendsScreen() {
   const { data: friends = [], isLoading: friendsLoading } = useFriends(userId);
   const { data: incoming = [] } = useIncomingRequests(userId);
   const { data: outgoing = [] } = useOutgoingRequests(userId);
+  const { data: friendNews = [] } = useFriendNewsFeed(userId);
+  const [openNews, setOpenNews] = useState<FriendNewsItem | null>(null);
 
   const [search, setSearch] = useState('');
   const { data: found, isFetching: searching } = useFindProfileByUsername(search);
@@ -89,6 +93,9 @@ export default function FriendsScreen() {
     actionBtnText: { fontSize: 12, fontFamily: fonts.bodyBold, color: 'white' },
     secondaryBtn: { padding: 6 },
     list: { gap: spacing.sm },
+    newsThumb: { width: 28, height: 28 / 0.72, borderRadius: 3 },
+    newsText: { flex: 1, fontSize: 13, fontFamily: fonts.body, color: colors.text },
+    newsTextBold: { fontFamily: fonts.bodyBold },
   }));
 
   const alreadyRelated = found && (friendIds.has(found.id) || outgoingIds.has(found.id) || found.id === userId);
@@ -146,6 +153,27 @@ export default function FriendsScreen() {
         contentContainerStyle={styles.body}
         renderItem={() => (
           <>
+            {friendNews.length > 0 && (
+              <View style={styles.list}>
+                <View style={styles.sectionTitleRow}>
+                  <IconBubble size={26} color={colors.primarySoft}>
+                    <Ionicons name="sparkles-outline" size={13} color={colors.primary} />
+                  </IconBubble>
+                  <Text style={styles.sectionTitle}>Nouveautés</Text>
+                  <Text style={styles.sectionCount}>{friendNews.length}</Text>
+                </View>
+                {friendNews.map((n: FriendNewsItem) => (
+                  <Pressable key={n.id} onPress={() => setOpenNews(n)} style={styles.row}>
+                    <Avatar name={n.authorName} />
+                    <Text style={styles.newsText}>
+                      <Text style={styles.newsTextBold}>{n.authorName}</Text> a obtenu une carte {n.rarityLabel}
+                    </Text>
+                    <Image source={{ uri: n.imageSmall }} style={styles.newsThumb} resizeMode="contain" />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
             {incoming.length > 0 && (
               <View style={styles.list}>
                 <View style={styles.sectionTitleRow}>
@@ -237,6 +265,7 @@ export default function FriendsScreen() {
         onCancel={() => setUnfriendTarget(null)}
       />
       <QRCodeModal visible={qrOpen} value={myShareUrl} label="Mon QR code" onClose={() => setQrOpen(false)} />
+      <FriendNewsPopup item={openNews} onClose={() => setOpenNews(null)} />
     </SafeAreaView>
   );
 }

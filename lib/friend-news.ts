@@ -3,8 +3,8 @@ import { supabase } from './supabase';
 import { useSession } from './auth';
 import { classifyRarity } from './rarity-tiers';
 
-export const NEWS_REACTIONS = ['🔥', '😍', '🤯', '👏'] as const;
-export type NewsReaction = typeof NEWS_REACTIONS[number];
+// Single fixed reaction (user's choice — a "bravo" tap, not a multi-emoji picker).
+export const BRAVO_EMOJI = '👏';
 
 // Called from the ownership mutations in lib/collection.ts right after a card is
 // newly marked owned. Only chase-tier pulls ("uniquement notable", per the user's
@@ -82,11 +82,11 @@ export function useReactToFriendNews() {
   const { session } = useSession();
   const userId = session?.user.id;
   return useMutation({
-    mutationFn: async ({ newsId, emoji }: { newsId: string; emoji: NewsReaction }) => {
+    mutationFn: async (newsId: string) => {
       if (!userId) throw new Error('Not signed in');
       const { error } = await supabase
         .from('friend_news_reactions')
-        .upsert({ news_id: newsId, user_id: userId, emoji }, { onConflict: 'news_id,user_id' });
+        .upsert({ news_id: newsId, user_id: userId, emoji: BRAVO_EMOJI }, { onConflict: 'news_id,user_id' });
       if (error) throw error;
     },
   });

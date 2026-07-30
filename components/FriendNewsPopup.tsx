@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { type FriendNewsItem, NEWS_REACTIONS, type NewsReaction, useDismissFriendNews, useReactToFriendNews } from '@/lib/friend-news';
+import { type FriendNewsItem, BRAVO_EMOJI, useDismissFriendNews, useReactToFriendNews } from '@/lib/friend-news';
 import { useMotion } from '@/lib/motion';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 interface Props {
   item: FriendNewsItem | null;
+  onClose: () => void;
 }
 
 // Same card proportions as CaptureEffect/CardZoomModal, so this reads consistently
@@ -15,7 +16,7 @@ const CARD_WIDTH = 138;
 const CARD_HEIGHT = CARD_WIDTH / CARD_RATIO;
 const GOLD = '#fbbf24';
 
-export function FriendNewsPopup({ item }: Props) {
+export function FriendNewsPopup({ item, onClose }: Props) {
   const { animationsEnabled } = useMotion();
   const dismiss = useDismissFriendNews();
   const react = useReactToFriendNews();
@@ -41,13 +42,14 @@ export function FriendNewsPopup({ item }: Props) {
     },
     cardImg: { width: CARD_WIDTH, height: CARD_HEIGHT, borderRadius: 6 },
     cardName: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted },
-    reactionRow: { flexDirection: 'row' as const, gap: spacing.sm, marginTop: spacing.xs },
-    reactionBtn: {
-      width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceAlt,
-      alignItems: 'center' as const, justifyContent: 'center' as const,
+    bravoBtn: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6,
+      backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
+      borderRadius: radius.pill, marginTop: spacing.xs,
     },
-    reactionEmoji: { fontSize: 20 },
-    closeBtn: { marginTop: spacing.xs },
+    bravoEmoji: { fontSize: 18 },
+    bravoText: { fontSize: 14, fontFamily: fonts.bodyBold, color: 'white' },
+    closeBtn: { marginTop: 2 },
     closeText: { fontSize: 13, fontFamily: fonts.body, color: colors.textDim },
   }));
 
@@ -61,9 +63,12 @@ export function FriendNewsPopup({ item }: Props) {
 
   if (!item) return null;
 
-  const close = () => dismiss.mutate(item.id);
-  const onReact = (emoji: NewsReaction) => {
-    react.mutate({ newsId: item.id, emoji });
+  const close = () => {
+    dismiss.mutate(item.id);
+    onClose();
+  };
+  const onBravo = () => {
+    react.mutate(item.id);
     close();
   };
 
@@ -83,13 +88,10 @@ export function FriendNewsPopup({ item }: Props) {
           <Image source={{ uri: item.imageLarge ?? item.imageSmall }} style={styles.cardImg} resizeMode="contain" />
         </View>
         <Text style={styles.cardName} numberOfLines={1}>{item.cardName}</Text>
-        <View style={styles.reactionRow}>
-          {NEWS_REACTIONS.map(emoji => (
-            <Pressable key={emoji} onPress={() => onReact(emoji)} style={styles.reactionBtn} hitSlop={4}>
-              <Text style={styles.reactionEmoji}>{emoji}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <Pressable onPress={onBravo} style={styles.bravoBtn} hitSlop={4}>
+          <Text style={styles.bravoEmoji}>{BRAVO_EMOJI}</Text>
+          <Text style={styles.bravoText}>Bravo !</Text>
+        </Pressable>
         <Pressable onPress={close} style={styles.closeBtn} hitSlop={8}>
           <Text style={styles.closeText}>Fermer</Text>
         </Pressable>

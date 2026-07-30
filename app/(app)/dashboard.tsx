@@ -22,8 +22,6 @@ import { CardZoomModal } from '@/components/CardZoomModal';
 import { RingMenuItem } from '@/components/RingMenuItem';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
-import { FriendNewsPopup } from '@/components/FriendNewsPopup';
-import { useFriendNewsFeed } from '@/lib/friend-news';
 import { useTheme, useThemedStyles, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useMotion } from '@/lib/motion';
 
@@ -47,7 +45,6 @@ export default function DashboardScreen() {
   const { data: showcase = new Set<number>() } = useShowcase(userId);
   const { data: wishedCards = [] } = useAllWishedCards(userId);
   const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
-  const { data: friendNews = [] } = useFriendNewsFeed(userId);
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const { data: goals = [] } = useSetGoals(userId);
@@ -209,7 +206,6 @@ export default function DashboardScreen() {
         onSwipePrev={() => setZoomIndex(i => i === null ? null : (i - 1 + vitrineCards.length) % vitrineCards.length)}
       />
       <SetGoalPicker visible={goalPickerOpen} pinnedSetIds={pinnedSetIds} tint={OBJECTIVES_TINT} onClose={() => setGoalPickerOpen(false)} />
-      <FriendNewsPopup item={friendNews[0] ?? null} />
       <SuggestionsModal
         visible={suggestionsOpen}
         tint={SUGGESTIONS_TINT}

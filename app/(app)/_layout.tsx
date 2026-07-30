@@ -1,6 +1,7 @@
 import { Redirect, Tabs, useRouter } from 'expo-router';
 import { useSession } from '@/lib/auth';
 import { useIncomingRequests } from '@/lib/friends';
+import { useFriendNewsFeed } from '@/lib/friend-news';
 import { View, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PokedexDeviceIcon } from '@/components/PokedexDeviceIcon';
@@ -16,6 +17,7 @@ export default function AppLayout() {
   const { session, loading } = useSession();
   const { colors } = useTheme();
   const { data: incomingRequests = [] } = useIncomingRequests(session?.user.id);
+  const { data: friendNews = [] } = useFriendNewsFeed(session?.user.id);
 
   if (loading) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
   if (!session) return <Redirect href="/login" />;
@@ -89,7 +91,7 @@ export default function AppLayout() {
             tabBarIcon: ({ focused, color, size }) => (
               <View>
                 <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
-                {incomingRequests.length > 0 && <View style={[styles.requestDot, { borderColor: colors.surface }]} />}
+                {(incomingRequests.length > 0 || friendNews.length > 0) && <View style={[styles.requestDot, { borderColor: colors.surface }]} />}
               </View>
             ),
           }}
