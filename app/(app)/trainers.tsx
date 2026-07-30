@@ -13,7 +13,7 @@ import { useTrainerCards } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
 import { useAllOwnedCardIds, useToggleOwnedCard } from '@/lib/collection';
 import { useBackTo } from '@/lib/navigation';
-import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE, SCREEN_FAB_CLEARANCE } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -119,17 +119,12 @@ export default function TrainersScreen() {
     chipActive: { backgroundColor: colors.primary },
     chipText: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
     chipTextActive: { color: 'white', fontFamily: fonts.bodyBold },
-    searchOverlay: { position: 'absolute' as const, right: spacing.lg, bottom: SCREEN_FAB_CLEARANCE, alignItems: 'flex-end' as const, gap: spacing.sm },
-    searchFab: {
-      width: 52, height: 52, borderRadius: 26, backgroundColor: colors.surface, borderWidth: 1,
-      borderColor: colors.border, alignItems: 'center' as const, justifyContent: 'center' as const, ...shadow.md,
+    headerSearchRow: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, marginTop: spacing.xs,
+      backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: radius.lg,
+      paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
     },
-    floatingSearch: {
-      flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, backgroundColor: colors.surface,
-      borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm, width: 240, ...shadow.md,
-    },
-    floatingSearchInput: { flex: 1, fontSize: 15, fontFamily: fonts.body, color: colors.text, padding: 0 },
+    headerSearchInput: { flex: 1, fontSize: 15, fontFamily: fonts.body, color: 'white', padding: 0 },
     empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: 24, fontStyle: 'italic' as const },
     grid: { padding: spacing.sm, paddingBottom: TAB_BAR_CLEARANCE },
     tile: { flex: 1, padding: 6, alignItems: 'center' as const },
@@ -166,7 +161,7 @@ export default function TrainersScreen() {
             <Ionicons name="chevron-back" size={18} color="white" />
             <Text style={styles.backText}>{selectedCharacter ? 'Dresseurs' : 'Collections'}</Text>
           </Pressable>
-          {selectedCharacter && (
+          {selectedCharacter ? (
             <View style={styles.heroViewToggle}>
               <Pressable
                 onPress={() => setViewMode('grid')}
@@ -179,6 +174,10 @@ export default function TrainersScreen() {
                 <Ionicons name="list" size={15} color={viewMode === 'list' ? colors.primary : 'white'} />
               </Pressable>
             </View>
+          ) : (
+            <Pressable onPress={() => setSearchOpen(o => !o)} style={styles.viewBtn}>
+              <Ionicons name={searchOpen ? 'close' : 'search'} size={16} color="white" />
+            </Pressable>
           )}
         </View>
         <Text style={styles.heroTitle}>{selectedCharacter ?? 'Cartes Dresseur'}</Text>
@@ -187,6 +186,26 @@ export default function TrainersScreen() {
             ? `${selectedGroup.cards.length} carte${selectedGroup.cards.length > 1 ? 's' : ''}`
             : `${groups.length} dresseur${groups.length > 1 ? 's' : ''}`}
         </Text>
+        {!selectedCharacter && searchOpen && (
+          <View style={styles.headerSearchRow}>
+            <Ionicons name="search" size={16} color="rgba(255,255,255,0.75)" />
+            <TextInput
+              placeholder="Chercher un dresseur"
+              placeholderTextColor="rgba(255,255,255,0.6)"
+              value={search}
+              onChangeText={setSearch}
+              autoCapitalize="none"
+              autoFocus
+              style={styles.headerSearchInput}
+              onBlur={() => { if (!search) setSearchOpen(false); }}
+            />
+            {search.length > 0 && (
+              <Pressable onPress={() => { setSearch(''); setSearchOpen(false); }} hitSlop={8}>
+                <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.75)" />
+              </Pressable>
+            )}
+          </View>
+        )}
       </LinearGradient>
 
       {!selectedCharacter && (
@@ -245,30 +264,6 @@ export default function TrainersScreen() {
             );
           }}
         />
-      )}
-      {!selectedCharacter && (
-        <View style={styles.searchOverlay} pointerEvents="box-none">
-          {searchOpen && (
-            <View style={styles.floatingSearch}>
-              <Ionicons name="search" size={18} color={colors.textMuted} />
-              <TextInput
-                placeholder="Chercher un dresseur"
-                value={search}
-                onChangeText={setSearch}
-                autoCapitalize="none"
-                autoFocus
-                style={styles.floatingSearchInput}
-                onBlur={() => { if (!search) setSearchOpen(false); }}
-              />
-              <Pressable onPress={() => { setSearch(''); setSearchOpen(false); }} hitSlop={8}>
-                <Ionicons name="close" size={20} color={colors.textMuted} />
-              </Pressable>
-            </View>
-          )}
-          <Pressable onPress={() => setSearchOpen(o => !o)} style={styles.searchFab}>
-            <Ionicons name="search" size={22} color={search ? colors.primary : colors.text} />
-          </Pressable>
-        </View>
       )}
       <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
     </SafeAreaView>
