@@ -36,8 +36,9 @@ export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = '
         data={cards}
         estimatedItemSize={100}
         contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
+        maintainVisibleContentPosition={{ disabled: true }}
         keyExtractor={c => c.id}
-        renderItem={({ item }) => (
+        renderItem={({ item }) => !item ? null : (
           <CardListRow
             card={item}
             owned={ownedSet.has(item.id)}
@@ -60,8 +61,9 @@ export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = '
       numColumns={columnsOverride ?? numColsFor(width)}
       estimatedItemSize={200}
       contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
+      maintainVisibleContentPosition={{ disabled: true }}
       keyExtractor={c => c.id}
-      renderItem={({ item }) => (
+      renderItem={({ item }) => !item ? null : (
         <CardTile
           card={item}
           owned={ownedSet.has(item.id)}

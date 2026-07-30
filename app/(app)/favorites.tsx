@@ -33,6 +33,7 @@ import { FavoritesFilterBar } from '@/components/FavoritesFilterBar';
 import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
 
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
@@ -126,8 +127,11 @@ export default function FavoritesScreen() {
   // so its index doubles as a "most recently favorited first" rank.
   const favoriteRecency = useMemo(() => new Map(Array.from(favorites).map((d, i) => [d, i])), [favorites]);
 
+  // Debounced: search can shrink this FlashList (numColumns > 1) drastically
+  // on every keystroke — see lib/use-debounced-value.ts for why that's unsafe.
+  const debouncedFavSearch = useDebouncedValue(favSearch, 200);
   const visibleFavoritePokemon = useMemo(() => {
-    const q = normalize(favSearch.trim());
+    const q = normalize(debouncedFavSearch.trim());
     let list = ownedPokemon.filter(p => {
       if (q) {
         const artist = artistByDex.get(p.num);
@@ -155,7 +159,7 @@ export default function FavoritesScreen() {
       }
     });
     return list;
-  }, [ownedPokemon, favSearch, favStatusFilter, favSort, favorites, showcase, favoriteRecency, artistByDex]);
+  }, [ownedPokemon, debouncedFavSearch, favStatusFilter, favSort, favorites, showcase, favoriteRecency, artistByDex]);
   const selectedTeam = teams.find(t => t.id === selectedTeamId) ?? null;
   const selectedCollection = collections.find(c => c.id === selectedCollectionId) ?? null;
   const { data: collectionCards = [] } = useCollectionCards(selectedCollectionId ?? undefined);
@@ -314,8 +318,9 @@ export default function FavoritesScreen() {
                 numColumns={numColsFor(width)}
                 estimatedItemSize={120}
                 contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
+                maintainVisibleContentPosition={{ disabled: true }}
                 keyExtractor={p => String(p.num)}
-                renderItem={({ item }) => (
+                renderItem={({ item }) => !item ? null : (
                   <FavoriteTile
                     pokemon={item}
                     cardImage={ownedImages.get(item.num)}
@@ -464,8 +469,10 @@ export default function FavoritesScreen() {
               numColumns={numColsFor(width)}
               estimatedItemSize={200}
               contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
+              maintainVisibleContentPosition={{ disabled: true }}
               keyExtractor={c => c.cardId}
               renderItem={({ item }) => {
+                if (!item) return null;
                 const isOwned = ownedCardIds.has(item.cardId);
                 return (
                   <View style={styles.collectionTile}>

@@ -34,8 +34,9 @@ export function ReadonlyCardGrid({ cards, onZoom }: Props) {
       data={cards}
       numColumns={numColsFor(width)}
       estimatedItemSize={140}
+      maintainVisibleContentPosition={{ disabled: true }}
       keyExtractor={c => c.key}
-      renderItem={({ item }) => (
+      renderItem={({ item }) => !item ? null : (
         <Pressable style={styles.tile} onPress={() => onZoom(item.key)}>
           <View style={styles.inner}>
             <Image source={{ uri: item.image }} style={styles.img} resizeMode="contain" />

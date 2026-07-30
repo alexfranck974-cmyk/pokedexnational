@@ -13,6 +13,7 @@ import { useTrainerCards } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
 import { useAllOwnedCardIds, useToggleOwnedCard } from '@/lib/collection';
 import { useBackTo } from '@/lib/navigation';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 
 function normalize(s: string): string {
@@ -83,8 +84,13 @@ export default function TrainersScreen() {
       .sort((a, b) => a.key.localeCompare(b.key, 'fr', { sensitivity: 'base' }));
   }, [setFilteredCards]);
 
+  // Debounced: typing quickly can shrink `visibleGroups` from 300+ to a
+  // handful on every keystroke. FlashList's grid layout manager has a known
+  // crash when its `data` length drops abruptly in quick succession — see
+  // lib/use-debounced-value.ts for details.
+  const debouncedSearch = useDebouncedValue(search, 200);
   const visibleGroups = useMemo(() => {
-    const q = normalize(search.trim());
+    const q = normalize(debouncedSearch.trim());
     return groups.filter(g => {
       if (q && !normalize(g.key).includes(q)) return false;
       const owned = g.cards.some(c => ownedAll.has(c.id));
@@ -92,7 +98,7 @@ export default function TrainersScreen() {
       if (statusFilter === 'missing' && owned) return false;
       return true;
     });
-  }, [groups, search, statusFilter, ownedAll]);
+  }, [groups, debouncedSearch, statusFilter, ownedAll]);
 
   const selectedGroup = useMemo(
     () => selectedCharacter ? groups.find(g => g.key === selectedCharacter) ?? null : null,
@@ -244,8 +250,10 @@ export default function TrainersScreen() {
           numColumns={numColsFor(width)}
           estimatedItemSize={150}
           contentContainerStyle={styles.grid}
+          maintainVisibleContentPosition={{ disabled: true }}
           keyExtractor={g => g.key}
           renderItem={({ item }) => {
+            if (!item) return null;
             const owned = item.cards.some(c => ownedAll.has(c.id));
             return (
               <Pressable style={styles.tile} onPress={() => setSelectedCharacter(item.key)}>

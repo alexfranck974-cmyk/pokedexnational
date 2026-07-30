@@ -16,6 +16,7 @@ import { Pokeball } from '@/components/Pokeball';
 import { WishlistFilterBar } from '@/components/WishlistFilterBar';
 import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { enterPokemonDetail } from '@/lib/navigation';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { getName } from '@/lib/i18n';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import pokedexData from '@/data/pokedex.json';
@@ -61,11 +62,14 @@ export default function WishlistScreen() {
     return Array.from(set).sort();
   }, [cards]);
 
+  // Debounced: search can shrink these FlashLists (numColumns > 1) drastically
+  // on every keystroke — see lib/use-debounced-value.ts for why that's unsafe.
+  const debouncedSearch = useDebouncedValue(search, 200);
   const filtered = useMemo(
     () => applyWishlistPipeline(cards as WishlistCard[], ownedIds, TYPES_BY_DEX, {
-      search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort,
+      search: debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort,
     }),
-    [cards, ownedIds, search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort],
+    [cards, ownedIds, debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort],
   );
 
   const grouped = useMemo(() => groupWishlistByPokemon(filtered, ownedIds), [filtered, ownedIds]);
@@ -178,8 +182,10 @@ export default function WishlistScreen() {
           data={grouped}
           estimatedItemSize={76}
           contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
+          maintainVisibleContentPosition={{ disabled: true }}
           keyExtractor={(g: WishlistGroup) => String(g.dexNum)}
           renderItem={({ item }: { item: WishlistGroup }) => {
+            if (!item) return null;
             const mon = POKEDEX_BY_DEX.get(item.dexNum);
             const ownedCount = item.cards.filter(c => ownedIds.has(c.id)).length;
             return (
@@ -217,8 +223,10 @@ export default function WishlistScreen() {
           numColumns={numColsFor(width)}
           estimatedItemSize={200}
           contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
+          maintainVisibleContentPosition={{ disabled: true }}
           keyExtractor={c => c.id}
           renderItem={({ item }) => {
+            if (!item) return null;
             const owned = ownedIds.has(item.id);
             return (
               <Pressable

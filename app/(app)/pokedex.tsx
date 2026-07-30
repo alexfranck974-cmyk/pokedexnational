@@ -10,6 +10,7 @@ import { useUserDex, useOwnedCardImages, useWishedDexNums, useAllOwnedCardsDetai
 import { useTcgIndex, useTcgSets, useTcgRarities } from '@/lib/tcg-index';
 import { applyPokedexPipeline } from '@/lib/pokedex-list';
 import { withReturnTo } from '@/lib/navigation';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { PokedexGrid } from '@/components/PokedexGrid';
 import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
@@ -58,11 +59,14 @@ export default function PokedexScreen() {
   const [sort, setSort]             = useState<SortKey>('num-asc');
   const [columns, setColumns]       = useState<2 | 3 | 4 | null>(null);
 
+  // Debounced: search can shrink the grid (FlashList, numColumns > 1) drastically
+  // on every keystroke — see lib/use-debounced-value.ts for why that's unsafe.
+  const debouncedSearch = useDebouncedValue(search, 200);
   const items = useMemo(
     () => applyPokedexPipeline(POKEDEX, owned, tcgIndex, {
-      search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort,
+      search: debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort,
     }, collectedDex),
-    [owned, tcgIndex, search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort, collectedDex],
+    [owned, tcgIndex, debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort, collectedDex],
   );
 
   const filterHintParts: string[] = [];

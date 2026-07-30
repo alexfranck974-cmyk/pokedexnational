@@ -68,15 +68,17 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverrid
       data={rows}
       numColumns={cols}
       estimatedItemSize={120}
-      keyExtractor={row => row.key}
-      getItemType={row => row.type}
+      keyExtractor={row => row?.key ?? 'missing'}
+      getItemType={row => row?.type ?? 'pokemon'}
       ListHeaderComponent={ListHeaderComponent}
       contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
+      maintainVisibleContentPosition={{ disabled: true }}
       stickyHeaderIndices={stickyHeaderIndices}
       overrideItemLayout={(layout, row, _index, maxColumns) => {
-        if (row.type === 'header') layout.span = maxColumns;
+        if (row?.type === 'header') layout.span = maxColumns;
       }}
       renderItem={({ item: row }) =>
+        !row ? null :
         row.type === 'header' ? (
           <View style={styles.headerRow}>
             <View style={[
