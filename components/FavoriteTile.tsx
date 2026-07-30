@@ -22,7 +22,7 @@ export function FavoriteTile({ pokemon, cardImage, favorited, inShowcase, onPres
     // covered by the next row.
     tile: { flex: 1, aspectRatio: 0.68, padding: 6, alignItems: 'center' as const, justifyContent: 'flex-start' as const, ...shadow.sm },
     pressed: { transform: [{ scale: 0.95 }] },
-    spriteWrap: { width: '100%' as const, aspectRatio: 1, position: 'relative' as const, backgroundColor: colors.surfaceAlt, borderRadius: radius.md },
+    spriteWrap: { width: '100%' as const, aspectRatio: 1, position: 'relative' as const, backgroundColor: colors.surfaceAlt, borderRadius: radius.bubble },
     sprite: { width: '100%' as const, height: '100%' as const },
     starBtn: {
       position: 'absolute' as const, top: 2, right: 2, width: 22, height: 22, borderRadius: radius.pill,

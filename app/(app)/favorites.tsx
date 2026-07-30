@@ -246,14 +246,14 @@ export default function FavoritesScreen() {
 
     slotGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm },
     slot: {
-      width: '31%' as const, aspectRatio: 0.85, backgroundColor: colors.surface, borderRadius: radius.md,
+      width: '31%' as const, aspectRatio: 0.85, backgroundColor: colors.surface, borderRadius: radius.bubble,
       alignItems: 'center' as const, justifyContent: 'center' as const, padding: spacing.xs, ...shadow.sm, position: 'relative' as const,
     },
     slotSprite: { width: '80%' as const, height: '60%' as const },
     slotName: { fontSize: 11, fontFamily: fonts.bodyBold, color: colors.text, textAlign: 'center' as const, marginTop: 2 },
     slotClear: { position: 'absolute' as const, top: 2, right: 2 },
     slotEmpty: {
-      width: '100%' as const, height: '100%' as const, borderRadius: radius.md, borderWidth: 2, borderStyle: 'dashed' as const,
+      width: '100%' as const, height: '100%' as const, borderRadius: radius.bubble, borderWidth: 2, borderStyle: 'dashed' as const,
       borderColor: colors.border, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
 
@@ -264,9 +264,9 @@ export default function FavoritesScreen() {
     addCardsBtnText: { color: 'white', fontFamily: fonts.bodyBold, fontSize: 14 },
     collectionTile: { flex: 1, padding: 6 },
     collectionImgWrap: { position: 'relative' as const },
-    holoBorder: { borderRadius: radius.md, padding: 2 },
-    holoInner: { borderRadius: radius.md - 2, overflow: 'hidden' as const, backgroundColor: colors.surfaceAlt },
-    plainInner: { borderRadius: radius.md, overflow: 'hidden' as const, backgroundColor: colors.surfaceAlt },
+    holoBorder: { borderRadius: radius.bubble, padding: 2 },
+    holoInner: { borderRadius: radius.bubble - 2, overflow: 'hidden' as const, backgroundColor: colors.surfaceAlt },
+    plainInner: { borderRadius: radius.bubble, overflow: 'hidden' as const, backgroundColor: colors.surfaceAlt },
     collectionImg: { width: '100%' as const, aspectRatio: 0.72 },
     removeBtn: {
       position: 'absolute' as const, top: 4, right: 4, width: 24, height: 24, borderRadius: 12,
