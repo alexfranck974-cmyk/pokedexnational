@@ -12,10 +12,16 @@ import {
 } from '@/lib/friends';
 import { useFriendNewsFeed, type FriendNewsItem } from '@/lib/friend-news';
 import { FriendNewsPopup } from '@/components/FriendNewsPopup';
+import { usePendingTradeOffers, type TradeOfferItem } from '@/lib/trades';
+import { TradeProposalModal, type TradeTarget } from '@/components/TradeProposalModal';
+import { TradeOfferPopup } from '@/components/TradeOfferPopup';
+import { TradeIcon } from '@/components/TradeIcon';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
 import { IconBubble } from '@/components/IconBubble';
 import { QRCodeModal } from '@/components/QRCodeModal';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
+
+const TRADE_TINT = '#2dd4bf';
 
 function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   const { colors } = useTheme();
@@ -42,6 +48,9 @@ export default function FriendsScreen() {
   const { data: outgoing = [] } = useOutgoingRequests(userId);
   const { data: friendNews = [] } = useFriendNewsFeed(userId);
   const [openNews, setOpenNews] = useState<FriendNewsItem | null>(null);
+  const { data: tradeOffers = [] } = usePendingTradeOffers(userId);
+  const [openTrade, setOpenTrade] = useState<TradeOfferItem | null>(null);
+  const [tradeTarget, setTradeTarget] = useState<TradeTarget | null>(null);
 
   const [search, setSearch] = useState('');
   const { data: found, isFetching: searching } = useFindProfileByUsername(search);
@@ -96,6 +105,7 @@ export default function FriendsScreen() {
     newsThumb: { width: 28, height: 28 / 0.72, borderRadius: 3 },
     newsText: { flex: 1, fontSize: 13, fontFamily: fonts.body, color: colors.text },
     newsTextBold: { fontFamily: fonts.bodyBold },
+    tradeBtn: { padding: 6 },
   }));
 
   const alreadyRelated = found && (friendIds.has(found.id) || outgoingIds.has(found.id) || found.id === userId);
@@ -174,6 +184,34 @@ export default function FriendsScreen() {
               </View>
             )}
 
+            {tradeOffers.length > 0 && (
+              <View style={styles.list}>
+                <View style={styles.sectionTitleRow}>
+                  <IconBubble size={26} color={colors.primarySoft}>
+                    <TradeIcon size={13} color={TRADE_TINT} />
+                  </IconBubble>
+                  <Text style={styles.sectionTitle}>Échanges</Text>
+                  <Text style={styles.sectionCount}>{tradeOffers.length}</Text>
+                </View>
+                {tradeOffers.map((t: TradeOfferItem) => (
+                  <Pressable key={t.id} onPress={() => setOpenTrade(t)} style={styles.row}>
+                    <Avatar name={t.counterpartyName} />
+                    <Text style={styles.newsText}>
+                      {t.direction === 'incoming' ? (
+                        <><Text style={styles.newsTextBold}>{t.counterpartyName}</Text> te propose un échange</>
+                      ) : (
+                        <>En attente de <Text style={styles.newsTextBold}>{t.counterpartyName}</Text></>
+                      )}
+                    </Text>
+                    <Image
+                      source={{ uri: t.direction === 'incoming' ? t.offeredCard.imageSmall : t.requestedCard.imageSmall }}
+                      style={styles.newsThumb} resizeMode="contain"
+                    />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
             {incoming.length > 0 && (
               <View style={styles.list}>
                 <View style={styles.sectionTitleRow}>
@@ -247,6 +285,11 @@ export default function FriendsScreen() {
                     </View>
                     <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                     <Pressable
+                      onPress={(e) => { e.stopPropagation(); setTradeTarget({ id: f.id, displayName: f.displayName }); }}
+                      style={styles.tradeBtn} hitSlop={8}>
+                      <TradeIcon size={18} color={TRADE_TINT} />
+                    </Pressable>
+                    <Pressable
                       onPress={(e) => { e.stopPropagation(); setUnfriendTarget({ id: f.id, name: f.displayName }); }}
                       style={styles.secondaryBtn} hitSlop={8}>
                       <Ionicons name="person-remove-outline" size={18} color={colors.danger} />
@@ -266,6 +309,8 @@ export default function FriendsScreen() {
       />
       <QRCodeModal visible={qrOpen} value={myShareUrl} label="Mon QR code" onClose={() => setQrOpen(false)} />
       <FriendNewsPopup item={openNews} onClose={() => setOpenNews(null)} />
+      <TradeProposalModal target={tradeTarget} onClose={() => setTradeTarget(null)} />
+      <TradeOfferPopup item={openTrade} onClose={() => setOpenTrade(null)} />
     </SafeAreaView>
   );
 }

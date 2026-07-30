@@ -7,6 +7,7 @@ import {
   bucketVariantCards, computeVariantProgress, totalCollectionValue, computeSetGoalsProgress,
 } from '@/lib/dashboard-stats';
 import { computeBadges, type DashboardStats } from '@/lib/badges';
+import { useCompletedTradesCount } from '@/lib/trades';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
 import { AllBadgesModal } from './AllBadgesModal';
@@ -37,6 +38,7 @@ export function BadgesSection({
   const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
   const { data: pinnedGoals = [] } = useSetGoals(userId);
   const { data: allSets = [] } = useTcgSets();
+  const { data: completedTradesCount = 0 } = useCompletedTradesCount(userId);
   const [allBadgesOpen, setAllBadgesOpen] = useState(false);
 
   const overall = useMemo(() => computeOverallProgress(POKEDEX, owned), [owned]);
@@ -55,11 +57,11 @@ export function BadgesSection({
   const badges = useMemo(() => {
     const stats: DashboardStats = {
       overall, byGeneration, variants, ownedCards, ownedCardIds,
-      wishedCardIds, wishlistCount, collectionValue, bySet,
+      wishedCardIds, wishlistCount, collectionValue, bySet, completedTradesCount,
     };
     const all = computeBadges(stats);
     return showValueBadges ? all : all.filter(b => !b.id.startsWith('value-'));
-  }, [overall, byGeneration, variants, ownedCards, ownedCardIds, wishedCardIds, wishlistCount, collectionValue, bySet, showValueBadges]);
+  }, [overall, byGeneration, variants, ownedCards, ownedCardIds, wishedCardIds, wishlistCount, collectionValue, bySet, completedTradesCount, showValueBadges]);
 
   const unlockedCount = useMemo(() => badges.filter(b => b.unlockedNow).length, [badges]);
   const pct = badges.length > 0 ? Math.round((unlockedCount / badges.length) * 100) : 0;

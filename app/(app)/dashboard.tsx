@@ -22,6 +22,8 @@ import { CardZoomModal } from '@/components/CardZoomModal';
 import { RingMenuItem } from '@/components/RingMenuItem';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
+import { TradeHubModal } from '@/components/TradeHubModal';
+import { useCompletedTradesCount } from '@/lib/trades';
 import { useTheme, useThemedStyles, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useMotion } from '@/lib/motion';
 
@@ -35,6 +37,7 @@ const EVOLUTION_FAMILIES = buildEvolutionFamilies(POKEDEX);
 const eurFormatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 const SUGGESTIONS_TINT = '#f472b6';
 const OBJECTIVES_TINT = '#38bdf8';
+const TRADE_TINT = '#2dd4bf';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -47,6 +50,8 @@ export default function DashboardScreen() {
   const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [tradeHubOpen, setTradeHubOpen] = useState(false);
+  const { data: completedTradesCount = 0 } = useCompletedTradesCount(userId);
   const { data: goals = [] } = useSetGoals(userId);
   const { data: allSets = [] } = useTcgSets();
   const setsById = useMemo(() => new Map(allSets.map(s => [s.id, s])), [allSets]);
@@ -120,12 +125,15 @@ export default function DashboardScreen() {
     // true randomness, which would be unreliable to keep readable/tappable
     // across phone and desktop widths.
     // `center` + a fixed `gap` (not `space-around`) so the cluster stays tight
-    // on wide desktop viewports instead of the 3 rings drifting apart with the
+    // on wide desktop viewports instead of the rings drifting apart with the
     // container — nothing in this app caps screen width, so this row has to
     // hold its own shape regardless of how wide the page gets.
-    nebula: { flexDirection: 'row' as const, justifyContent: 'center' as const, alignItems: 'flex-start' as const, gap: spacing.xl * 1.5 },
+    // Gap trimmed from the original 3-item spacing (spacing.xl*1.5) now that a
+    // 4th ring joined the cluster, so it still fits at 390px without wrapping.
+    nebula: { flexDirection: 'row' as const, justifyContent: 'center' as const, alignItems: 'flex-start' as const, gap: spacing.xl },
     nebulaItemMid: { marginTop: 26 },
-    nebulaItemLast: { marginTop: 8 },
+    nebulaItemThird: { marginTop: 10 },
+    nebulaItemLast: { marginTop: 32 },
     addBadge: {
       position: 'absolute' as const, bottom: -2, right: -2, width: 22, height: 22, borderRadius: 11,
       backgroundColor: colors.primary, alignItems: 'center' as const, justifyContent: 'center' as const,
@@ -164,6 +172,15 @@ export default function DashboardScreen() {
               userId={userId}
               wishedCardIds={wishedCardIds}
               wishlistCount={wishedCards.length}
+            />
+          </View>
+          <View style={styles.nebulaItemThird}>
+            <RingMenuItem
+              tint={TRADE_TINT}
+              centerLabel={String(completedTradesCount)}
+              centerSub="échanges"
+              label="Échanges"
+              onPress={() => setTradeHubOpen(true)}
             />
           </View>
           <View style={styles.nebulaItemLast}>
@@ -206,6 +223,7 @@ export default function DashboardScreen() {
         onSwipePrev={() => setZoomIndex(i => i === null ? null : (i - 1 + vitrineCards.length) % vitrineCards.length)}
       />
       <SetGoalPicker visible={goalPickerOpen} pinnedSetIds={pinnedSetIds} tint={OBJECTIVES_TINT} onClose={() => setGoalPickerOpen(false)} />
+      <TradeHubModal userId={userId} visible={tradeHubOpen} onClose={() => setTradeHubOpen(false)} />
       <SuggestionsModal
         visible={suggestionsOpen}
         tint={SUGGESTIONS_TINT}

@@ -27,6 +27,7 @@ export interface DashboardStats {
   wishlistCount: number;
   collectionValue: number;
   bySet: SetBadgeInfo[];
+  completedTradesCount: number;
 }
 
 export interface Badge {
@@ -180,6 +181,19 @@ const valueBadges: Badge[] = [
   progress: (stats: DashboardStats) => Math.min(100, Math.round((stats.collectionValue / threshold) * 100)),
 }));
 
+const tradeBadges: Badge[] = [
+  { threshold: 1, label: 'Premier Échange', icon: 'swap-horizontal' as const },
+  { threshold: 5, label: 'Négociant', icon: 'people-circle' as const },
+  { threshold: 15, label: 'Maître Troqueur', icon: 'trophy' as const },
+].map(({ threshold, label, icon }) => ({
+  id: `trade-${threshold}`,
+  label,
+  description: `Compléter ${threshold} échange${threshold > 1 ? 's' : ''} avec des amis`,
+  icon,
+  unlocked: (stats: DashboardStats) => stats.completedTradesCount >= threshold,
+  progress: (stats: DashboardStats) => Math.min(100, Math.round((stats.completedTradesCount / threshold) * 100)),
+}));
+
 const artistBadges: Badge[] = [
   {
     id: 'artist-fan',
@@ -193,7 +207,7 @@ const artistBadges: Badge[] = [
 export const BADGES: Badge[] = [
   ...milestoneBadges, ...generationBadges, ...variantBadges,
   ...rarityBadges, ...dateBadges, ...wishlistBadges,
-  ...valueBadges, ...artistBadges,
+  ...valueBadges, ...artistBadges, ...tradeBadges,
 ];
 
 // Same tiered shape as milestoneBadges (national dex), applied per pinned set —
