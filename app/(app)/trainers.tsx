@@ -136,7 +136,7 @@ export default function TrainersScreen() {
     tile: { flex: 1, padding: 6, alignItems: 'center' as const },
     tileAvatarWrap: { width: '100%' as const, position: 'relative' as const },
     tileImg: {
-      width: '100%' as const, aspectRatio: 1, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt,
+      width: '100%' as const, aspectRatio: 1, borderRadius: radius.bubble, backgroundColor: colors.surfaceAlt,
       borderWidth: 2, borderColor: 'transparent',
     },
     tileImgOwned: { borderColor: colors.success },
