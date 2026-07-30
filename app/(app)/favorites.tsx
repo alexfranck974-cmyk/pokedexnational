@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, Image, StyleSheet, FlatList, ScrollView, useWindowDimensions,
+  View, Text, TextInput, Pressable, Image, StyleSheet, FlatList, ScrollView, RefreshControl, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
@@ -33,8 +33,10 @@ import { TrainersPanel } from '@/components/TrainersPanel';
 import { FavoritesFilterBar } from '@/components/FavoritesFilterBar';
 import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
+import { RefreshButton } from '@/components/RefreshButton';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
+import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
@@ -74,6 +76,7 @@ export default function FavoritesScreen() {
   const userId = session?.user.id;
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
+  const { refreshing, onRefresh } = usePullToRefresh();
 
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
@@ -222,6 +225,7 @@ export default function FavoritesScreen() {
     screen: { flex: 1, backgroundColor: colors.bg },
     center: { flex: 1, justifyContent: 'center' as const, alignItems: 'center' as const, padding: spacing.xl, gap: spacing.sm },
     header: { padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, gap: spacing.sm, ...shadow.sm },
+    titleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
     title: { fontSize: 22, fontFamily: fonts.display, color: colors.text },
     chipRow: { flexDirection: 'row' as const, gap: spacing.xs },
     legend: { fontSize: 12, fontFamily: fonts.body, color: colors.textDim },
@@ -280,13 +284,16 @@ export default function FavoritesScreen() {
     <SafeAreaView style={styles.screen}>
       <PokedexSectionTabs active="collection" />
       <View style={styles.header}>
-        <Text style={styles.title}>
-          {subTab === 'favorites' ? 'Favoris'
-            : subTab === 'teams' ? 'Équipes'
-            : subTab === 'lists' ? 'Mes listes'
-            : subTab === 'trainers' ? 'Dresseurs'
-            : 'Extensions'}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>
+            {subTab === 'favorites' ? 'Favoris'
+              : subTab === 'teams' ? 'Équipes'
+              : subTab === 'lists' ? 'Mes listes'
+              : subTab === 'trainers' ? 'Dresseurs'
+              : 'Extensions'}
+          </Text>
+          <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
+        </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
           <Chip label="Extensions" active={subTab === 'goals'} onPress={() => setSubTab('goals')} />
           <Chip label="Dresseurs" active={subTab === 'trainers'} onPress={() => setSubTab('trainers')} />
@@ -321,6 +328,7 @@ export default function FavoritesScreen() {
                 estimatedItemSize={120}
                 contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
                 maintainVisibleContentPosition={{ disabled: true }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
                 keyExtractor={p => String(p.num)}
                 renderItem={({ item }) => !item ? null : (
                   <FavoriteTile
@@ -418,6 +426,7 @@ export default function FavoritesScreen() {
               <FlatList
                 data={teams}
                 contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
                 keyExtractor={t => t.id}
                 renderItem={({ item }) => (
                   <Pressable onPress={() => setSelectedTeamId(item.id)} style={({ pressed }) => [styles.teamRow, pressed && styles.teamRowPressed]}>
@@ -472,6 +481,7 @@ export default function FavoritesScreen() {
               estimatedItemSize={200}
               contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
               maintainVisibleContentPosition={{ disabled: true }}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
               keyExtractor={c => c.cardId}
               renderItem={({ item }) => {
                 if (!item) return null;
@@ -529,6 +539,7 @@ export default function FavoritesScreen() {
             <FlatList
               data={collections}
               contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
               keyExtractor={c => c.id}
               renderItem={({ item }) => (
                 <Pressable onPress={() => setSelectedCollectionId(item.id)} style={({ pressed }) => [styles.teamRow, pressed && styles.teamRowPressed]}>
@@ -542,7 +553,10 @@ export default function FavoritesScreen() {
         </View>
         )
       ) : subTab === 'trainers' ? (
-        <TrainersPanel userId={userId} />
+        <TrainersPanel
+          userId={userId}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+        />
       ) : (
         <View style={styles.teamList}>
           <Pressable onPress={() => setGoalPickerOpen(true)} style={styles.addCardsBtn}>
@@ -555,7 +569,9 @@ export default function FavoritesScreen() {
               <Text style={styles.emptyHint}>Aucune extension épinglée pour l’instant.</Text>
             </View>
           ) : (
-            <ScrollView contentContainerStyle={styles.goalsGrid}>
+            <ScrollView
+              contentContainerStyle={styles.goalsGrid}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}>
               {goals.map(g => {
                 const set = setsById.get(g.setId);
                 if (!set) return null;

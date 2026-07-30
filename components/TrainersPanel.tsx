@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { View, Text, TextInput, ActivityIndicator, Pressable, Image, useWindowDimensions } from 'react-native';
+import { useMemo, useState, type ReactElement } from 'react';
+import { View, Text, TextInput, ActivityIndicator, Pressable, Image, useWindowDimensions, type RefreshControlProps } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { CardGallery } from './CardGallery';
@@ -45,13 +45,14 @@ type TrainerStatusFilter = 'all' | 'owned' | 'missing';
 
 interface Props {
   userId?: string;
+  refreshControl?: ReactElement<RefreshControlProps>;
 }
 
 // Embedded inline as one of Favoris' subtabs (not a routed page) so switching
 // between Extensions/Dresseurs/Favoris/Mes listes feels like one continuous
 // screen — own header handles just the "grid vs selected character" state,
 // the outer Favoris header still owns the persistent tab row above it.
-export function TrainersPanel({ userId }: Props) {
+export function TrainersPanel({ userId, refreshControl }: Props) {
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
   const { data: cards = [], isLoading: cardsLoading } = useTrainerCards();
@@ -234,6 +235,7 @@ export function TrainersPanel({ userId }: Props) {
           estimatedItemSize={150}
           contentContainerStyle={styles.grid}
           maintainVisibleContentPosition={{ disabled: true }}
+          refreshControl={refreshControl}
           keyExtractor={g => g.key}
           renderItem={({ item }) => {
             if (!item) return null;

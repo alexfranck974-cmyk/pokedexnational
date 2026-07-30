@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, Image, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Image, Pressable, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -20,10 +20,12 @@ import {
 import { TradeProposalModal, type TradeTarget, type PickedCard } from '@/components/TradeProposalModal';
 import { TradeOfferPopup } from '@/components/TradeOfferPopup';
 import { TradeIcon } from '@/components/TradeIcon';
+import { RefreshButton } from '@/components/RefreshButton';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
 import { IconBubble } from '@/components/IconBubble';
 import { QRCodeModal } from '@/components/QRCodeModal';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
+import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 
 const TRADE_TINT = '#2dd4bf';
 
@@ -60,6 +62,7 @@ export default function FriendsScreen() {
   const { session } = useSession();
   const userId = session?.user.id;
   const { colors } = useTheme();
+  const { refreshing, onRefresh } = usePullToRefresh();
 
   const { data: friends = [], isLoading: friendsLoading } = useFriends(userId);
   const { data: incoming = [] } = useIncomingRequests(userId);
@@ -114,6 +117,7 @@ export default function FriendsScreen() {
     titleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
     title: { fontSize: 22, fontFamily: fonts.display, color: colors.text },
     qrBtn: { padding: 6 },
+    headerActions: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md },
     searchInput: {
       borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12,
       fontSize: 15, fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt,
@@ -158,9 +162,12 @@ export default function FriendsScreen() {
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>{subTab === 'friends' ? 'Amis' : 'Marché'}</Text>
-          <Pressable onPress={() => setQrOpen(true)} style={styles.qrBtn} hitSlop={8}>
-            <Ionicons name="qr-code-outline" size={24} color={colors.primary} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
+            <Pressable onPress={() => setQrOpen(true)} style={styles.qrBtn} hitSlop={8}>
+              <Ionicons name="qr-code-outline" size={24} color={colors.primary} />
+            </Pressable>
+          </View>
         </View>
         <View style={styles.chipRow}>
           <Chip label="Amis" active={subTab === 'friends'} onPress={() => setSubTab('friends')} />
@@ -206,6 +213,7 @@ export default function FriendsScreen() {
         data={[1]}
         keyExtractor={() => 'body'}
         contentContainerStyle={styles.body}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         renderItem={() => (
           <>
           {subTab === 'friends' && (

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Animated, Easing } from 'react-native';
+import { View, Text, ScrollView, Pressable, Animated, Easing, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,9 +23,11 @@ import { RingMenuItem } from '@/components/RingMenuItem';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
 import { TradeHubModal } from '@/components/TradeHubModal';
+import { RefreshButton } from '@/components/RefreshButton';
 import { useCompletedTradesCount } from '@/lib/trades';
 import { useTheme, useThemedStyles, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useMotion } from '@/lib/motion';
+import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 
 // SetGoalTile's rendered height (ring + 2 text lines + tile padding) — fixed rather
 // than measured via onLayout so the accordion animation doesn't depend on a layout
@@ -115,9 +117,11 @@ export default function DashboardScreen() {
   const zoomCard = zoomIndex !== null ? vitrineCards[zoomIndex] : null;
 
   const { colors } = useTheme();
+  const { refreshing, onRefresh } = usePullToRefresh();
   const styles = useThemedStyles((colors) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
     scroll: { padding: spacing.lg, paddingBottom: spacing.lg + TAB_BAR_CLEARANCE, gap: spacing.lg },
+    titleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
     h1: { fontSize: 30, fontFamily: fonts.display, color: colors.text },
     collectionValue: { fontSize: 15, fontFamily: fonts.monoBold, color: colors.success },
 
@@ -143,8 +147,13 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.h1}>Dashboard</Text>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}>
+        <View style={styles.titleRow}>
+          <Text style={styles.h1}>Dashboard</Text>
+          <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
+        </View>
         <Text style={styles.collectionValue}>Valeur estimée de ta collection : {eurFormatter.format(collectionValue)}</Text>
 
         <VitrineCarousel items={vitrineItems} />

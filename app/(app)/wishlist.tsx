@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
@@ -14,10 +14,12 @@ import {
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
 import { WishlistFilterBar } from '@/components/WishlistFilterBar';
+import { RefreshButton } from '@/components/RefreshButton';
 import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { enterPokemonDetail } from '@/lib/navigation';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { getName } from '@/lib/i18n';
+import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import pokedexData from '@/data/pokedex.json';
 
@@ -40,6 +42,7 @@ export default function WishlistScreen() {
   const toggleWish = useToggleWish();
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
+  const { refreshing, onRefresh } = usePullToRefresh();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatus] = useState<WishStatusFilter>('all');
@@ -170,6 +173,7 @@ export default function WishlistScreen() {
               <Ionicons name="list" size={15} color={viewMode === 'pokemon' ? colors.primary : 'white'} />
             </Pressable>
           </View>
+          <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
         </View>
       </LinearGradient>
 
@@ -183,6 +187,7 @@ export default function WishlistScreen() {
           estimatedItemSize={76}
           contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
           maintainVisibleContentPosition={{ disabled: true }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           keyExtractor={(g: WishlistGroup) => String(g.dexNum)}
           renderItem={({ item }: { item: WishlistGroup }) => {
             if (!item) return null;
@@ -224,6 +229,7 @@ export default function WishlistScreen() {
           estimatedItemSize={200}
           contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
           maintainVisibleContentPosition={{ disabled: true }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           keyExtractor={c => c.id}
           renderItem={({ item }) => {
             if (!item) return null;

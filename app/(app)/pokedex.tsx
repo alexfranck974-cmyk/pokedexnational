@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -17,9 +17,11 @@ import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { SearchFilterBar } from '@/components/SearchFilterBar';
 import { ProgressRing } from '@/components/ProgressRing';
 import { CardZoomModal } from '@/components/CardZoomModal';
+import { RefreshButton } from '@/components/RefreshButton';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
 import { getName } from '@/lib/i18n';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -28,6 +30,7 @@ export default function PokedexScreen() {
   const { session } = useSession();
   const userId = session?.user.id;
   const { colors } = useTheme();
+  const { refreshing, onRefresh } = usePullToRefresh();
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
     hero: {
@@ -98,6 +101,7 @@ export default function PokedexScreen() {
           <Text style={styles.heroCount}>{ownedCount} / {items.length}</Text>
           {filterHint && <Text style={styles.heroFilter}>Filtre : {filterHint}</Text>}
         </View>
+        <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
       </LinearGradient>
       <PokedexSectionTabs active="pokedex" />
       <PokedexGrid
@@ -105,6 +109,7 @@ export default function PokedexScreen() {
         ownedImages={ownedImages}
         wishedInDexSet={wishedInDexSet}
         columnsOverride={columns}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
         onLongSelect={num => {
           const idx = ownedItems.findIndex(p => p.num === num);

@@ -1,5 +1,5 @@
 import { useMemo, type ReactElement } from 'react';
-import { View, Text, useWindowDimensions } from 'react-native';
+import { View, Text, useWindowDimensions, type RefreshControlProps } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { PokemonTile } from './PokemonTile';
 import type { PokemonWithState } from '@/lib/pokedex-list';
@@ -14,6 +14,7 @@ interface Props {
   columnsOverride?: 2 | 3 | 4 | null;
   /** Scrolls together with the grid instead of sitting in a fixed header above it. */
   ListHeaderComponent?: ReactElement | null;
+  refreshControl?: ReactElement<RefreshControlProps>;
   onSelect: (num: number) => void;
   onLongSelect?: (num: number) => void;
 }
@@ -28,7 +29,7 @@ function numColsFor(width: number): number {
   return 8;
 }
 
-export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverride, ListHeaderComponent, onSelect, onLongSelect }: Props) {
+export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverride, ListHeaderComponent, refreshControl, onSelect, onLongSelect }: Props) {
   const { width } = useWindowDimensions();
   const cols = columnsOverride ?? numColsFor(width);
   const styles = useThemedStyles((colors) => ({
@@ -71,6 +72,7 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverrid
       keyExtractor={row => row?.key ?? 'missing'}
       getItemType={row => row?.type ?? 'pokemon'}
       ListHeaderComponent={ListHeaderComponent}
+      refreshControl={refreshControl}
       contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
       maintainVisibleContentPosition={{ disabled: true }}
       stickyHeaderIndices={stickyHeaderIndices}
