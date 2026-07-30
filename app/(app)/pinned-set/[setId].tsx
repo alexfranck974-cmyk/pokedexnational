@@ -14,6 +14,10 @@ import { useCardsForSet } from '@/lib/tcg';
 import { useTcgSets } from '@/lib/tcg-index';
 import { useSession } from '@/lib/auth';
 import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity } from '@/lib/collection';
+import { useFriends } from '@/lib/friends';
+import { useFriendsWantedCards } from '@/lib/trades';
+import { TradeMatchPopup, type TradeMatch } from '@/components/TradeMatchPopup';
+import { TradeProposalModal, type TradeTarget, type PickedCard } from '@/components/TradeProposalModal';
 import { useBackTo } from '@/lib/navigation';
 import { currentSetTier } from '@/lib/set-tiers';
 import { classifyRarity } from '@/lib/rarity-tiers';
@@ -36,6 +40,13 @@ export default function PinnedSetDetail() {
   const { data: allSets = [] } = useTcgSets();
   const toggleOwned = useToggleOwnedCard();
   const adjustQuantity = useAdjustOwnedCardQuantity();
+
+  const { data: friends = [] } = useFriends(userId);
+  const friendIdsArr = useMemo(() => friends.map(f => f.id), [friends]);
+  const { data: wantedByFriends = [] } = useFriendsWantedCards(friendIdsArr);
+  const [tradeMatch, setTradeMatch] = useState<TradeMatch | null>(null);
+  const [tradeTarget, setTradeTarget] = useState<TradeTarget | null>(null);
+  const [tradePreset, setTradePreset] = useState<PickedCard | undefined>(undefined);
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [columns, setColumns] = useState<3 | 4 | null>(null);
@@ -156,10 +167,25 @@ export default function PinnedSetDetail() {
           viewMode={viewMode}
           columnsOverride={columns}
           quantities={quantities}
-          onIncrement={c => adjustQuantity.mutate(
-            { cardId: c.id, delta: 1, currentQuantity: quantities.get(c.id) ?? 0, rarity: c.rarity },
-            { onSuccess: () => qc.invalidateQueries({ queryKey: ['set_goal_progress', userId, setId] }) },
-          )}
+          onIncrement={c => {
+            const currentQuantity = quantities.get(c.id) ?? 0;
+            adjustQuantity.mutate(
+              { cardId: c.id, delta: 1, currentQuantity, rarity: c.rarity },
+              {
+                onSuccess: () => {
+                  qc.invalidateQueries({ queryKey: ['set_goal_progress', userId, setId] });
+                  // "Les doublons sont flaggés comme disponibles automatiquement" — the
+                  // instant a card crosses into duplicate territory, check if a friend
+                  // already wants it and surface it right away instead of waiting for
+                  // them to browse the Marché tab.
+                  if (currentQuantity + 1 === 2) {
+                    const match = wantedByFriends.find(w => w.card.id === c.id);
+                    if (match) setTradeMatch({ friendId: match.friendId, friendName: match.friendName, card: { cardId: c.id, name: c.name, imageSmall: c.image_small } });
+                  }
+                },
+              },
+            );
+          }}
           onDecrement={c => adjustQuantity.mutate(
             { cardId: c.id, delta: -1, currentQuantity: quantities.get(c.id) ?? 0 },
             { onSuccess: () => qc.invalidateQueries({ queryKey: ['set_goal_progress', userId, setId] }) },
@@ -190,6 +216,21 @@ export default function PinnedSetDetail() {
       )}
       <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
       <CaptureEffect event={currentCapture} onDone={() => setCaptureQueue(q => q.slice(1))} />
+      <TradeMatchPopup
+        match={tradeMatch}
+        onPropose={() => {
+          if (!tradeMatch) return;
+          setTradePreset({ cardId: tradeMatch.card.cardId, name: tradeMatch.card.name, imageSmall: tradeMatch.card.imageSmall });
+          setTradeTarget({ id: tradeMatch.friendId, displayName: tradeMatch.friendName });
+          setTradeMatch(null);
+        }}
+        onDismiss={() => setTradeMatch(null)}
+      />
+      <TradeProposalModal
+        target={tradeTarget}
+        onClose={() => { setTradeTarget(null); setTradePreset(undefined); }}
+        initialOffered={tradePreset}
+      />
     </SafeAreaView>
   );
 }

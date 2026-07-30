@@ -15,14 +15,28 @@ export interface TradeTarget {
   displayName: string;
 }
 
+// Minimal shape either an OwnedCardDetail (picked from a list inside this modal)
+// or a TradeCard (preset from the marketplace / the instant match popup) both
+// already satisfy structurally — decouples this modal's state from where the
+// card came from.
+export interface PickedCard {
+  cardId: string;
+  name: string;
+  imageSmall: string;
+}
+
 interface Props {
   target: TradeTarget | null;
   onClose: () => void;
+  /** Pre-selected side, so opening from the marketplace or an instant match
+   * popup skips straight to picking the other side instead of starting over. */
+  initialOffered?: PickedCard | null;
+  initialRequested?: PickedCard | null;
 }
 
 const TINT = '#2dd4bf';
 
-export function TradeProposalModal({ target, onClose }: Props) {
+export function TradeProposalModal({ target, onClose, initialOffered = null, initialRequested = null }: Props) {
   const { session } = useSession();
   const myId = session?.user.id;
   const friendId = target?.id;
@@ -34,12 +48,14 @@ export function TradeProposalModal({ target, onClose }: Props) {
   const { data: friendWishlist = [] } = useAllWishedCards(friendId);
   const { data: myWishlist = [] } = useAllWishedCards(myId);
 
-  const [offeredCard, setOfferedCard] = useState<OwnedCardDetail | null>(null);
-  const [requestedCard, setRequestedCard] = useState<OwnedCardDetail | null>(null);
+  const [offeredCard, setOfferedCard] = useState<PickedCard | null>(null);
+  const [requestedCard, setRequestedCard] = useState<PickedCard | null>(null);
   const proposeTrade = useProposeTrade();
 
   useEffect(() => {
     if (!target) { setOfferedCard(null); setRequestedCard(null); }
+    else { setOfferedCard(initialOffered); setRequestedCard(initialRequested); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target]);
 
   const friendWishlistIds = useMemo(() => new Set(friendWishlist.map((c: { id: string }) => c.id)), [friendWishlist]);

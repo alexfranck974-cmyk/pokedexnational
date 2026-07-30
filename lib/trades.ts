@@ -138,6 +138,70 @@ export function useCancelTrade() {
   });
 }
 
+export interface FriendCardListing {
+  friendId: string;
+  friendName: string;
+  card: TradeCard;
+}
+
+// Every accepted friend's duplicate (quantity >= 2) — the "available" half of the
+// marketplace. Auto-derived from user_owned_cards.quantity, no manual flagging:
+// a card becomes "available" the moment a second copy is logged.
+export function useFriendsAvailableCards(friendIds: string[]) {
+  const key = [...friendIds].sort().join(',');
+  return useQuery({
+    queryKey: ['friends_available_cards', key],
+    enabled: friendIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_owned_cards')
+        .select(`
+          user_id,
+          owner:profiles!user_owned_cards_user_id_fkey(username, display_name),
+          card:tcg_cards(${CARD_FIELDS})
+        `)
+        .in('user_id', friendIds)
+        .gte('quantity', 2);
+      if (error) throw error;
+      return (data ?? [])
+        .filter((row: any) => row.card)
+        .map((row: any): FriendCardListing => ({
+          friendId: row.user_id,
+          friendName: row.owner?.display_name || row.owner?.username || '?',
+          card: toTradeCard(row.card),
+        }));
+    },
+  });
+}
+
+// Every accepted friend's wishlist item — the "wanted" half of the marketplace,
+// and also what the instant "échange possible" match check looks up against.
+export function useFriendsWantedCards(friendIds: string[]) {
+  const key = [...friendIds].sort().join(',');
+  return useQuery({
+    queryKey: ['friends_wanted_cards', key],
+    enabled: friendIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_wishlist')
+        .select(`
+          user_id,
+          owner:profiles!user_wishlist_user_id_fkey(username, display_name),
+          card:tcg_cards(${CARD_FIELDS})
+        `)
+        .in('user_id', friendIds);
+      if (error) throw error;
+      return (data ?? [])
+        .filter((row: any) => row.card)
+        .map((row: any): FriendCardListing => ({
+          friendId: row.user_id,
+          friendName: row.owner?.display_name || row.owner?.username || '?',
+          card: toTradeCard(row.card),
+        }));
+    },
+  });
+}
+
 // Completed (accepted) trades the user took part in either side of — feeds the
 // Dashboard ring and the trade-count badges.
 export function useCompletedTradesCount(userId?: string) {
