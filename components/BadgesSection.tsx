@@ -161,9 +161,10 @@ export function BadgesSection({
       <AllBadgesModal
         visible={allBadgesOpen}
         badges={badges}
+        tint={colors.warning}
         onClose={() => setAllBadgesOpen(false)}
       />
-      <BadgeDetailModal target={badgeDetail} onClose={() => setBadgeDetail(null)} />
+      <BadgeDetailModal target={badgeDetail} tint={colors.warning} onClose={() => setBadgeDetail(null)} />
     </>
   );
 }

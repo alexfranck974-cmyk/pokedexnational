@@ -52,7 +52,7 @@ export function Bubble({ tint, onPress, children, style }: Props) {
   if (!onPress) return content;
 
   return (
-    <Pressable onPress={onPress} onPressIn={pressIn} onPressOut={pressOut}>
+    <Pressable onPress={onPress} onPressIn={pressIn} onPressOut={pressOut} style={style}>
       <Animated.View style={{ transform: [{ scale }] }}>
         {content}
       </Animated.View>

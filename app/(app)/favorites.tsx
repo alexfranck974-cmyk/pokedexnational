@@ -594,6 +594,7 @@ export default function FavoritesScreen() {
       <SetGoalPicker
         visible={goalPickerOpen}
         pinnedSetIds={pinnedSetIds}
+        tint="#38bdf8"
         onClose={() => setGoalPickerOpen(false)}
       />
 

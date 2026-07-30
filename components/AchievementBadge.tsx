@@ -16,7 +16,7 @@ export function AchievementBadge({ icon, iconUri, label, unlocked, onPress }: Pr
   const styles = useThemedStyles((colors, shadow) => ({
     tile: {
       width: 92, alignItems: 'center' as const, gap: 6, padding: spacing.sm,
-      backgroundColor: colors.surface, borderRadius: radius.md, opacity: 0.5,
+      backgroundColor: colors.surface, borderRadius: radius.bubble, opacity: 0.5,
     },
     tileUnlocked: { opacity: 1, ...shadow.sm },
     tilePressed: { backgroundColor: colors.surfaceAlt },

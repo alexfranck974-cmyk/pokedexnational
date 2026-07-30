@@ -18,7 +18,7 @@ export function StatRingTile({ label, owned, total, color, size = 64, icon, hide
   const { colors } = useTheme();
   const ringColor = color ?? colors.primary;
   const styles = useThemedStyles((colors) => ({
-    tile: { width: 92, alignItems: 'center' as const, gap: 4, padding: spacing.xs, borderRadius: radius.md },
+    tile: { width: 92, alignItems: 'center' as const, gap: 4, padding: spacing.xs, borderRadius: radius.bubble },
     tilePressed: { backgroundColor: colors.surfaceAlt },
     label: { fontSize: 11, color: colors.text, fontFamily: fonts.bodyBold, textAlign: 'center' as const },
     count: { fontSize: 10, color: colors.textMuted, fontFamily: fonts.mono },

@@ -1,8 +1,9 @@
 import { useMemo, useState, useEffect } from 'react';
-import { View, Text, TextInput, Pressable, FlatList, Modal, StyleSheet, Image, useWindowDimensions } from 'react-native';
+import { View, Text, TextInput, Pressable, FlatList, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTcgSets, type TcgSetInfo } from '@/lib/tcg-index';
 import { useToggleSetGoal } from '@/lib/collection-goals';
+import { BubbleSheet } from './BubbleSheet';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 function normalize(s: string): string {
@@ -12,12 +13,11 @@ function normalize(s: string): string {
 interface Props {
   visible: boolean;
   pinnedSetIds: Set<string>;
+  tint: string;
   onClose: () => void;
 }
 
-export function SetGoalPicker({ visible, pinnedSetIds, onClose }: Props) {
-  const { width } = useWindowDimensions();
-  const isDesktop = width >= 768;
+export function SetGoalPicker({ visible, pinnedSetIds, tint, onClose }: Props) {
   const [search, setSearch] = useState('');
   const { data: sets = [] } = useTcgSets();
   const toggleGoal = useToggleSetGoal();
@@ -33,12 +33,6 @@ export function SetGoalPicker({ visible, pinnedSetIds, onClose }: Props) {
   }, [sets, search]);
 
   const styles = useThemedStyles((colors) => ({
-    backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' as const, alignItems: 'center' as const },
-    sheet: { width: '100%' as const, maxHeight: '85%' as const, backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
-    sheetDesktop: { width: 480, height: 640, borderRadius: radius.xl, marginBottom: 40 },
-    header: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-    headerTitle: { flex: 1, fontSize: 16, fontFamily: fonts.display, color: colors.text },
-    close: { fontSize: 20, color: colors.textMuted },
     search: { margin: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, fontSize: 15, fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt },
     empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: spacing.xl, fontStyle: 'italic' as const },
     row: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, paddingHorizontal: 16, height: 60 },
@@ -56,15 +50,7 @@ export function SetGoalPicker({ visible, pinnedSetIds, onClose }: Props) {
   }));
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle} numberOfLines={1}>Objectifs de complétion</Text>
-            <Pressable onPress={onClose} hitSlop={8}>
-              <Text style={styles.close}>✕</Text>
-            </Pressable>
-          </View>
+    <BubbleSheet visible={visible} onClose={onClose} tint={tint} title="Objectifs de complétion" desktopFixedHeight={640}>
           <TextInput
             placeholder="Chercher une extension"
             value={search}
@@ -104,8 +90,6 @@ export function SetGoalPicker({ visible, pinnedSetIds, onClose }: Props) {
               }}
             />
           )}
-        </Pressable>
-      </Pressable>
-    </Modal>
+    </BubbleSheet>
   );
 }

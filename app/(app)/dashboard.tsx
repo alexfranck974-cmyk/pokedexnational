@@ -89,6 +89,8 @@ export default function DashboardScreen() {
     h1: { fontSize: 30, fontFamily: fonts.display, color: colors.text },
     collectionValue: { fontSize: 15, fontFamily: fonts.monoBold, color: colors.success },
 
+    pairRow: { flexDirection: 'row' as const, gap: spacing.md, alignItems: 'stretch' as const },
+    pairItem: { flex: 1 },
     sectionTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
     sectionTitle: { fontSize: 18, fontFamily: fonts.display, color: colors.text, flex: 1 },
     addGoalBtn: { padding: 2 },
@@ -110,50 +112,51 @@ export default function DashboardScreen() {
           onSelectMissing={(dexNum) => enterPokemonDetail(router, `/pokemon/${dexNum}`, '/dashboard')}
         />
 
-        <Bubble tint={OBJECTIVES_TINT}>
-          <View style={styles.sectionTitleRow}>
-            <IconBubble size={28} color={colors.primarySoft}>
-              <Ionicons name="albums" size={15} color={OBJECTIVES_TINT} />
-            </IconBubble>
-            <Text style={styles.sectionTitle}>Objectifs de complétion</Text>
-            <Pressable onPress={() => setGoalPickerOpen(true)} hitSlop={8} style={styles.addGoalBtn}>
-              <Ionicons name="add-circle" size={22} color={colors.primary} />
-            </Pressable>
-          </View>
-          {goals.length === 0 ? (
-            <Pressable onPress={() => setGoalPickerOpen(true)}>
-              <Text style={styles.emptyGoalText}>Épingle une extension pour suivre sa progression ici.</Text>
-            </Pressable>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, paddingTop: spacing.sm }}>
-              {goals.map(g => {
-                const set = setsById.get(g.setId);
-                if (!set) return null;
-                return (
-                  <SetGoalTile
-                    key={g.setId}
-                    userId={userId}
-                    setId={g.setId}
-                    setName={set.name}
-                    total={set.cardCount}
-                    symbol={set.symbol}
-                    onPress={() => router.push(withReturnTo(`/pinned-set/${g.setId}`, '/dashboard') as never)}
-                  />
-                );
-              })}
-            </ScrollView>
-          )}
-        </Bubble>
+        <View style={styles.pairRow}>
+          <Bubble tint={OBJECTIVES_TINT} style={styles.pairItem}>
+            <View style={styles.sectionTitleRow}>
+              <IconBubble size={28} color={colors.primarySoft}>
+                <Ionicons name="albums" size={15} color={OBJECTIVES_TINT} />
+              </IconBubble>
+              <Text style={styles.sectionTitle} numberOfLines={1}>Objectifs</Text>
+              <Pressable onPress={() => setGoalPickerOpen(true)} hitSlop={8} style={styles.addGoalBtn}>
+                <Ionicons name="add-circle" size={22} color={colors.primary} />
+              </Pressable>
+            </View>
+            {goals.length === 0 ? (
+              <Pressable onPress={() => setGoalPickerOpen(true)}>
+                <Text style={styles.emptyGoalText}>Épingle une extension pour suivre sa progression ici.</Text>
+              </Pressable>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, paddingTop: spacing.sm }}>
+                {goals.map(g => {
+                  const set = setsById.get(g.setId);
+                  if (!set) return null;
+                  return (
+                    <SetGoalTile
+                      key={g.setId}
+                      userId={userId}
+                      setId={g.setId}
+                      setName={set.name}
+                      total={set.cardCount}
+                      symbol={set.symbol}
+                      onPress={() => router.push(withReturnTo(`/pinned-set/${g.setId}`, '/dashboard') as never)}
+                    />
+                  );
+                })}
+              </ScrollView>
+            )}
+          </Bubble>
 
-        <Bubble tint={SUGGESTIONS_TINT} onPress={() => setSuggestionsOpen(true)}>
-          <View style={styles.suggestionsRow}>
-            <IconBubble size={28} color={colors.primarySoft}>
-              <Ionicons name="flag" size={15} color={SUGGESTIONS_TINT} />
-            </IconBubble>
-            <Text style={styles.suggestionsRowText}>Prochains achats</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
-          </View>
-        </Bubble>
+          <Bubble tint={SUGGESTIONS_TINT} onPress={() => setSuggestionsOpen(true)} style={styles.pairItem}>
+            <View style={styles.suggestionsRow}>
+              <IconBubble size={28} color={colors.primarySoft}>
+                <Ionicons name="flag" size={15} color={SUGGESTIONS_TINT} />
+              </IconBubble>
+              <Text style={styles.suggestionsRowText} numberOfLines={1}>Achats</Text>
+            </View>
+          </Bubble>
+        </View>
 
         <BadgesSection
           userId={userId}
@@ -167,9 +170,10 @@ export default function DashboardScreen() {
         onSwipeNext={() => setZoomIndex(i => i === null ? null : (i + 1) % vitrineCards.length)}
         onSwipePrev={() => setZoomIndex(i => i === null ? null : (i - 1 + vitrineCards.length) % vitrineCards.length)}
       />
-      <SetGoalPicker visible={goalPickerOpen} pinnedSetIds={pinnedSetIds} onClose={() => setGoalPickerOpen(false)} />
+      <SetGoalPicker visible={goalPickerOpen} pinnedSetIds={pinnedSetIds} tint={OBJECTIVES_TINT} onClose={() => setGoalPickerOpen(false)} />
       <SuggestionsModal
         visible={suggestionsOpen}
+        tint={SUGGESTIONS_TINT}
         onClose={() => setSuggestionsOpen(false)}
         evolutionSuggestions={evolutionSuggestions}
         binderSuggestions={binderSuggestions}

@@ -1,15 +1,17 @@
-import { View, Text, Pressable, Modal, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
+import { ScrollView } from 'react-native';
 import type { Suggestion } from '@/lib/suggestions';
 import type { OwnedCardDetail } from '@/lib/collection';
 import { ShowcaseRow } from './ShowcaseRow';
+import { BubbleSheet } from './BubbleSheet';
 import { useModalBackClose } from '@/lib/useModalBackClose';
-import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useThemedStyles, spacing } from '@/lib/theme';
 
 const eurFormatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 
 interface Props {
   visible: boolean;
   onClose: () => void;
+  tint: string;
   evolutionSuggestions: Suggestion[];
   binderSuggestions: Suggestion[];
   generationSuggestions: Suggestion[];
@@ -19,20 +21,12 @@ interface Props {
 }
 
 export function SuggestionsModal({
-  visible, onClose, evolutionSuggestions, binderSuggestions, generationSuggestions,
+  visible, onClose, tint, evolutionSuggestions, binderSuggestions, generationSuggestions,
   dexUpgradeSuggestions, mostValuable, onSelectPokemon,
 }: Props) {
-  const { width } = useWindowDimensions();
-  const isDesktop = width >= 768;
   useModalBackClose(visible, onClose);
 
-  const styles = useThemedStyles((colors) => ({
-    backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' as const, alignItems: 'center' as const },
-    sheet: { width: '100%' as const, maxHeight: '85%' as const, backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
-    sheetDesktop: { width: 480, maxHeight: 680, borderRadius: radius.xl, marginBottom: 40 },
-    header: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-    title: { fontSize: 16, fontFamily: fonts.display, color: colors.text },
-    close: { fontSize: 20, color: colors.textMuted },
+  const styles = useThemedStyles(() => ({
     body: { padding: spacing.md, gap: spacing.lg },
   }));
 
@@ -42,16 +36,8 @@ export function SuggestionsModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Prochains achats</Text>
-            <Pressable onPress={onClose} hitSlop={8}>
-              <Text style={styles.close}>✕</Text>
-            </Pressable>
-          </View>
-          <ScrollView contentContainerStyle={styles.body}>
+    <BubbleSheet visible={visible} onClose={onClose} tint={tint} title="Prochains achats">
+      <ScrollView contentContainerStyle={styles.body}>
             <ShowcaseRow
               title="Compléter une ligne évolutive"
               items={evolutionSuggestions.map(s => ({
@@ -95,9 +81,7 @@ export function SuggestionsModal({
               }))}
               emptyHint="Aucune carte avec un prix connu pour l’instant."
             />
-          </ScrollView>
-        </Pressable>
-      </Pressable>
-    </Modal>
+      </ScrollView>
+    </BubbleSheet>
   );
 }

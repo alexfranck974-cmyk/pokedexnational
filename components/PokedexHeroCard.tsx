@@ -164,6 +164,7 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
         visible={statsOpen}
         tab={statsTab}
         onTabChange={setStatsTab}
+        tint={colors.primary}
         onClose={() => setStatsOpen(false)}>
         {statsTab === 'generation' && (
           <View style={[styles.card, styles.grid]}>
