@@ -112,7 +112,11 @@ export default function DashboardScreen() {
     // Loose zigzag rather than a straight row — a "nebula" cluster feel without
     // true randomness, which would be unreliable to keep readable/tappable
     // across phone and desktop widths.
-    nebula: { flexDirection: 'row' as const, justifyContent: 'space-around' as const, alignItems: 'flex-start' as const },
+    // `center` + a fixed `gap` (not `space-around`) so the cluster stays tight
+    // on wide desktop viewports instead of the 3 rings drifting apart with the
+    // container — nothing in this app caps screen width, so this row has to
+    // hold its own shape regardless of how wide the page gets.
+    nebula: { flexDirection: 'row' as const, justifyContent: 'center' as const, alignItems: 'flex-start' as const, gap: spacing.xl * 1.5 },
     nebulaItemMid: { marginTop: 26 },
     nebulaItemLast: { marginTop: 8 },
     addBadge: {
