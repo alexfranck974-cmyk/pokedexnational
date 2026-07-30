@@ -3,6 +3,7 @@ import { useSession } from '@/lib/auth';
 import { useIncomingRequests } from '@/lib/friends';
 import { useFriendNewsFeed } from '@/lib/friend-news';
 import { usePendingTradeOffers } from '@/lib/trades';
+import { useSocialRealtime } from '@/lib/realtime';
 import { View, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PokedexDeviceIcon } from '@/components/PokedexDeviceIcon';
@@ -21,6 +22,7 @@ export default function AppLayout() {
   const { data: friendNews = [] } = useFriendNewsFeed(session?.user.id);
   const { data: tradeOffers = [] } = usePendingTradeOffers(session?.user.id);
   const incomingTrades = tradeOffers.filter(t => t.direction === 'incoming');
+  useSocialRealtime(session?.user.id);
 
   if (loading) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
   if (!session) return <Redirect href="/login" />;
