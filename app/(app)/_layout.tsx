@@ -25,6 +25,7 @@ export default function AppLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
+          animation: 'fade',
           tabBarStyle: {
             position: 'absolute',
             left: BAR_SIDE_INSET,
