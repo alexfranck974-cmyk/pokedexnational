@@ -133,11 +133,21 @@ export default function TrainersScreen() {
     empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: 24, fontStyle: 'italic' as const },
     grid: { padding: spacing.sm, paddingBottom: TAB_BAR_CLEARANCE },
     tile: { flex: 1, padding: 6, alignItems: 'center' as const },
-    tileImg: { width: '100%' as const, aspectRatio: 0.72, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+    tileAvatarWrap: { width: '100%' as const, position: 'relative' as const },
+    tileImg: {
+      width: '100%' as const, aspectRatio: 1, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt,
+      borderWidth: 2, borderColor: 'transparent',
+    },
+    tileImgOwned: { borderColor: colors.success },
     tileImgMissing: { opacity: 0.55 },
-    tileName: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.text, textAlign: 'center' as const, marginTop: 4 },
+    tileCountBadge: {
+      position: 'absolute' as const, bottom: -2, right: '8%' as const, minWidth: 20, height: 20, borderRadius: 10,
+      paddingHorizontal: 5, alignItems: 'center' as const, justifyContent: 'center' as const,
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    },
+    tileCountBadgeText: { fontSize: 10, fontFamily: fonts.monoBold, color: colors.textMuted },
+    tileName: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.text, textAlign: 'center' as const, marginTop: 6 },
     tileNameMissing: { color: colors.textMuted },
-    tileCount: { fontSize: 10, fontFamily: fonts.mono, color: colors.textMuted },
   }));
 
   const back = () => {
@@ -220,13 +230,17 @@ export default function TrainersScreen() {
             const owned = item.cards.some(c => ownedAll.has(c.id));
             return (
               <Pressable style={styles.tile} onPress={() => setSelectedCharacter(item.key)}>
-                <Image
-                  source={{ uri: item.cards[0].image_small }}
-                  style={[styles.tileImg, !owned && styles.tileImgMissing]}
-                  resizeMode="contain"
-                />
+                <View style={styles.tileAvatarWrap}>
+                  <Image
+                    source={{ uri: item.cards[0].image_small }}
+                    style={[styles.tileImg, owned && styles.tileImgOwned, !owned && styles.tileImgMissing]}
+                    resizeMode="contain"
+                  />
+                  <View style={styles.tileCountBadge}>
+                    <Text style={styles.tileCountBadgeText}>×{item.cards.length}</Text>
+                  </View>
+                </View>
                 <Text style={[styles.tileName, !owned && styles.tileNameMissing]} numberOfLines={1}>{item.key}</Text>
-                <Text style={styles.tileCount}>{item.cards.length} carte{item.cards.length > 1 ? 's' : ''}</Text>
               </Pressable>
             );
           }}
