@@ -23,6 +23,7 @@ import { RingMenuItem } from '@/components/RingMenuItem';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
 import { useTheme, useThemedStyles, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
+import { useMotion } from '@/lib/motion';
 
 // SetGoalTile's rendered height (ring + 2 text lines + tile padding) — fixed rather
 // than measured via onLayout so the accordion animation doesn't depend on a layout
@@ -52,13 +53,19 @@ export default function DashboardScreen() {
   const pinnedSetIds = useMemo(() => new Set(goals.map(g => g.setId)), [goals]);
   const goalsProgress = useMemo(() => computeSetGoalsProgress(goals, ledgerCards, allSets), [goals, ledgerCards, allSets]);
   const collectionAvgPct = useMemo(() => averageProgress(goalsProgress), [goalsProgress]);
+  const { animationsEnabled } = useMotion();
   const [collectionExpanded, setCollectionExpanded] = useState(false);
   const collectionAccordionHeight = useRef(new Animated.Value(0)).current;
   const toggleCollectionExpanded = () => {
     const next = !collectionExpanded;
     setCollectionExpanded(next);
+    const target = next ? COLLECTION_ROW_HEIGHT : 0;
+    if (!animationsEnabled) {
+      collectionAccordionHeight.setValue(target);
+      return;
+    }
     Animated.timing(collectionAccordionHeight, {
-      toValue: next ? COLLECTION_ROW_HEIGHT : 0,
+      toValue: target,
       duration: 260,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,

@@ -10,6 +10,7 @@ import * as Clipboard from 'expo-clipboard';
 import { IconBubble } from '@/components/IconBubble';
 import { QRCodeModal } from '@/components/QRCodeModal';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
+import { useMotion } from '@/lib/motion';
 
 export default function Settings() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function Settings() {
   const [qrOpen, setQrOpen] = useState(false);
   const userId = session?.user.id;
   const { colors, mode, toggleMode } = useTheme();
+  const { animationsEnabled, setAnimationsEnabled } = useMotion();
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
     scroll: { padding: spacing.lg, paddingBottom: spacing.lg + TAB_BAR_CLEARANCE, gap: spacing.lg },
@@ -136,6 +138,16 @@ export default function Settings() {
             <Text style={styles.label}>Thème sombre</Text>
           </View>
           <Switch value={mode === 'dark'} onValueChange={toggleMode} />
+        </View>
+
+        <View style={styles.rowInline}>
+          <View style={styles.rowHead}>
+            <IconBubble size={28} color={colors.primarySoft}>
+              <Ionicons name="sparkles" size={14} color={colors.primary} />
+            </IconBubble>
+            <Text style={styles.label}>Animations</Text>
+          </View>
+          <Switch value={animationsEnabled} onValueChange={setAnimationsEnabled} />
         </View>
 
         <View style={styles.row}>

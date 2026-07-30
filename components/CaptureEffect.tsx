@@ -6,6 +6,7 @@ import { tcgTypeLabelFr, tcgTypeAsPokemonType } from '@/lib/tcg-types';
 import { TypeIcon } from './TypeIcon';
 import { playChime } from '@/lib/chime';
 import { fonts } from '@/lib/theme';
+import { useMotion } from '@/lib/motion';
 
 export type CaptureEvent =
   // `type` is the TCG card's own printed energy type (e.g. "Water", "Colorless"),
@@ -34,6 +35,7 @@ const GOLD = '#fbbf24';
 const NEUTRAL = '#9ca3af';
 
 export function CaptureEffect({ event, onDone }: Props) {
+  const { animationsEnabled } = useMotion();
   const appear = useRef(new Animated.Value(0)).current;
   const sparkle = useRef(new Animated.Value(0)).current;
   const onDoneRef = useRef(onDone);
@@ -41,26 +43,46 @@ export function CaptureEffect({ event, onDone }: Props) {
 
   useEffect(() => {
     if (!event) return;
-    appear.setValue(0);
-    sparkle.setValue(0);
-    Animated.spring(appear, { toValue: 1, useNativeDriver: true, friction: 7, tension: 90 }).start();
 
-    const showBurst = event.kind === 'type' || (event.kind === 'rarity' && event.tier === 'chase');
-    if (showBurst) Animated.timing(sparkle, { toValue: 1, duration: 900, delay: 100, useNativeDriver: true }).start();
+    if (!animationsEnabled) {
+      // Skip the spring entrance and particle burst entirely rather than
+      // "instant-snapping" them — a full-screen sparkle burst is itself the
+      // kind of motion a reduced-motion preference wants to avoid, not just
+      // the transition into it. Still show the static banner/badge + play
+      // the chime, just without any movement.
+      appear.setValue(1);
+      sparkle.setValue(0);
+    } else {
+      appear.setValue(0);
+      sparkle.setValue(0);
+      Animated.spring(appear, { toValue: 1, useNativeDriver: true, friction: 7, tension: 90 }).start();
+      const showBurst = event.kind === 'type' || (event.kind === 'rarity' && event.tier === 'chase');
+      if (showBurst) Animated.timing(sparkle, { toValue: 1, duration: 900, delay: 100, useNativeDriver: true }).start();
+    }
 
     playChime(event.kind === 'type' ? 'type' : event.tier);
 
     const holdMs = event.kind === 'rarity' && event.tier === 'holo' ? 1300 : 2300;
     const timer = setTimeout(() => {
+      if (!animationsEnabled) {
+        appear.setValue(0);
+        onDoneRef.current();
+        return;
+      }
       Animated.timing(appear, { toValue: 0, duration: 260, useNativeDriver: true }).start(() => onDoneRef.current());
     }, holdMs);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [event?.id]);
+  }, [event?.id, animationsEnabled]);
 
   if (!event) return null;
 
   const dismiss = () => {
+    if (!animationsEnabled) {
+      appear.setValue(0);
+      onDoneRef.current();
+      return;
+    }
     Animated.timing(appear, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => onDoneRef.current());
   };
 

@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { View, Text, Image, Pressable, Animated, type LayoutChangeEvent, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useMotion } from '@/lib/motion';
 
 export interface VitrineItem {
   key: string;
@@ -41,6 +42,7 @@ const MAX_SCALE = Math.max(...SCALE_STEPS);
 const CAROUSEL_HEIGHT = Math.ceil(CARD_HEIGHT * MAX_SCALE) + 28;
 
 export function VitrineCarousel({ title = 'Vitrine', items }: Props) {
+  const { animationsEnabled } = useMotion();
   const [containerWidth, setContainerWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -90,6 +92,15 @@ export function VitrineCarousel({ title = 'Vitrine', items }: Props) {
           })}
           scrollEventThrottle={1}
           renderItem={({ item, index }) => {
+            if (!animationsEnabled) {
+              return (
+                <Pressable
+                  onPress={item.onPress}
+                  style={{ width: ITEM_WIDTH, marginRight: GAP, alignItems: 'center' as const }}>
+                  <Image source={{ uri: item.image }} style={styles.card} resizeMode="contain" />
+                </Pressable>
+              );
+            }
             const center = index * STRIDE;
             const inputRange = OFFSETS.map(o => center + o * STRIDE);
             const scale = scrollX.interpolate({ inputRange, outputRange: SCALE_STEPS, extrapolate: 'clamp' });

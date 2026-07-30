@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useTheme, useThemedStyles, fonts } from '@/lib/theme';
+import { useMotion } from '@/lib/motion';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -21,6 +22,7 @@ export function ProgressRing({
   centerLabel, centerSub, children,
 }: Props) {
   const { colors } = useTheme();
+  const { animationsEnabled } = useMotion();
   const ringColor = color ?? colors.primary;
   const ringTrackColor = trackColor ?? colors.surfaceAlt;
   const styles = useThemedStyles((colors) => ({
@@ -40,13 +42,17 @@ export function ProgressRing({
   // target), where Animated already runs on JS regardless of the driver flag.
   const animatedPct = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    if (!animationsEnabled) {
+      animatedPct.setValue(clamped);
+      return;
+    }
     Animated.timing(animatedPct, {
       toValue: clamped,
       duration: 600,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-  }, [clamped, animatedPct]);
+  }, [clamped, animatedPct, animationsEnabled]);
   const animatedDashoffset = animatedPct.interpolate({
     inputRange: [0, 100],
     outputRange: [circumference, 0],

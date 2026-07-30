@@ -9,6 +9,7 @@ import { useFonts, Fredoka_700Bold } from '@expo-google-fonts/fredoka';
 import { Karla_400Regular, Karla_700Bold } from '@expo-google-fonts/karla';
 import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
 import { ThemeProvider } from '@/lib/theme';
+import { MotionProvider } from '@/lib/motion';
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
 
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
@@ -68,12 +69,14 @@ function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <ThemedStatusBar />
-        <QueryClientProvider client={queryClient}>
-          <RootSiblingParent>
-            <Stack screenOptions={{ headerShown: false }} />
-          </RootSiblingParent>
-        </QueryClientProvider>
+        <MotionProvider>
+          <ThemedStatusBar />
+          <QueryClientProvider client={queryClient}>
+            <RootSiblingParent>
+              <Stack screenOptions={{ headerShown: false }} />
+            </RootSiblingParent>
+          </QueryClientProvider>
+        </MotionProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
