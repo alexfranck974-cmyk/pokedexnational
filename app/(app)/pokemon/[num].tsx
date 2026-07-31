@@ -11,6 +11,7 @@ import { TypeBadge } from '@/components/TypeBadge';
 import { CardGallery } from '@/components/CardGallery';
 import { CardFilterTree } from '@/components/CardFilterTree';
 import { CardZoomModal } from '@/components/CardZoomModal';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForPokemon } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
@@ -50,6 +51,7 @@ export default function PokemonDetail() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [onlyWishes, setOnlyWishes] = useState(wishes === '1');
   const [zoomCard, setZoomCard] = useState<TcgCardRow | null>(null);
+  const [pendingCard, setPendingCard] = useState<TcgCardRow | null>(null);
 
   // Prev/next reuses this same route (router.replace), so reset per-Pokémon transient
   // filters/state on num change — viewMode is kept as a persistent user preference.
@@ -57,6 +59,7 @@ export default function PokemonDetail() {
     setSelectedSetIds(null);
     setOnlyWishes(wishes === '1');
     setZoomCard(null);
+    setPendingCard(null);
   }, [num]);
 
   // Sets differ per region — clear the set filter when switching region to avoid a
@@ -243,7 +246,14 @@ export default function PokemonDetail() {
               ownedSet={ledgerSet}
               wishedSet={wishedSet}
               viewMode={viewMode}
-              onToggle={c => toggle.mutate({ cardId: c.id, currentlyOwned: officialSet.has(c.id), dexNum: num, imageSmall: c.image_small, rarity: c.rarity })}
+              onToggle={c => {
+                if (officialSet.has(c.id)) {
+                  // Un-choosing is the one unambiguous action here — stays instant.
+                  toggle.mutate({ cardId: c.id, currentlyOwned: true, dexNum: num, imageSmall: c.image_small, rarity: c.rarity });
+                } else {
+                  setPendingCard(c);
+                }
+              }}
               onToggleWish={c => toggleWish.mutate({ cardId: c.id, currentlyWished: wishedSet.has(c.id), dexNum: num })}
               onZoom={c => setZoomCard(c)}
             />
@@ -251,6 +261,21 @@ export default function PokemonDetail() {
         </>
       )}
       <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
+      <ConfirmDialog
+        target={pendingCard ? {
+          title: 'Choisir cette carte',
+          message: `Faire de « ${pendingCard.name} » ta carte officielle du Pokédex national pour ${getName(p)} ?`,
+        } : null}
+        confirmLabel="Choisir"
+        tone="primary"
+        onConfirm={() => {
+          if (pendingCard) {
+            toggle.mutate({ cardId: pendingCard.id, currentlyOwned: false, dexNum: num, imageSmall: pendingCard.image_small, rarity: pendingCard.rarity });
+          }
+          setPendingCard(null);
+        }}
+        onCancel={() => setPendingCard(null)}
+      />
 
       <View style={styles.navOverlay} pointerEvents="box-none">
         <Pressable onPress={() => goTo(prevNum)} style={[styles.navBtn, styles.navBtnLeft]} hitSlop={8}>

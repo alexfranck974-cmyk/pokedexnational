@@ -11,7 +11,11 @@ import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { useSession } from '@/lib/auth';
-import { useUserDex, useOwnedCardImages, useAllOwnedCardIds, useAllOwnedCardsDetailed } from '@/lib/collection';
+import {
+  useUserDex, useOwnedCardImages, useAllOwnedCardIds, useAllOwnedCardsDetailed,
+  useAllOwnedCardsLedgerDetailed, useOwnedCardQuantities,
+} from '@/lib/collection';
+import { eurFormatter } from '@/lib/trades';
 import { useFavorites, useToggleFavorite, useShowcase, useToggleShowcase } from '@/lib/favorites';
 import { toast } from '@/lib/toast';
 import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
@@ -30,6 +34,7 @@ import { CollectionCardPicker } from '@/components/CollectionCardPicker';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
 import { TrainersPanel } from '@/components/TrainersPanel';
+import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
 import { FavoritesFilterBar } from '@/components/FavoritesFilterBar';
 import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
@@ -83,6 +88,8 @@ export default function FavoritesScreen() {
   const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
   const { data: ownedCardsDetailed = [] } = useAllOwnedCardsDetailed(userId);
   const artistByDex = useMemo(() => new Map(ownedCardsDetailed.map(c => [c.dexNum, c.artist])), [ownedCardsDetailed]);
+  const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
+  const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
   const { data: favorites = new Set<number>() } = useFavorites(userId);
   const toggleFavorite = useToggleFavorite();
   const { data: showcase = new Set<number>() } = useShowcase(userId);
@@ -107,7 +114,7 @@ export default function FavoritesScreen() {
   const pinnedSetIds = useMemo(() => new Set(goals.map(g => g.setId)), [goals]);
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
 
-  const [subTab, setSubTab] = useState<'favorites' | 'teams' | 'lists' | 'goals' | 'trainers'>('favorites');
+  const [subTab, setSubTab] = useState<'favorites' | 'teams' | 'lists' | 'goals' | 'trainers' | 'duplicates'>('favorites');
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
@@ -124,6 +131,10 @@ export default function FavoritesScreen() {
   const [favSearch, setFavSearch] = useState('');
   const [favStatusFilter, setFavStatusFilter] = useState<FavStatusFilter>('all');
   const [favSort, setFavSort] = useState<FavSortKey>('num-asc');
+
+  const [dupSearch, setDupSearch] = useState('');
+  const [dupSort, setDupSort] = useState<'value' | 'quantity' | 'name'>('value');
+  const [dupZoom, setDupZoom] = useState<ZoomableCard | null>(null);
 
   const ownedPokemon = useMemo(() => POKEDEX.filter(p => owned.has(p.num)), [owned]);
 
@@ -164,6 +175,27 @@ export default function FavoritesScreen() {
     });
     return list;
   }, [ownedPokemon, debouncedFavSearch, favStatusFilter, favSort, favorites, showcase, favoriteRecency, artistByDex]);
+
+  // Debounced for the same reason as favSearch above.
+  const debouncedDupSearch = useDebouncedValue(dupSearch, 200);
+  const duplicateCards = useMemo(() => {
+    const q = normalize(debouncedDupSearch.trim());
+    let list = ledgerCards.filter(c => {
+      if ((quantities.get(c.cardId) ?? 0) < 2) return false;
+      if (q && !normalize(c.name).includes(q)) return false;
+      return true;
+    });
+    list = [...list].sort((a, b) => {
+      switch (dupSort) {
+        case 'quantity': return (quantities.get(b.cardId) ?? 0) - (quantities.get(a.cardId) ?? 0);
+        case 'name': return a.name.localeCompare(b.name);
+        case 'value':
+        default: return (b.cardmarketTrendEur ?? 0) - (a.cardmarketTrendEur ?? 0);
+      }
+    });
+    return list;
+  }, [ledgerCards, quantities, debouncedDupSearch, dupSort]);
+
   const selectedTeam = teams.find(t => t.id === selectedTeamId) ?? null;
   const selectedCollection = collections.find(c => c.id === selectedCollectionId) ?? null;
   const { data: collectionCards = [] } = useCollectionCards(selectedCollectionId ?? undefined);
@@ -278,6 +310,23 @@ export default function FavoritesScreen() {
       backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
     goalsGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm, paddingBottom: TAB_BAR_CLEARANCE },
+
+    dupHeader: { padding: spacing.md, gap: spacing.sm },
+    dupSearchInput: {
+      borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 10,
+      fontSize: 14, fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt,
+    },
+    dupChipRow: { flexDirection: 'row' as const, gap: spacing.sm },
+    dupTile: { flex: 1, padding: 6, alignItems: 'center' as const },
+    dupImgWrap: { position: 'relative' as const, width: '100%' as const },
+    dupImg: { width: '100%' as const, aspectRatio: 0.72, borderRadius: radius.md, backgroundColor: colors.surfaceAlt },
+    dupQtyBadge: {
+      position: 'absolute' as const, top: 4, right: 4, minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 5,
+      backgroundColor: colors.primary, alignItems: 'center' as const, justifyContent: 'center' as const,
+    },
+    dupQtyText: { fontSize: 11, fontFamily: fonts.bodyBold, color: 'white' },
+    dupValueText: { fontSize: 11, fontFamily: fonts.monoBold, color: colors.success, marginTop: 4 },
+    dupName: { fontSize: 11, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const, marginTop: 1 },
   }));
 
   return (
@@ -290,6 +339,7 @@ export default function FavoritesScreen() {
               : subTab === 'teams' ? 'Équipes'
               : subTab === 'lists' ? 'Mes listes'
               : subTab === 'trainers' ? 'Dresseurs'
+              : subTab === 'duplicates' ? 'Doublons'
               : 'Extensions'}
           </Text>
           <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
@@ -299,6 +349,7 @@ export default function FavoritesScreen() {
           <Chip label="Dresseurs" active={subTab === 'trainers'} onPress={() => setSubTab('trainers')} />
           <Chip label="Favoris" active={subTab === 'favorites'} onPress={() => setSubTab('favorites')} />
           <Chip label="Mes listes" active={subTab === 'lists'} onPress={() => setSubTab('lists')} />
+          <Chip label="Doublons" active={subTab === 'duplicates'} onPress={() => setSubTab('duplicates')} />
           {/* "Équipes" is intentionally not surfaced for now — kept dormant (state/branch
               still below) for a possible future deckbuilding feature, not deleted. */}
         </ScrollView>
@@ -557,6 +608,59 @@ export default function FavoritesScreen() {
           userId={userId}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         />
+      ) : subTab === 'duplicates' ? (
+        <>
+          <View style={styles.dupHeader}>
+            <TextInput
+              placeholder="Chercher une carte"
+              value={dupSearch}
+              onChangeText={setDupSearch}
+              style={styles.dupSearchInput}
+            />
+            <View style={styles.dupChipRow}>
+              <Chip label="Valeur" active={dupSort === 'value'} onPress={() => setDupSort('value')} />
+              <Chip label="Quantité" active={dupSort === 'quantity'} onPress={() => setDupSort('quantity')} />
+              <Chip label="A-Z" active={dupSort === 'name'} onPress={() => setDupSort('name')} />
+            </View>
+          </View>
+          {duplicateCards.length === 0 ? (
+            <View style={styles.center}>
+              <Text style={styles.emptyHint}>
+                {dupSearch.trim() ? 'Aucun résultat.' : 'Aucun doublon pour l’instant — un doublon apparaît ici dès qu’une carte passe à 2 exemplaires ou plus.'}
+              </Text>
+            </View>
+          ) : (
+            <FlashList
+              data={duplicateCards}
+              numColumns={numColsFor(width)}
+              estimatedItemSize={150}
+              contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
+              maintainVisibleContentPosition={{ disabled: true }}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+              keyExtractor={c => c.cardId}
+              renderItem={({ item }) => {
+                if (!item) return null;
+                const qty = quantities.get(item.cardId) ?? 0;
+                return (
+                  <Pressable
+                    style={styles.dupTile}
+                    onPress={() => setDupZoom({ image_small: item.imageSmall, image_large: item.imageLarge })}>
+                    <View style={styles.dupImgWrap}>
+                      <Image source={{ uri: item.imageSmall }} style={styles.dupImg} resizeMode="contain" />
+                      <View style={styles.dupQtyBadge}>
+                        <Text style={styles.dupQtyText}>×{qty}</Text>
+                      </View>
+                    </View>
+                    {item.cardmarketTrendEur != null && (
+                      <Text style={styles.dupValueText}>{eurFormatter.format(item.cardmarketTrendEur)}</Text>
+                    )}
+                    <Text style={styles.dupName} numberOfLines={1}>{item.name}</Text>
+                  </Pressable>
+                );
+              }}
+            />
+          )}
+        </>
       ) : (
         <View style={styles.teamList}>
           <Pressable onPress={() => setGoalPickerOpen(true)} style={styles.addCardsBtn}>
@@ -623,6 +727,7 @@ export default function FavoritesScreen() {
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
+      <CardZoomModal card={dupZoom} onClose={() => setDupZoom(null)} />
     </SafeAreaView>
   );
 }

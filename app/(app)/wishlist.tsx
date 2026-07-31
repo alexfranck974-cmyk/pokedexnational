@@ -15,6 +15,7 @@ import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } 
 import { Pokeball } from '@/components/Pokeball';
 import { WishlistFilterBar } from '@/components/WishlistFilterBar';
 import { RefreshButton } from '@/components/RefreshButton';
+import { FriendSetGalleryModal, type FriendSetGalleryTarget } from '@/components/FriendSetGalleryModal';
 import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { enterPokemonDetail } from '@/lib/navigation';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
@@ -43,6 +44,7 @@ export default function WishlistScreen() {
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
+  const [gallery, setGallery] = useState<FriendSetGalleryTarget | null>(null);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatus] = useState<WishStatusFilter>('all');
@@ -195,7 +197,12 @@ export default function WishlistScreen() {
             const ownedCount = item.cards.filter(c => ownedIds.has(c.id)).length;
             return (
               <Pressable
-                onPress={() => enterPokemonDetail(router, `/pokemon/${item.dexNum}?wishes=1`, '/wishlist')}
+                onPress={() => setGallery({
+                  setName: mon ? getName(mon) : `#${String(item.dexNum).padStart(4, '0')}`,
+                  owned: ownedCount,
+                  total: item.cards.length,
+                  cards: item.cards.map(c => ({ key: c.id, imageSmall: c.image_small, imageLarge: c.image_large })),
+                })}
                 style={({ pressed }) => [styles.pokemonRow, ownedCount > 0 && styles.pokemonRowOwned, pressed && { backgroundColor: colors.surfaceAlt }]}>
                 <View style={styles.pokemonSpriteWrap}>
                   {mon && <Image source={{ uri: mon.sprite_url }} style={styles.pokemonSprite} resizeMode="contain" />}
@@ -286,6 +293,7 @@ export default function WishlistScreen() {
         sets={availableSets} rarities={availableRarities}
         onReset={reset}
       />
+      <FriendSetGalleryModal target={gallery} onClose={() => setGallery(null)} />
     </SafeAreaView>
   );
 }

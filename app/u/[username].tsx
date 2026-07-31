@@ -14,7 +14,6 @@ import { useTcgIndex, useTcgSets, useTcgRarities } from '@/lib/tcg-index';
 import { applyPokedexPipeline } from '@/lib/pokedex-list';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { groupWishlistByPokemon, type WishlistCard } from '@/lib/wishlist-list';
-import { enterPokemonDetail } from '@/lib/navigation';
 import { PokedexGrid } from '@/components/PokedexGrid';
 import { SearchFilterBar } from '@/components/SearchFilterBar';
 import { ProgressCounter } from '@/components/ProgressCounter';
@@ -328,7 +327,12 @@ export default function PublicProfile() {
                 <View key={group.dexNum} style={[styles.pokemonRow, groupOwnedCount > 0 && styles.pokemonRowOwned]}>
                   <Pressable
                     style={styles.pokemonMain}
-                    onPress={() => enterPokemonDetail(router, `/pokemon/${group.dexNum}`, `/u/${username}`)}>
+                    onPress={() => setGallerySet({
+                      setName: mon ? getName(mon) : `#${String(group.dexNum).padStart(4, '0')}`,
+                      owned: groupOwnedCount,
+                      total: group.cards.length,
+                      cards: group.cards.map(c => ({ key: c.id, imageSmall: c.image_small, imageLarge: c.image_large })),
+                    })}>
                     <View style={styles.pokemonSpriteWrap}>
                       {mon && <Image source={{ uri: mon.sprite_url }} style={styles.pokemonSprite} resizeMode="contain" />}
                       {groupOwnedCount > 0 && <View style={styles.pokemonOwnedBadge}><Pokeball size={13} /></View>}

@@ -10,6 +10,9 @@ interface Props {
   target: ConfirmTarget | null;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** 'danger' (default) for destructive actions (delete, remove) — 'primary' for a
+   * plain "are you sure" gate on a non-destructive action (e.g. picking a card). */
+  tone?: 'danger' | 'primary';
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -17,7 +20,7 @@ interface Props {
 // React Native Web doesn't reliably support Alert.alert with multiple custom
 // buttons, so any destructive confirmation in this app goes through this
 // instead of Alert.alert.
-export function ConfirmDialog({ target, confirmLabel = 'Supprimer', cancelLabel = 'Annuler', onConfirm, onCancel }: Props) {
+export function ConfirmDialog({ target, confirmLabel = 'Supprimer', cancelLabel = 'Annuler', tone = 'danger', onConfirm, onCancel }: Props) {
   const styles = useThemedStyles((colors, shadow) => ({
     backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center' as const, justifyContent: 'center' as const, padding: spacing.xl },
     card: {
@@ -29,7 +32,10 @@ export function ConfirmDialog({ target, confirmLabel = 'Supprimer', cancelLabel 
     actions: { flexDirection: 'row' as const, gap: spacing.sm, marginTop: spacing.sm },
     cancelBtn: { flex: 1, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, alignItems: 'center' as const },
     cancelText: { fontFamily: fonts.bodyBold, color: colors.text },
-    confirmBtn: { flex: 1, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.danger, alignItems: 'center' as const },
+    confirmBtn: {
+      flex: 1, padding: spacing.sm, borderRadius: radius.md,
+      backgroundColor: tone === 'danger' ? colors.danger : colors.primary, alignItems: 'center' as const,
+    },
     confirmText: { fontFamily: fonts.bodyBold, color: 'white' },
   }));
 
