@@ -8,9 +8,11 @@
     "userInterfaceStyle": "automatic",
     "scheme": "pokedexnational",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.alexfranck974.pokedexnational"
     },
     "android": {
+      "package": "com.alexfranck974.pokedexnational",
       "adaptiveIcon": {
         "backgroundColor": "#faf5f1",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -28,6 +30,19 @@
       "expo-router",
       "expo-secure-store",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "6139655d-c699-4990-89ac-e0ebf59e0a00"
+      }
+    },
+    "owner": "alexfranck",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6139655d-c699-4990-89ac-e0ebf59e0a00"
+    }
   }
 }
