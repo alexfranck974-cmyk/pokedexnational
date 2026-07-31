@@ -23,3 +23,12 @@ jobs:
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      # Re-applies TCGPlayer image backfill for sets TCGdex has no art for —
+      # sync:tcgdex above re-writes the sprite fallback for those same rows
+      # every run (it doesn't know about this backfill), so this must run
+      # right after it, every time.
+      - run: npm run sync:tcgplayer-images
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
