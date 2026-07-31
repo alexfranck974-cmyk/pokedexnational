@@ -133,11 +133,87 @@ async function syncSet(setId: string, group: { categoryId: number; groupId: numb
   console.log(`  ${setId}: ${matched}/${rows.length} matched`);
 }
 
+// Cards TCGdex's own "mep" set data doesn't have at all yet (not even a
+// sprite-fallback row — no row exists), but that TCGPlayer already carries.
+// Unlike the image backfill above, there's no dexId to lean on here, so each
+// entry below was verified by hand against data/pokedex.json's name_en — not
+// derived by parsing the TCGPlayer card name (regional forms, "Mega X ex",
+// "N's X" prefixes, and Trainer/Energy cards like "Celebratory Fanfare" make
+// that too easy to get wrong). Ids follow TCGdex's own `mep-XXX` convention on
+// purpose: if TCGdex adds real data for one of these later, insertMissingMepCards
+// skips ids that already exist, so it never clobbers TCGdex's own row once it
+// shows up — these are a stopgap, not a permanent override.
+const MEP_MISSING_CARDS: { number: string; dexNum: number; name: string; productId: number }[] = [
+  { number: '046', dexNum: 152, name: 'Chikorita', productId: 699870 },
+  { number: '047', dexNum: 155, name: 'Cyndaquil', productId: 699871 },
+  { number: '048', dexNum: 158, name: 'Totodile', productId: 699872 },
+  { number: '049', dexNum: 495, name: 'Snivy', productId: 699873 },
+  { number: '050', dexNum: 498, name: 'Tepig', productId: 699874 },
+  { number: '051', dexNum: 501, name: 'Oshawott', productId: 699875 },
+  { number: '052', dexNum: 810, name: 'Grookey', productId: 699876 },
+  { number: '053', dexNum: 813, name: 'Scorbunny', productId: 699877 },
+  { number: '054', dexNum: 816, name: 'Sobble', productId: 699878 },
+  { number: '072', dexNum: 36, name: 'Mega Clefable ex', productId: 696607 },
+  { number: '073', dexNum: 94, name: 'Mega Gengar ex', productId: 696608 },
+  { number: '081', dexNum: 658, name: 'Mega Greninja ex', productId: 704879 },
+  { number: '082', dexNum: 1008, name: 'Miraidon', productId: 706135 },
+  { number: '083', dexNum: 80, name: 'Slowbro', productId: 706129 },
+  { number: '084', dexNum: 781, name: 'Dhelmise', productId: 706137 },
+  { number: '085', dexNum: 411, name: 'Bastiodon', productId: 706133 },
+  { number: '086', dexNum: 79, name: 'Slowpoke', productId: 706130 },
+  { number: '087', dexNum: 688, name: 'Binacle', productId: 706131 },
+  { number: '088', dexNum: 893, name: 'Zarude', productId: 706193 },
+];
+
+async function insertMissingMepCards() {
+  console.log('\n=== mep: missing-from-TCGdex cards ===');
+  const { data: existing, error } = await supabase
+    .from('tcg_cards')
+    .select('id')
+    .eq('set_id', 'mep')
+    .returns<{ id: string }[]>();
+  if (error) throw error;
+  const existingIds = new Set(existing.map(r => r.id));
+
+  const toInsert = MEP_MISSING_CARDS
+    .filter(c => !existingIds.has(`mep-${c.number}`))
+    .map(c => ({
+      id: `mep-${c.number}`,
+      name: c.name,
+      dex_num: c.dexNum,
+      set_id: 'mep',
+      set_name: 'MEP Black Star Promos',
+      card_number: c.number,
+      rarity: 'Promo',
+      artist: null,
+      image_small: `https://tcgplayer-cdn.tcgplayer.com/product/${c.productId}_400w.jpg`,
+      image_large: `https://tcgplayer-cdn.tcgplayer.com/product/${c.productId}_400w.jpg`,
+      release_date: '2025-09-26', // same as the rest of the mep set (from TCGdex's set.releaseDate)
+      series: null,
+      cardmarket_trend_eur: null,
+      cardmarket_avg_eur: null,
+      cardmarket_low_eur: null,
+      cardmarket_updated_at: null,
+      region: 'global',
+      supertype: 'Pokémon',
+      updated_at: new Date().toISOString(),
+    }));
+
+  if (!toInsert.length) {
+    console.log('  nothing to insert, all already present');
+    return;
+  }
+  const { error: insErr } = await supabase.from('tcg_cards').insert(toInsert);
+  if (insErr) throw insErr;
+  console.log(`  inserted ${toInsert.length}/${MEP_MISSING_CARDS.length}`);
+}
+
 async function main() {
   for (const [setId, group] of Object.entries(SET_TO_TCGPLAYER_GROUP)) {
     console.log(`\n=== ${setId} ===`);
     await syncSet(setId, group);
   }
+  await insertMissingMepCards();
   console.log('\nDone.');
 }
 
