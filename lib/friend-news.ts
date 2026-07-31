@@ -26,6 +26,31 @@ export interface FriendNewsItem {
   imageLarge: string | null;
   rarityLabel: string;
   createdAt: string;
+  dexNum: number;
+  setId: string;
+  setName: string;
+  cardNumber: string;
+}
+
+const FRIEND_NEWS_SELECT =
+  'id, user_id, card_id, rarity_label, created_at, author:profiles!friend_news_user_id_fkey(username, display_name), card:tcg_cards(name, image_small, image_large, dex_num, set_id, set_name, card_number)';
+
+function mapFriendNewsRow(row: any): FriendNewsItem {
+  return {
+    id: row.id,
+    authorId: row.user_id,
+    authorName: row.author?.display_name || row.author?.username || '?',
+    cardId: row.card_id,
+    cardName: row.card?.name ?? '',
+    imageSmall: row.card?.image_small ?? '',
+    imageLarge: row.card?.image_large ?? null,
+    rarityLabel: row.rarity_label,
+    createdAt: row.created_at,
+    dexNum: row.card?.dex_num ?? 0,
+    setId: row.card?.set_id ?? '',
+    setName: row.card?.set_name ?? '',
+    cardNumber: row.card?.card_number ?? '',
+  };
 }
 
 // Undismissed news from accepted friends, oldest first (so the pop-up queue plays
@@ -42,24 +67,37 @@ export function useFriendNewsFeed(userId?: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('friend_news')
-        .select('id, user_id, card_id, rarity_label, created_at, author:profiles!friend_news_user_id_fkey(username, display_name), card:tcg_cards(name, image_small, image_large), dismissed:friend_news_dismissed(user_id)')
+        .select(`${FRIEND_NEWS_SELECT}, dismissed:friend_news_dismissed(user_id)`)
         .neq('user_id', userId!)
         .order('created_at', { ascending: true })
         .limit(20);
       if (error) throw error;
       return (data ?? [])
         .filter((row: any) => (row.dismissed?.length ?? 0) === 0 && row.card)
-        .map((row: any): FriendNewsItem => ({
-          id: row.id,
-          authorId: row.user_id,
-          authorName: row.author?.display_name || row.author?.username || '?',
-          cardId: row.card_id,
-          cardName: row.card?.name ?? '',
-          imageSmall: row.card?.image_small ?? '',
-          imageLarge: row.card?.image_large ?? null,
-          rarityLabel: row.rarity_label,
-          createdAt: row.created_at,
-        }));
+        .map(mapFriendNewsRow);
+    },
+  });
+}
+
+// Past news — includes already-dismissed rows (the live feed above excludes
+// them), so a friend's earlier pulls stay browsable instead of vanishing once
+// seen. Most-recent-first (a browsable log, not a queue to clear), and only
+// queried while the history sheet is actually open (`enabled`) since it isn't
+// time-critical the way the live feed is.
+export function useFriendNewsHistory(userId?: string, enabled = true) {
+  return useQuery({
+    queryKey: ['friend_news_history', userId],
+    enabled: !!userId && enabled,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('friend_news')
+        .select(FRIEND_NEWS_SELECT)
+        .neq('user_id', userId!)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data ?? []).filter((row: any) => row.card).map(mapFriendNewsRow);
     },
   });
 }
@@ -74,7 +112,10 @@ export function useDismissFriendNews() {
       const { error } = await supabase.from('friend_news_dismissed').insert({ news_id: newsId, user_id: userId });
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['friend_news_feed', userId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['friend_news_feed', userId] });
+      qc.invalidateQueries({ queryKey: ['friend_news_history', userId] });
+    },
   });
 }
 

@@ -1,5 +1,11 @@
 export type RarityTier = 'basic' | 'holo' | 'chase';
 
+// Shared chase-tier accent — the "secret rare" gold used by CaptureEffect and
+// FriendCardReveal's particle burst/glow. Kept fixed regardless of the user's
+// palette choice (see lib/theme.tsx) since it's semantic ("this pull is
+// special"), not thematic.
+export const CHASE_GOLD = '#fbbf24';
+
 // Rarity naming isn't strictly ordered across 30+ years of sets, so these tiers are a
 // curated heuristic rather than a canonical ranking. Shared between the badge wall
 // (lib/badges.ts) and the capture celebration effect (components/CaptureEffect.tsx).

@@ -4,8 +4,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { TYPE_COLORS } from '@/lib/types-colors';
 import { tcgTypeLabelFr, tcgTypeAsPokemonType } from '@/lib/tcg-types';
 import { TypeIcon } from './TypeIcon';
+import { RarityBurstCard } from './RarityBurstCard';
 import { playChime } from '@/lib/chime';
 import { fonts } from '@/lib/theme';
+import { CHASE_GOLD } from '@/lib/rarity-tiers';
 import { useMotion } from '@/lib/motion';
 
 export type CaptureEvent =
@@ -19,6 +21,8 @@ interface Props {
   onDone: () => void;
 }
 
+// Particle burst for the non-rarity (type-complete) badge — the rarity branch's
+// burst lives inside RarityBurstCard instead, since it's bundled with the card glow.
 const PARTICLE_COUNT = 12;
 const PARTICLES = Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
   angle: (i / PARTICLE_COUNT) * Math.PI * 2,
@@ -31,7 +35,6 @@ const CARD_RATIO = 0.72;
 const CARD_ZOOM_WIDTH = 138;
 const CARD_ZOOM_HEIGHT = CARD_ZOOM_WIDTH / CARD_RATIO;
 
-const GOLD = '#fbbf24';
 const NEUTRAL = '#9ca3af';
 
 export function CaptureEffect({ event, onDone }: Props) {
@@ -98,7 +101,7 @@ export function CaptureEffect({ event, onDone }: Props) {
             },
           ]}>
           <Image source={{ uri: event.imageSmall }} style={styles.bannerThumb} resizeMode="contain" />
-          <Ionicons name="sparkles" size={16} color={GOLD} />
+          <Ionicons name="sparkles" size={16} color={CHASE_GOLD} />
           <Text numberOfLines={1} style={styles.bannerText}>Carte {event.rarityLabel} capturée</Text>
         </Animated.View>
       </View>
@@ -109,7 +112,7 @@ export function CaptureEffect({ event, onDone }: Props) {
   const isChase = event.kind === 'rarity' && event.tier === 'chase';
   // "Colorless" has no video-game type equivalent — falls back to a neutral tint/icon.
   const pokemonType = isType ? tcgTypeAsPokemonType(event.type) : undefined;
-  const accent = isType ? (pokemonType ? TYPE_COLORS[pokemonType] : NEUTRAL) : GOLD;
+  const accent = isType ? (pokemonType ? TYPE_COLORS[pokemonType] : NEUTRAL) : CHASE_GOLD;
   const title = isType ? `Type ${tcgTypeLabelFr(event.type)} complet !` : `✨ ${event.rarityLabel} !`;
   const subtitle = isType
     ? `Tous les Pokémon de type ${tcgTypeLabelFr(event.type)} sont capturés dans ce set`
@@ -125,36 +128,31 @@ export function CaptureEffect({ event, onDone }: Props) {
       />
       <Pressable style={styles.center} onPress={dismiss}>
         <View style={[styles.burstWrap, isChase && styles.burstWrapChase]}>
-          {PARTICLES.map((p, i) => {
-            const dist = p.distance * particleScale;
-            const tx = sparkle.interpolate({ inputRange: [0, 1], outputRange: [0, Math.cos(p.angle) * dist] });
-            const ty = sparkle.interpolate({ inputRange: [0, 1], outputRange: [0, Math.sin(p.angle) * dist] });
-            const op = sparkle.interpolate({ inputRange: [0, 0.15, 0.75, 1], outputRange: [0, 1, 1, 0] });
-            const sc = sparkle.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0.3, 1, 0.6] });
-            return (
-              <Animated.View key={i} style={[styles.particle, { opacity: op, transform: [{ translateX: tx }, { translateY: ty }, { scale: sc }] }]}>
-                <Ionicons name="sparkles" size={14} color={i % 2 === 0 ? accent : '#fff8e1'} />
-              </Animated.View>
-            );
-          })}
           {event.kind === 'rarity' ? (
-            <Animated.View
-              style={[
-                styles.cardGlow,
-                { shadowColor: accent, backgroundColor: accent + '26' },
-                { opacity: appear, transform: [{ scale: appear.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }] },
-              ]}>
-              <Image source={{ uri: event.imageSmall }} style={styles.cardZoomImg} resizeMode="contain" />
-            </Animated.View>
+            <RarityBurstCard imageUri={event.imageSmall} accent={accent} appear={appear} sparkle={sparkle} particleScale={particleScale} />
           ) : (
-            <Animated.View
-              style={[
-                styles.badge,
-                { backgroundColor: accent + '22', borderColor: accent },
-                { opacity: appear, transform: [{ scale: appear.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }] },
-              ]}>
-              {pokemonType ? <TypeIcon type={pokemonType} size={72} /> : <Ionicons name="ellipse" size={56} color={accent} />}
-            </Animated.View>
+            <>
+              {PARTICLES.map((p, i) => {
+                const dist = p.distance * particleScale;
+                const tx = sparkle.interpolate({ inputRange: [0, 1], outputRange: [0, Math.cos(p.angle) * dist] });
+                const ty = sparkle.interpolate({ inputRange: [0, 1], outputRange: [0, Math.sin(p.angle) * dist] });
+                const op = sparkle.interpolate({ inputRange: [0, 0.15, 0.75, 1], outputRange: [0, 1, 1, 0] });
+                const sc = sparkle.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0.3, 1, 0.6] });
+                return (
+                  <Animated.View key={i} style={[styles.particle, { opacity: op, transform: [{ translateX: tx }, { translateY: ty }, { scale: sc }] }]}>
+                    <Ionicons name="sparkles" size={14} color={i % 2 === 0 ? accent : '#fff8e1'} />
+                  </Animated.View>
+                );
+              })}
+              <Animated.View
+                style={[
+                  styles.badge,
+                  { backgroundColor: accent + '22', borderColor: accent },
+                  { opacity: appear, transform: [{ scale: appear.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }] },
+                ]}>
+                {pokemonType ? <TypeIcon type={pokemonType} size={72} /> : <Ionicons name="ellipse" size={56} color={accent} />}
+              </Animated.View>
+            </>
           )}
         </View>
         <Animated.Text style={[styles.title, { opacity: appear }]}>{title}</Animated.Text>
@@ -173,12 +171,6 @@ const styles = StyleSheet.create({
   burstWrap: { width: 140, height: 140, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   burstWrapChase: { width: 220, height: CARD_ZOOM_HEIGHT + 40 },
   badge: { width: 108, height: 108, borderRadius: 54, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  cardGlow: {
-    width: CARD_ZOOM_WIDTH + 24, height: CARD_ZOOM_HEIGHT + 24, borderRadius: 16,
-    alignItems: 'center', justifyContent: 'center',
-    shadowOpacity: 0.9, shadowRadius: 24, shadowOffset: { width: 0, height: 0 }, elevation: 20,
-  },
-  cardZoomImg: { width: CARD_ZOOM_WIDTH, height: CARD_ZOOM_HEIGHT },
   particle: { position: 'absolute' },
   title: { fontSize: 19, fontFamily: fonts.display, color: 'white', textAlign: 'center', marginBottom: 4 },
   subtitle: { fontSize: 13, fontFamily: fonts.body, color: '#e5e5e5', textAlign: 'center', maxWidth: 260 },

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, Image, Pressable, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, TextInput, Image, Pressable, FlatList, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -11,8 +11,10 @@ import {
   type FriendProfile, type FriendRequest,
 } from '@/lib/friends';
 import { useOwnedCardQuantities } from '@/lib/collection';
-import { useFriendNewsFeed, type FriendNewsItem } from '@/lib/friend-news';
-import { FriendNewsPopup } from '@/components/FriendNewsPopup';
+import { useFriendNewsFeed, useFriendNewsHistory, type FriendNewsItem } from '@/lib/friend-news';
+import { FriendCardReveal } from '@/components/FriendCardReveal';
+import { BubbleSheet } from '@/components/BubbleSheet';
+import { CHASE_GOLD } from '@/lib/rarity-tiers';
 import {
   usePendingTradeOffers, useFriendsAvailableCards, useFriendsWantedCards,
   type TradeOfferItem, type FriendCardListing,
@@ -69,6 +71,9 @@ export default function FriendsScreen() {
   const { data: outgoing = [] } = useOutgoingRequests(userId);
   const { data: friendNews = [] } = useFriendNewsFeed(userId);
   const [openNews, setOpenNews] = useState<FriendNewsItem | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyReveal, setHistoryReveal] = useState<FriendNewsItem | null>(null);
+  const { data: newsHistory = [] } = useFriendNewsHistory(userId, historyOpen);
   const { data: tradeOffers = [] } = usePendingTradeOffers(userId);
   const [openTrade, setOpenTrade] = useState<TradeOfferItem | null>(null);
   const [tradeTarget, setTradeTarget] = useState<TradeTarget | null>(null);
@@ -218,26 +223,28 @@ export default function FriendsScreen() {
           <>
           {subTab === 'friends' && (
           <>
-            {friendNews.length > 0 && (
-              <View style={styles.list}>
-                <View style={styles.sectionTitleRow}>
-                  <IconBubble size={26} color={colors.primarySoft}>
-                    <Ionicons name="sparkles-outline" size={13} color={colors.primary} />
-                  </IconBubble>
-                  <Text style={styles.sectionTitle}>Nouveautés</Text>
-                  <Text style={styles.sectionCount}>{friendNews.length}</Text>
-                </View>
-                {friendNews.map((n: FriendNewsItem) => (
-                  <Pressable key={n.id} onPress={() => setOpenNews(n)} style={styles.row}>
-                    <Avatar name={n.authorName} />
-                    <Text style={styles.newsText}>
-                      <Text style={styles.newsTextBold}>{n.authorName}</Text> a obtenu une carte {n.rarityLabel}
-                    </Text>
-                    <Image source={{ uri: n.imageSmall }} style={styles.newsThumb} resizeMode="contain" />
-                  </Pressable>
-                ))}
+            <View style={styles.list}>
+              <View style={styles.sectionTitleRow}>
+                <IconBubble size={26} color={colors.primarySoft}>
+                  <Ionicons name="sparkles-outline" size={13} color={colors.primary} />
+                </IconBubble>
+                <Text style={styles.sectionTitle}>Nouveautés</Text>
+                {friendNews.length > 0 && <Text style={styles.sectionCount}>{friendNews.length}</Text>}
+                <View style={{ flex: 1 }} />
+                <Pressable onPress={() => setHistoryOpen(true)} hitSlop={8}>
+                  <Ionicons name="time-outline" size={16} color={colors.textMuted} />
+                </Pressable>
               </View>
-            )}
+              {friendNews.map((n: FriendNewsItem) => (
+                <Pressable key={n.id} onPress={() => setOpenNews(n)} style={styles.row}>
+                  <Avatar name={n.authorName} />
+                  <Text style={styles.newsText}>
+                    <Text style={styles.newsTextBold}>{n.authorName}</Text> a obtenu une carte {n.rarityLabel}
+                  </Text>
+                  <Image source={{ uri: n.imageSmall }} style={styles.newsThumb} resizeMode="contain" />
+                </Pressable>
+              ))}
+            </View>
 
             {tradeOffers.length > 0 && (
               <View style={styles.list}>
@@ -434,7 +441,25 @@ export default function FriendsScreen() {
         onCancel={() => setUnfriendTarget(null)}
       />
       <QRCodeModal visible={qrOpen} value={myShareUrl} label="Mon QR code" onClose={() => setQrOpen(false)} />
-      <FriendNewsPopup item={openNews} onClose={() => setOpenNews(null)} />
+      <FriendCardReveal item={openNews} mode="live" onClose={() => setOpenNews(null)} />
+      <BubbleSheet visible={historyOpen} onClose={() => setHistoryOpen(false)} tint={CHASE_GOLD} title="Historique">
+        <ScrollView contentContainerStyle={[styles.list, { padding: spacing.md }]}>
+          {newsHistory.length === 0 ? (
+            <Text style={styles.empty}>Aucune pêche notable pour l'instant.</Text>
+          ) : (
+            newsHistory.map((n: FriendNewsItem) => (
+              <Pressable key={n.id} onPress={() => setHistoryReveal(n)} style={styles.row}>
+                <Avatar name={n.authorName} />
+                <Text style={styles.newsText}>
+                  <Text style={styles.newsTextBold}>{n.authorName}</Text> a obtenu une carte {n.rarityLabel}
+                </Text>
+                <Image source={{ uri: n.imageSmall }} style={styles.newsThumb} resizeMode="contain" />
+              </Pressable>
+            ))
+          )}
+        </ScrollView>
+      </BubbleSheet>
+      <FriendCardReveal item={historyReveal} mode="history" onClose={() => setHistoryReveal(null)} />
       <TradeProposalModal
         target={tradeTarget}
         onClose={closeTradeModal}

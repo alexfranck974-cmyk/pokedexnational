@@ -8,3 +8,9 @@ import * as Haptics from 'expo-haptics';
 export function hapticCardAdded() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 }
+
+// The heavier "success" pattern, reserved for a big moment — unlocking a
+// friend's chase-tier pull in FriendCardReveal — rather than routine taps.
+export function hapticRevealSuccess() {
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+}
