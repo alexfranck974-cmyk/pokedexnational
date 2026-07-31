@@ -245,6 +245,7 @@ export default function PokemonDetail() {
               cards={sortedCards}
               ownedSet={ledgerSet}
               wishedSet={wishedSet}
+              dexCardId={[...officialSet][0]}
               viewMode={viewMode}
               onToggle={c => {
                 if (officialSet.has(c.id)) {

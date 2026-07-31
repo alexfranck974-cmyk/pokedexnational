@@ -9,6 +9,11 @@ interface Props {
   cards: TcgCardRow[];
   ownedSet: Set<string>;
   wishedSet?: Set<string>;
+  /** The one printing (if any) chosen to represent this Pokémon in the National
+   * Dex — draws a gold halo on that specific tile among several owned printings
+   * of the same Pokémon. Only meaningful when `cards` are all for one dex_num
+   * (the Pokémon detail screen); omit elsewhere. */
+  dexCardId?: string;
   readOnly?: boolean;
   viewMode?: 'grid' | 'list';
   /** Overrides the width-based default column count in grid mode. */
@@ -28,7 +33,7 @@ function numColsFor(width: number): number {
   return 6;
 }
 
-export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = 'grid', columnsOverride, quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom }: Props) {
+export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, viewMode = 'grid', columnsOverride, quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom }: Props) {
   const { width } = useWindowDimensions();
   if (viewMode === 'list') {
     return (
@@ -43,6 +48,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = '
             card={item}
             owned={ownedSet.has(item.id)}
             wished={wishedSet?.has(item.id)}
+            isDexCard={item.id === dexCardId}
             readOnly={readOnly}
             quantity={quantities?.get(item.id)}
             onIncrement={onIncrement ? () => onIncrement(item) : undefined}
@@ -68,6 +74,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, readOnly, viewMode = '
           card={item}
           owned={ownedSet.has(item.id)}
           wished={wishedSet?.has(item.id)}
+          isDexCard={item.id === dexCardId}
           readOnly={readOnly}
           quantity={quantities?.get(item.id)}
           onIncrement={onIncrement ? () => onIncrement(item) : undefined}

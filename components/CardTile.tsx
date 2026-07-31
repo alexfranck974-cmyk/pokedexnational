@@ -5,12 +5,17 @@ import type { TcgCardRow } from '@/lib/tcg';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
 import { hapticCardAdded } from '@/lib/haptics';
+import { CHASE_GOLD } from '@/lib/rarity-tiers';
 
 interface Props {
   card: TcgCardRow;
   owned: boolean;
   wished?: boolean;
   readOnly?: boolean;
+  /** This printing is the one chosen to represent the Pokémon in the National Dex
+   * (vs. other owned printings of the same Pokémon sitting in the ledger) — draws
+   * a gold halo + a small star badge instead of the plain holo ring. */
+  isDexCard?: boolean;
   /** Copies owned — when provided (alongside onIncrement/onDecrement) and the card is owned, shows a +/- stepper. */
   quantity?: number;
   onIncrement?: () => void;
@@ -20,11 +25,16 @@ interface Props {
   onZoom?: () => void;
 }
 
-export function CardTile({ card, owned, wished, readOnly, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom }: Props) {
+export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles((colors, shadow) => ({
     tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, ...shadow.sm },
     imgWrap: { position: 'relative' as const },
+    dexHalo: {
+      borderRadius: radius.md,
+      shadowColor: CHASE_GOLD, shadowOpacity: 0.9, shadowRadius: 10,
+      shadowOffset: { width: 0, height: 0 }, elevation: 10,
+    },
     holoBorder: { borderRadius: radius.md, padding: 2 },
     holoInner: { borderRadius: radius.md - 2, overflow: 'hidden' as const, backgroundColor: colors.surfaceAlt },
     plainInner: { borderRadius: radius.md, overflow: 'hidden' as const, backgroundColor: colors.surfaceAlt },
@@ -41,6 +51,10 @@ export function CardTile({ card, owned, wished, readOnly, quantity, onIncrement,
       position: 'absolute' as const, top: 4, left: 4,
       backgroundColor: colors.overlay,
       borderRadius: radius.pill, padding: 2,
+    },
+    dexBadge: {
+      position: 'absolute' as const, bottom: 4, right: 4,
+      backgroundColor: CHASE_GOLD, borderRadius: radius.pill, padding: 3,
     },
     heartBtn: {
       position: 'absolute' as const, top: 4, right: 4, width: 28, height: 28,
@@ -67,14 +81,16 @@ export function CardTile({ card, owned, wished, readOnly, quantity, onIncrement,
       ]}>
       <View style={styles.imgWrap}>
         {owned ? (
-          <LinearGradient
-            colors={[colors.primary, colors.warning, colors.primary]}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={styles.holoBorder}>
-            <View style={styles.holoInner}>
-              <Image source={{ uri: card.image_small }} style={styles.img} resizeMode="contain" />
-            </View>
-          </LinearGradient>
+          <View style={isDexCard ? styles.dexHalo : undefined}>
+            <LinearGradient
+              colors={isDexCard ? [CHASE_GOLD, colors.warning, CHASE_GOLD] : [colors.primary, colors.warning, colors.primary]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={styles.holoBorder}>
+              <View style={styles.holoInner}>
+                <Image source={{ uri: card.image_small }} style={styles.img} resizeMode="contain" />
+              </View>
+            </LinearGradient>
+          </View>
         ) : (
           <View style={styles.plainInner}>
             <Image source={{ uri: card.image_small }} style={[styles.img, styles.imgMissing]} resizeMode="contain" />
@@ -86,6 +102,11 @@ export function CardTile({ card, owned, wished, readOnly, quantity, onIncrement,
         {owned && (
           <View style={styles.pokeballOverlay}>
             <Pokeball size={22} />
+          </View>
+        )}
+        {isDexCard && (
+          <View style={styles.dexBadge}>
+            <Ionicons name="star" size={12} color="#3b2a06" />
           </View>
         )}
         {!readOnly && onToggleWish && (

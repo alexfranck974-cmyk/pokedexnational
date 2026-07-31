@@ -5,12 +5,15 @@ import type { TcgCardRow } from '@/lib/tcg';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
 import { hapticCardAdded } from '@/lib/haptics';
+import { CHASE_GOLD } from '@/lib/rarity-tiers';
 
 interface Props {
   card: TcgCardRow;
   owned: boolean;
   wished?: boolean;
   readOnly?: boolean;
+  /** This printing is the one chosen to represent the Pokémon in the National Dex — see CardTile. */
+  isDexCard?: boolean;
   /** Copies owned — when provided (alongside onIncrement/onDecrement) and the card is owned, shows a +/- stepper. */
   quantity?: number;
   onIncrement?: () => void;
@@ -20,7 +23,7 @@ interface Props {
   onZoom?: () => void;
 }
 
-export function CardListRow({ card, owned, wished, readOnly, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom }: Props) {
+export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles((colors) => ({
     row: {
@@ -30,6 +33,15 @@ export function CardListRow({ card, owned, wished, readOnly, quantity, onIncreme
       marginHorizontal: spacing.xs, marginVertical: 3,
     },
     thumbWrap: { position: 'relative' as const },
+    dexHalo: {
+      borderRadius: radius.sm,
+      shadowColor: CHASE_GOLD, shadowOpacity: 0.9, shadowRadius: 6,
+      shadowOffset: { width: 0, height: 0 }, elevation: 6,
+    },
+    dexBadge: {
+      position: 'absolute' as const, bottom: -2, right: -2,
+      backgroundColor: CHASE_GOLD, borderRadius: radius.pill, padding: 2,
+    },
     holoBorder: { borderRadius: radius.sm, padding: 1.5 },
     holoInner: { borderRadius: radius.sm - 1.5, overflow: 'hidden' as const, backgroundColor: colors.surfaceAlt },
     plainInner: { borderRadius: radius.sm, overflow: 'hidden' as const, backgroundColor: colors.surfaceAlt },
@@ -65,20 +77,27 @@ export function CardListRow({ card, owned, wished, readOnly, quantity, onIncreme
       ]}>
       <View style={styles.thumbWrap}>
         {owned ? (
-          <LinearGradient
-            colors={[colors.primary, colors.warning, colors.primary]}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={styles.holoBorder}>
-            <View style={styles.holoInner}>
-              <Image source={{ uri: card.image_small }} style={styles.thumb} resizeMode="contain" />
-            </View>
-          </LinearGradient>
+          <View style={isDexCard ? styles.dexHalo : undefined}>
+            <LinearGradient
+              colors={isDexCard ? [CHASE_GOLD, colors.warning, CHASE_GOLD] : [colors.primary, colors.warning, colors.primary]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={styles.holoBorder}>
+              <View style={styles.holoInner}>
+                <Image source={{ uri: card.image_small }} style={styles.thumb} resizeMode="contain" />
+              </View>
+            </LinearGradient>
+          </View>
         ) : (
           <View style={styles.plainInner}>
             <Image source={{ uri: card.image_small }} style={[styles.thumb, styles.thumbMissing]} resizeMode="contain" />
             <View style={styles.lockBadge}>
               <Ionicons name="lock-closed" size={11} color={colors.textMuted} />
             </View>
+          </View>
+        )}
+        {isDexCard && (
+          <View style={styles.dexBadge}>
+            <Ionicons name="star" size={10} color="#3b2a06" />
           </View>
         )}
       </View>
