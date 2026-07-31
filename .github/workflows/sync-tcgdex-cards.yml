@@ -1,0 +1,25 @@
+name: Sync TCGdex JP/CN cards
+
+on:
+  schedule:
+    # 1st of each month at 06:00 UTC — new JP/CN sets release far less often than
+    # cardmarket prices update, no point running weekly like the price sync.
+    - cron: '0 6 1 * *'
+  workflow_dispatch: {} # lets you trigger a run manually from the Actions tab
+
+jobs:
+  sync-tcgdex:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - run: npm run sync:tcgdex
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

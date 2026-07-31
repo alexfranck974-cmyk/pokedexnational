@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import type { TcgCardRow } from '@/lib/tcg';
+import { setDisplayName } from '@/lib/tcg-set-labels';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 interface Props {
@@ -124,7 +125,7 @@ export function CardFilterTree({ cards, selectedSetIds, onChange }: Props) {
                 {isOpen && g.sets.map(s => (
                   <Pressable key={s.id} onPress={() => toggleSet(s.id)} style={[styles.row, styles.subRow]}>
                     <Text style={styles.check}>{isSetSelected(s.id) ? '☑' : '☐'}</Text>
-                    <Text style={styles.setName}>{s.name}</Text>
+                    <Text style={styles.setName}>{setDisplayName(s.name)}</Text>
                     <Text style={styles.count}>({s.count})</Text>
                   </Pressable>
                 ))}

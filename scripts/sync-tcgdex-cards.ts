@@ -31,6 +31,17 @@ const LOCALES: { locale: string; region: 'jp' | 'cn' }[] = [
   { locale: 'zh-cn', region: 'cn' },
 ];
 
+// Sets pokemontcg.io (our primary global source) doesn't carry at all — filled in
+// from TCGdex's English locale instead. A hand-maintained allow-list, not an
+// automatic "sync everything TCGdex 'en' has that we don't recognize" pass: TCGdex's
+// own set ids don't always match pokemontcg.io's for the SAME set (e.g. pokemontcg.io
+// calls the Mega Evolution base set "me1", TCGdex calls it "me01") — diffing id lists
+// would silently duplicate cards we already have under a different id. Only add a set
+// here once its absence from pokemontcg.io is confirmed (checked via their /v2/sets).
+const EN_GAP_SET_IDS = [
+  'mep', // MEP Black Star Promos — pokemontcg.io has no promo set for the Mega Evolution era (confirmed 2026-07-31)
+];
+
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -88,22 +99,29 @@ interface CardDetail {
   pricing?: { cardmarket?: { trend?: number | null; avg?: number | null; low?: number | null } | null };
 }
 
-function toRow(c: CardDetail, region: 'jp' | 'cn', releaseDate: string | null) {
+const REGION_SERIES_LABEL: Record<'jp' | 'cn', string> = { jp: 'Japon', cn: 'Chine' };
+
+function toRow(c: CardDetail, region: 'jp' | 'cn' | 'global', releaseDate: string | null) {
   const dex = c.dexId?.find(n => n >= 1 && n <= 1025);
   if (!dex) return null; // skip Trainer/Energy cards (no dex link)
-  // TCGdex doesn't have image assets for every JP/CN card yet (notably: all zh-cn
-  // cards seen so far, and several very recent JA sets) — fall back to the Pokémon's
-  // official-artwork sprite so the row (and ownership tracking) still exists.
+  // TCGdex doesn't have image assets for every card yet (notably: all zh-cn cards
+  // seen so far, several very recent JA sets, and the "en" gap-fill sets below) —
+  // fall back to the Pokémon's official-artwork sprite so the row (and ownership
+  // tracking) still exists.
   const spriteFallback = SPRITE_BY_DEX.get(dex);
   const imageSmall = c.image ? `${c.image}/low.webp` : spriteFallback;
   const imageLarge = c.image ? `${c.image}/high.webp` : spriteFallback ?? null;
   if (!imageSmall) return null;
-  const prefix = region;
+  // 'global' gap-fill ids are used bare (no prefix): they're only ever sets already
+  // confirmed absent from pokemontcg.io's own (unprefixed) id space, so there's
+  // nothing to collide with, and it keeps them showing as a normal extension in the
+  // app's existing set filter instead of looking region-namespaced like jp-/cn- ones.
+  const prefix = region === 'global' ? '' : `${region}-`;
   return {
-    id: `${prefix}-${c.id}`,
+    id: `${prefix}${c.id}`,
     name: c.name,
     dex_num: dex,
-    set_id: `${prefix}-${c.set.id}`,
+    set_id: `${prefix}${c.set.id}`,
     set_name: c.set.name,
     card_number: c.localId,
     rarity: c.rarity ?? null,
@@ -111,7 +129,11 @@ function toRow(c: CardDetail, region: 'jp' | 'cn', releaseDate: string | null) {
     image_small: imageSmall,
     image_large: imageLarge,
     release_date: releaseDate,
-    series: null,
+    // 'global' gap-fill sets stay ungrouped (null) same as before — there's only
+    // ever a couple of them, not worth their own bucket. jp/cn get a simple
+    // per-region bucket so they stop all landing in CardFilterTree's generic
+    // "Autres" catch-all together.
+    series: region === 'global' ? null : REGION_SERIES_LABEL[region],
     cardmarket_trend_eur: c.pricing?.cardmarket?.trend ?? null,
     cardmarket_avg_eur: c.pricing?.cardmarket?.avg ?? null,
     cardmarket_low_eur: c.pricing?.cardmarket?.low ?? null,
@@ -164,10 +186,27 @@ async function syncLocale(locale: string, region: 'jp' | 'cn') {
   }
 }
 
+// Fetches each EN_GAP_SET_IDS set directly (no series/cutoff-date crawl needed —
+// unlike syncLocale, we already know exactly which sets we want).
+async function syncEnGapSets() {
+  if (EN_GAP_SET_IDS.length === 0) return;
+  console.log(`\n=== en gap-fill sets: ${EN_GAP_SET_IDS.join(', ')} ===`);
+  for (const setId of EN_GAP_SET_IDS) {
+    const set = await fetchJson<SetDetail>(`https://api.tcgdex.net/v2/en/sets/${setId}`);
+    const rows = await mapLimit(set.cards, CONCURRENCY, async (cardRef) => {
+      const card = await fetchJson<CardDetail>(`https://api.tcgdex.net/v2/en/cards/${cardRef.id}`);
+      return toRow(card, 'global', set.releaseDate);
+    });
+    if (rows.length) await upsertBatch(rows);
+    console.log(`  ${set.id}: ${rows.length}/${set.cards.length} cards written`);
+  }
+}
+
 async function main() {
   for (const { locale, region } of LOCALES) {
     await syncLocale(locale, region);
   }
+  await syncEnGapSets();
   console.log('\nDone.');
 }
 

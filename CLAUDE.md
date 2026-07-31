@@ -11,7 +11,7 @@
 - **Expo SDK 54** (downgraded from 57 because Expo Go on iOS App Store lags behind — see `AGENTS.md`)
 - **React 19.2.3, React Native 0.85.3, TypeScript**
 - **Windows-first repo** (dev on Windows 11, PowerShell + bash). `.npmrc` sets `legacy-peer-deps=true` to resolve React 19 patch mismatch.
-- **Package scripts of note:** `npm run web` (dev), `npm test` (Jest), `npm run build:pokedex` (fetch PokéAPI, only re-run if the 1025 changes), `npm run sync:tcg` (full metadata sync from pokemontcg.io — name/images/set/rarity/artist — only re-run if new sets released), `npm run sync:tcg:prices` (lightweight cardmarket price-only refresh — uses the API's `select` param to skip images/set/etc, runs weekly via `.github/workflows/sync-tcg-prices.yml`; do not switch it to a naive partial-column upsert — Postgres validates NOT NULL on the proposed insert row even when `ON CONFLICT DO UPDATE` fires, so it fetches+merges full existing rows first)
+- **Package scripts of note:** `npm run web` (dev), `npm test` (Jest), `npm run build:pokedex` (fetch PokéAPI, only re-run if the 1025 changes), `npm run sync:tcg` (full metadata sync from pokemontcg.io — name/images/set/rarity/artist — only re-run if new sets released), `npm run sync:tcg:prices` (lightweight cardmarket price-only refresh — uses the API's `select` param to skip images/set/etc, runs weekly via `.github/workflows/sync-tcg-prices.yml`; do not switch it to a naive partial-column upsert — Postgres validates NOT NULL on the proposed insert row even when `ON CONFLICT DO UPDATE` fires, so it fetches+merges full existing rows first), `npm run sync:tcgdex` (JP/CN cards from api.tcgdex.net — `tcg_cards.region` = `jp`/`cn`, ids prefixed `jp-`/`cn-`, image fallback to the Pokémon sprite when TCGdex has no art yet; sets released before 2022 are skipped; runs monthly via `.github/workflows/sync-tcgdex-cards.yml`)
 - **ts-node runs script/*.ts with `tsconfig.scripts.json`** (Expo's tsconfig.base uses `module=preserve` which is incompatible with ts-node CJS).
 
 ## Required env vars (`.env` at project root, NOT committed)
@@ -62,7 +62,7 @@ app/                     Expo Router screens
 components/              PokemonTile, CardTile/ListRow/Gallery, CardFilterTree, CardZoomModal, SearchFilterBar, ProgressCounter, TypeBadge, Pokeball
 lib/                     auth, collection, tcg, tcg-index, pokedex-list, wishlist-list, generations, i18n, slug, supabase, theme, toast, types, types-colors
 data/                    pokedex.json (baked from PokéAPI, 1025 entries)
-scripts/                 build-pokemon-data.ts, sync-tcg-cards.ts (uses service_role — server-side only)
+scripts/                 build-pokemon-data.ts, sync-tcg-cards.ts, sync-tcg-prices.ts, sync-tcgdex-cards.ts (all use service_role — server-side only)
 supabase/migrations/     001..012 SQL migrations
 __tests__/               Jest tests for slug, i18n, pokedex-list pipeline (18 tests total)
 docs/superpowers/        specs/ and plans/ (design docs)
@@ -92,7 +92,7 @@ docs/superpowers/        specs/ and plans/ (design docs)
 
 - **Web deploy**: pending choice of host (Vercel / Netlify / Cloudflare Pages). `EXPO_PUBLIC_APP_URL` is still `localhost:8081`.
 - **EAS Build / TestFlight**: not set up yet. iOS testing goes through Expo Go SDK 54.
-- **Real-time sync** (spec V2), **multi-lang cards** (spec V2), **JP/CN region cards** (would require TCGdex crossing — currently only pokemontcg.io).
+- ~~Real-time sync~~ done (Supabase Realtime on `friend_news`/`trade_offers`/`friendships`, see `lib/realtime.ts`). ~~JP/CN region cards~~ done (`npm run sync:tcgdex`, ~4400 cards live).
 
 ## Continuity across machines
 
