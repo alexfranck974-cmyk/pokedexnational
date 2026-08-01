@@ -1,16 +1,18 @@
 import { Redirect, Tabs, useRouter } from 'expo-router';
 import { useSession } from '@/lib/auth';
-import { useIncomingRequests } from '@/lib/friends';
+import { useIncomingRequests, useFriends } from '@/lib/friends';
 import { useFriendNewsFeed } from '@/lib/friend-news';
-import { usePendingTradeOffers } from '@/lib/trades';
+import { usePendingTradeOffers, useFriendsAvailableCards, useFriendsWantedCards, countMarketMatches } from '@/lib/trades';
+import { useAllWishedCards, useOwnedCardQuantities } from '@/lib/collection';
 import { useSocialRealtime } from '@/lib/realtime';
-import { Animated, View, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { Animated, View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PokedexDeviceIcon } from '@/components/PokedexDeviceIcon';
 import { FloatingTabBar } from '@/components/FloatingTabBar';
+import { TradeIcon } from '@/components/TradeIcon';
 import { TabBarVisibilityProvider, useTabBarVisibility } from '@/lib/tab-bar-visibility';
 import { withAlpha } from '@/lib/color-utils';
-import { useTheme, radius, spacing } from '@/lib/theme';
+import { useTheme, radius, spacing, fonts } from '@/lib/theme';
 
 const BAR_SIDE_INSET = spacing.lg;
 const BAR_BOTTOM_OFFSET = spacing.lg;
@@ -34,11 +36,27 @@ function AppLayoutTabs() {
   const { session } = useSession();
   const { colors } = useTheme();
   const { translateY } = useTabBarVisibility();
-  const { data: incomingRequests = [] } = useIncomingRequests(session?.user.id);
-  const { data: friendNews = [] } = useFriendNewsFeed(session?.user.id);
-  const { data: tradeOffers = [] } = usePendingTradeOffers(session?.user.id);
+  const userId = session?.user.id;
+  const { data: incomingRequests = [] } = useIncomingRequests(userId);
+  const { data: friendNews = [] } = useFriendNewsFeed(userId);
+  const { data: tradeOffers = [] } = usePendingTradeOffers(userId);
   const incomingTrades = tradeOffers.filter(t => t.direction === 'incoming');
-  useSocialRealtime(session?.user.id);
+  useSocialRealtime(userId);
+
+  // Market-bubble badge: pending incoming offers + cross-friend duplicate/wishlist
+  // matches (same one-directional-per-term logic as the Marché tab's own per-row
+  // "canFulfill" check, see lib/trades.ts's countMarketMatches). React Query
+  // dedupes these against friends.tsx's own calls by query key, so visiting
+  // Social doesn't refetch — it just reads the already-warm cache.
+  const { data: friends = [] } = useFriends(userId);
+  const friendIds = friends.map(f => f.id);
+  const { data: availableCards = [] } = useFriendsAvailableCards(friendIds);
+  const { data: wantedCards = [] } = useFriendsWantedCards(friendIds);
+  const { data: myWishedCards = [] } = useAllWishedCards(userId);
+  const { data: myQuantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
+  const myWishedIds = new Set(myWishedCards.map(c => c.id));
+  const myDuplicateIds = new Set([...myQuantities.entries()].filter(([, q]) => q >= 2).map(([id]) => id));
+  const marketBadgeCount = incomingTrades.length + countMarketMatches(availableCards, wantedCards, myWishedIds, myDuplicateIds);
 
   return (
     <View style={{ flex: 1 }}>
@@ -109,6 +127,18 @@ function AppLayoutTabs() {
           <Ionicons name="settings-outline" size={22} color={colors.text} />
         </Pressable>
       </Animated.View>
+      <Animated.View style={[styles.tradeFabWrap, { transform: [{ translateY }] }]}>
+        <Pressable
+          onPress={() => router.push('/friends?tab=market')}
+          style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}>
+          <TradeIcon size={20} color={colors.text} />
+          {marketBadgeCount > 0 && (
+            <View style={[styles.tradeBadge, { borderColor: colors.surface }]}>
+              <Text style={styles.tradeBadgeText}>{marketBadgeCount > 9 ? '9+' : marketBadgeCount}</Text>
+            </View>
+          )}
+        </Pressable>
+      </Animated.View>
     </View>
   );
 }
@@ -123,9 +153,18 @@ const styles = StyleSheet.create({
   settingsFabWrap: {
     position: 'absolute', right: BAR_SIDE_INSET, bottom: BAR_BOTTOM_OFFSET + BAR_HEIGHT + spacing.sm,
   },
+  tradeFabWrap: {
+    position: 'absolute', left: BAR_SIDE_INSET, bottom: BAR_BOTTOM_OFFSET + BAR_HEIGHT + spacing.sm,
+  },
   settingsFab: {
     width: 44, height: 44, borderRadius: radius.pill,
     borderWidth: 1, alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 4,
   },
+  tradeBadge: {
+    position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, paddingHorizontal: 4,
+    borderRadius: 9, backgroundColor: '#ef4444', borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  tradeBadgeText: { fontSize: 10, fontFamily: fonts.bodyBold, color: 'white' },
 });

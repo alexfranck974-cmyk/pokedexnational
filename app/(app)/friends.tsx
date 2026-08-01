@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, Image, Pressable, FlatList, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSession } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import {
@@ -62,6 +62,7 @@ function Avatar({ name, size = 40 }: { name: string; size?: number }) {
 
 export default function FriendsScreen() {
   const router = useRouter();
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { session } = useSession();
   const userId = session?.user.id;
   const { colors } = useTheme();
@@ -80,7 +81,10 @@ export default function FriendsScreen() {
   const [openTrade, setOpenTrade] = useState<TradeOfferItem | null>(null);
   const [tradeTarget, setTradeTarget] = useState<TradeTarget | null>(null);
   const [tradePreset, setTradePreset] = useState<{ offered?: PickedCard; requested?: PickedCard }>({});
-  const [subTab, setSubTab] = useState<'friends' | 'market'>('friends');
+  // Only reads ?tab= on the initial mount (lazy useState initializer) — once the
+  // user has navigated away from the deep-linked value, further re-renders (e.g.
+  // params staying in the URL) shouldn't yank them back to Marché.
+  const [subTab, setSubTab] = useState<'friends' | 'market'>(() => (tab === 'market' ? 'market' : 'friends'));
 
   const friendIdsArr = useMemo(() => friends.map(f => f.id), [friends]);
   const { data: availableCards = [] } = useFriendsAvailableCards(friendIdsArr);

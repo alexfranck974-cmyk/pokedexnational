@@ -206,6 +206,23 @@ export function useFriendsWantedCards(friendIds: string[]) {
   });
 }
 
+// Trade opportunities across the whole friend list — cards a friend wants that I
+// can fulfill from a duplicate, plus cards a friend has spare that sit on my own
+// wishlist. One-directional in each term (not a strict mutual-swap requirement),
+// matching how the Marché tab's own per-row "canFulfill" check already works —
+// just aggregated into a count instead of per-row disabled state. Feeds the
+// floating trade bubble's badge in app/(app)/_layout.tsx.
+export function countMarketMatches(
+  availableCards: FriendCardListing[],
+  wantedCards: FriendCardListing[],
+  myWishedIds: Set<string>,
+  myDuplicateIds: Set<string>,
+): number {
+  const iCanFulfill = wantedCards.filter(w => myDuplicateIds.has(w.card.id)).length;
+  const friendsHaveWhatIWant = availableCards.filter(a => myWishedIds.has(a.card.id)).length;
+  return iCanFulfill + friendsHaveWhatIWant;
+}
+
 // Completed (accepted) trades the user took part in either side of — feeds the
 // Dashboard ring and the trade-count badges.
 export function useCompletedTradesCount(userId?: string) {
