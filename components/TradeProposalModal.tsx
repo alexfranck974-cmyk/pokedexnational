@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, Image, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, Image, Pressable, FlatList, ActivityIndicator, TextInput, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/lib/auth';
 import {
@@ -38,6 +38,18 @@ interface Props {
 
 const TINT = '#2dd4bf';
 
+function normalize(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+interface SetOption { id: string; name: string; }
+
+function collectSetOptions(cards: { setId?: string; setName?: string }[]): SetOption[] {
+  const seen = new Map<string, string>();
+  for (const c of cards) if (c.setId && c.setName && !seen.has(c.setId)) seen.set(c.setId, c.setName);
+  return Array.from(seen.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export function TradeProposalModal({ target, onClose, initialOffered = null, initialRequested = null }: Props) {
   const { session } = useSession();
   const myId = session?.user.id;
@@ -52,13 +64,23 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
 
   const [offeredCard, setOfferedCard] = useState<PickedCard | null>(null);
   const [requestedCard, setRequestedCard] = useState<PickedCard | null>(null);
+  const [search, setSearch] = useState('');
+  const [setFilter, setSetFilter] = useState<string | null>(null);
   const proposeTrade = useProposeTrade();
 
   useEffect(() => {
     if (!target) { setOfferedCard(null); setRequestedCard(null); }
     else { setOfferedCard(initialOffered); setRequestedCard(initialRequested); }
+    setSearch('');
+    setSetFilter(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target]);
+
+  // A different collection (mine vs the friend's) applies at each step, so a
+  // search/filter left over from the previous step wouldn't make sense —
+  // clear it whenever the picked card (and therefore the step) changes.
+  const pickOffered = (c: OwnedCardDetail) => { setOfferedCard(c); setSearch(''); setSetFilter(null); };
+  const pickRequested = (c: OwnedCardDetail) => { setRequestedCard(c); setSearch(''); setSetFilter(null); };
 
   const friendWishlistIds = useMemo(() => new Set(friendWishlist.map((c: { id: string }) => c.id)), [friendWishlist]);
   const myWishlistIds = useMemo(() => new Set(myWishlist.map((c: { id: string }) => c.id)), [myWishlist]);
@@ -80,6 +102,22 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
   const requestCandidates = useMemo(
     () => [...friendDuplicates].sort((a, b) => Number(myWishlistIds.has(b.cardId)) - Number(myWishlistIds.has(a.cardId))),
     [friendDuplicates, myWishlistIds],
+  );
+
+  // Search + set filter — collections can run into the hundreds of cards, so
+  // scrolling a flat list to find one specific card doesn't scale.
+  const offerSetOptions = useMemo(() => collectSetOptions(offerCandidates), [offerCandidates]);
+  const requestSetOptions = useMemo(() => collectSetOptions(requestCandidates), [requestCandidates]);
+  const searchN = normalize(search.trim());
+  const filteredOfferCandidates = useMemo(
+    () => offerCandidates.filter(c =>
+      (!searchN || normalize(c.name).includes(searchN)) && (!setFilter || c.setId === setFilter)),
+    [offerCandidates, searchN, setFilter],
+  );
+  const filteredRequestCandidates = useMemo(
+    () => requestCandidates.filter(c =>
+      (!searchN || normalize(c.name).includes(searchN)) && (!setFilter || c.setId === setFilter)),
+    [requestCandidates, searchN, setFilter],
   );
 
   const styles = useThemedStyles((colors, shadow) => ({
@@ -112,6 +150,19 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
     },
     btnText: { fontFamily: fonts.bodyBold, color: 'white' },
     backBtn: { padding: 6 },
+    searchInput: {
+      marginHorizontal: spacing.md, marginBottom: spacing.xs, borderWidth: 1, borderColor: colors.border,
+      borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: 8,
+      fontSize: 14, fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt,
+    },
+    setChips: { flexDirection: 'row' as const, gap: spacing.xs, paddingHorizontal: spacing.md, paddingBottom: spacing.xs },
+    setChip: {
+      paddingHorizontal: spacing.sm, paddingVertical: 5, borderRadius: radius.pill,
+      backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border,
+    },
+    setChipActive: { backgroundColor: TINT, borderColor: TINT },
+    setChipText: { fontSize: 11, fontFamily: fonts.bodyBold, color: colors.textMuted },
+    setChipTextActive: { color: 'white' },
   }));
 
   const step: 'offer' | 'request' | 'confirm' = !offeredCard ? 'offer' : !requestedCard ? 'request' : 'confirm';
@@ -138,6 +189,29 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
     />
   );
 
+  const renderSearchAndFilters = (setOptions: SetOption[]) => (
+    <>
+      <TextInput
+        placeholder="Chercher une carte…"
+        value={search}
+        onChangeText={setSearch}
+        style={styles.searchInput}
+      />
+      {setOptions.length > 1 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.setChips}>
+          <Pressable onPress={() => setSetFilter(null)} style={[styles.setChip, setFilter === null && styles.setChipActive]}>
+            <Text style={[styles.setChipText, setFilter === null && styles.setChipTextActive]}>Tous</Text>
+          </Pressable>
+          {setOptions.map(s => (
+            <Pressable key={s.id} onPress={() => setSetFilter(s.id)} style={[styles.setChip, setFilter === s.id && styles.setChipActive]}>
+              <Text style={[styles.setChipText, setFilter === s.id && styles.setChipTextActive]} numberOfLines={1}>{s.name}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
+    </>
+  );
+
   return (
     <BubbleSheet visible={target !== null} onClose={onClose} tint={TINT} title={title}>
       {myLoading || friendLoading ? (
@@ -152,7 +226,12 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
                 ? `Ces cartes sont dans la wishlist de ${target?.displayName}.`
                 : 'Choisis une carte à proposer — les cartes marquées "unique" sont ta seule copie.'}
             </Text>
-            {renderList(offerCandidates, setOfferedCard, friendWishlistIds, myQuantities)}
+            {renderSearchAndFilters(offerSetOptions)}
+            {filteredOfferCandidates.length === 0 ? (
+              <Text style={styles.empty}>Aucune carte ne correspond à cette recherche.</Text>
+            ) : (
+              renderList(filteredOfferCandidates, pickOffered, friendWishlistIds, myQuantities)
+            )}
           </>
         )
       ) : step === 'request' ? (
@@ -161,12 +240,17 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
         ) : (
           <>
             <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm }}>
-              <Pressable onPress={() => setOfferedCard(null)} hitSlop={8} style={styles.backBtn}>
+              <Pressable onPress={() => { setOfferedCard(null); setSearch(''); setSetFilter(null); }} hitSlop={8} style={styles.backBtn}>
                 <Ionicons name="chevron-back" size={20} color={TINT} />
               </Pressable>
               <Text style={styles.hint}>Les cartes marquées ★ sont dans ta wishlist.</Text>
             </View>
-            {renderList(requestCandidates, setRequestedCard, myWishlistIds)}
+            {renderSearchAndFilters(requestSetOptions)}
+            {filteredRequestCandidates.length === 0 ? (
+              <Text style={styles.empty}>Aucune carte ne correspond à cette recherche.</Text>
+            ) : (
+              renderList(filteredRequestCandidates, pickRequested, myWishlistIds)
+            )}
           </>
         )
       ) : (
@@ -216,7 +300,7 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
             <TradeIcon size={16} color="white" />
             <Text style={styles.btnText}>{proposeTrade.isPending ? '…' : 'Proposer l’échange'}</Text>
           </Pressable>
-          <Pressable onPress={() => setRequestedCard(null)}>
+          <Pressable onPress={() => { setRequestedCard(null); setSearch(''); setSetFilter(null); }}>
             <Text style={styles.hint}>Changer la carte demandée</Text>
           </Pressable>
         </View>
