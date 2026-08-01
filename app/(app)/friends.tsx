@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, Image, Pressable, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +23,20 @@ import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } 
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 import { withReturnTo } from '@/lib/navigation';
+
+interface NewsGroup { authorId: string; authorName: string; items: FriendNewsItem[]; }
+
+// Consecutive same-author runs collapse into one row — a friend who lands
+// several notable pulls in a row shouldn't push everyone else off-screen.
+function groupConsecutiveByAuthor(items: FriendNewsItem[]): NewsGroup[] {
+  const groups: NewsGroup[] = [];
+  for (const item of items) {
+    const last = groups[groups.length - 1];
+    if (last && last.authorId === item.authorId) last.items.push(item);
+    else groups.push({ authorId: item.authorId, authorName: item.authorName, items: [item] });
+  }
+  return groups;
+}
 
 function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   const { colors } = useTheme();
@@ -51,6 +65,22 @@ export default function FriendsScreen() {
   const { data: outgoing = [] } = useOutgoingRequests(userId);
   const { data: friendNews = [] } = useFriendNewsFeed(userId);
   const [openNews, setOpenNews] = useState<FriendNewsItem | null>(null);
+  // Quick per-friend filter for the Nouveautés feed — only worth showing once
+  // there's actually more than one friend making noise in it.
+  const newsAuthors = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const n of friendNews as FriendNewsItem[]) if (!seen.has(n.authorId)) seen.set(n.authorId, n.authorName);
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
+  }, [friendNews]);
+  const [newsFilterId, setNewsFilterId] = useState<string | null>(null);
+  useEffect(() => {
+    if (newsFilterId && !newsAuthors.some(a => a.id === newsFilterId)) setNewsFilterId(null);
+  }, [newsAuthors, newsFilterId]);
+  const filteredNews = useMemo(
+    () => newsFilterId ? (friendNews as FriendNewsItem[]).filter(n => n.authorId === newsFilterId) : friendNews,
+    [friendNews, newsFilterId],
+  );
+  const newsGroups = useMemo(() => groupConsecutiveByAuthor(filteredNews as FriendNewsItem[]), [filteredNews]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyReveal, setHistoryReveal] = useState<FriendNewsItem | null>(null);
   const { data: newsHistory = [] } = useFriendNewsHistory(userId, historyOpen);
@@ -115,6 +145,17 @@ export default function FriendsScreen() {
     reactionRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4 },
     reactionEmoji: { fontSize: 12 },
     reactionCount: { fontSize: 11, fontFamily: fonts.mono, color: colors.textMuted },
+    filterChips: { flexDirection: 'row' as const, gap: spacing.xs },
+    filterChip: {
+      paddingHorizontal: spacing.sm, paddingVertical: 5, borderRadius: radius.pill,
+      backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border,
+    },
+    filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    filterChipText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.textMuted },
+    filterChipTextActive: { color: 'white' },
+    newsGroupThumbs: { maxWidth: 130, flexGrow: 0 },
+    newsGroupThumbWrap: { marginRight: 4 },
+    newsGroupThumb: { width: 40, height: 40 / 0.72, borderRadius: 3 },
   }));
 
   const alreadyRelated = found && (friendIds.has(found.id) || outgoingIds.has(found.id) || found.id === userId);
@@ -140,6 +181,27 @@ export default function FriendsScreen() {
       <Image source={{ uri: item.imageSmall }} style={styles.newsThumb} resizeMode="contain" />
     </Pressable>
   );
+
+  const NewsGroupRow = ({ group, onOpen }: { group: NewsGroup; onOpen: (item: FriendNewsItem) => void }) => {
+    if (group.items.length === 1) return <NewsRow item={group.items[0]} onPress={() => onOpen(group.items[0])} />;
+    return (
+      <View style={styles.row}>
+        <Avatar name={group.authorName} />
+        <View style={styles.newsRowInfo}>
+          <Text style={styles.newsText}>
+            <Text style={styles.newsTextBold}>{group.authorName}</Text> a obtenu {group.items.length} cartes remarquables
+          </Text>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.newsGroupThumbs}>
+          {group.items.map(item => (
+            <Pressable key={item.id} onPress={() => onOpen(item)} style={styles.newsGroupThumbWrap}>
+              <Image source={{ uri: item.imageSmall }} style={styles.newsGroupThumb} resizeMode="contain" />
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -286,11 +348,28 @@ export default function FriendsScreen() {
                   <Ionicons name="time-outline" size={16} color={colors.textMuted} />
                 </Pressable>
               </View>
+              {newsAuthors.length > 1 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChips}>
+                  <Pressable onPress={() => setNewsFilterId(null)} style={[styles.filterChip, newsFilterId === null && styles.filterChipActive]}>
+                    <Text style={[styles.filterChipText, newsFilterId === null && styles.filterChipTextActive]}>Tous</Text>
+                  </Pressable>
+                  {newsAuthors.map(a => (
+                    <Pressable
+                      key={a.id}
+                      onPress={() => setNewsFilterId(a.id)}
+                      style={[styles.filterChip, newsFilterId === a.id && styles.filterChipActive]}>
+                      <Text style={[styles.filterChipText, newsFilterId === a.id && styles.filterChipTextActive]}>{a.name}</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              )}
               {friendNews.length === 0 ? (
                 <Text style={styles.empty}>Rien de notable chez tes amis pour l’instant.</Text>
+              ) : newsGroups.length === 0 ? (
+                <Text style={styles.empty}>Rien de notable de ce côté-là pour l’instant.</Text>
               ) : (
-                friendNews.map((n: FriendNewsItem) => (
-                  <NewsRow key={n.id} item={n} onPress={() => setOpenNews(n)} />
+                newsGroups.map((g: NewsGroup) => (
+                  <NewsGroupRow key={g.items[0].id} group={g} onOpen={setOpenNews} />
                 ))
               )}
             </View>
