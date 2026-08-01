@@ -23,6 +23,11 @@ export interface TradeOfferItem {
   createdAt: string;
 }
 
+export interface TradeInProgressItem extends TradeOfferItem {
+  myConfirmed: boolean;
+  counterpartyConfirmed: boolean;
+}
+
 const CARD_FIELDS = 'id, name, image_small, image_large, cardmarket_trend_eur';
 
 function toTradeCard(row: any): TradeCard {
@@ -74,6 +79,48 @@ export function usePendingTradeOffers(userId?: string) {
   });
 }
 
+// Accepted offers where the real-world exchange hasn't been confirmed by both
+// sides yet — drives the spinning-Pokéball "in progress" indicator.
+export function useInProgressTradeOffers(userId?: string) {
+  return useQuery({
+    queryKey: ['trade_offers_in_progress', userId],
+    enabled: !!userId,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trade_offers')
+        .select(`
+          id, proposer_id, receiver_id, created_at, proposer_confirmed_at, receiver_confirmed_at,
+          proposer:profiles!trade_offers_proposer_id_fkey(username, display_name),
+          receiver:profiles!trade_offers_receiver_id_fkey(username, display_name),
+          offered:tcg_cards!trade_offers_offered_card_id_fkey(${CARD_FIELDS}),
+          requested:tcg_cards!trade_offers_requested_card_id_fkey(${CARD_FIELDS})
+        `)
+        .eq('status', 'in_progress')
+        .or(`proposer_id.eq.${userId!},receiver_id.eq.${userId!}`)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return (data ?? [])
+        .filter((row: any) => row.offered && row.requested)
+        .map((row: any): TradeInProgressItem => {
+          const outgoing = row.proposer_id === userId;
+          const counterparty = outgoing ? row.receiver : row.proposer;
+          return {
+            id: row.id,
+            direction: outgoing ? 'outgoing' : 'incoming',
+            counterpartyId: outgoing ? row.receiver_id : row.proposer_id,
+            counterpartyName: counterparty?.display_name || counterparty?.username || '?',
+            offeredCard: toTradeCard(row.offered),
+            requestedCard: toTradeCard(row.requested),
+            createdAt: row.created_at,
+            myConfirmed: outgoing ? !!row.proposer_confirmed_at : !!row.receiver_confirmed_at,
+            counterpartyConfirmed: outgoing ? !!row.receiver_confirmed_at : !!row.proposer_confirmed_at,
+          };
+        });
+    },
+  });
+}
+
 export function useProposeTrade() {
   const qc = useQueryClient();
   const { session } = useSession();
@@ -100,6 +147,7 @@ function useInvalidateAfterTrade() {
   const userId = session?.user.id;
   return () => {
     qc.invalidateQueries({ queryKey: ['trade_offers', userId] });
+    qc.invalidateQueries({ queryKey: ['trade_offers_in_progress', userId] });
     qc.invalidateQueries({ queryKey: ['owned_card_quantities', userId] });
     qc.invalidateQueries({ queryKey: ['all_owned_card_ids', userId] });
     qc.invalidateQueries({ queryKey: ['owned_dex_nums', userId] });
@@ -108,6 +156,7 @@ function useInvalidateAfterTrade() {
   };
 }
 
+// Marks the offer in_progress — no cards move yet, see confirm_trade_exchange.
 export function useAcceptTrade() {
   const invalidate = useInvalidateAfterTrade();
   return useMutation({
@@ -117,6 +166,20 @@ export function useAcceptTrade() {
     },
     onSuccess: invalidate,
     onError: () => toast('Cet échange n’est plus disponible.'),
+  });
+}
+
+// Records this side's real-world-exchange confirmation; the swap only
+// actually executes server-side once both sides have called this.
+export function useConfirmTradeExchange() {
+  const invalidate = useInvalidateAfterTrade();
+  return useMutation({
+    mutationFn: async (offerId: string) => {
+      const { error } = await supabase.rpc('confirm_trade_exchange', { p_offer_id: offerId });
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+    onError: () => toast('Impossible de confirmer cet échange, réessaie.'),
   });
 }
 
@@ -223,8 +286,8 @@ export function countMarketMatches(
   return iCanFulfill + friendsHaveWhatIWant;
 }
 
-// Completed (accepted) trades the user took part in either side of — feeds the
-// Dashboard ring and the trade-count badges.
+// Completed trades (both sides confirmed the real-world exchange) the user
+// took part in either side of — feeds the Dashboard ring and trade-count badges.
 export function useCompletedTradesCount(userId?: string) {
   return useQuery({
     queryKey: ['completed_trades_count', userId],
@@ -233,7 +296,7 @@ export function useCompletedTradesCount(userId?: string) {
       const { count, error } = await supabase
         .from('trade_offers')
         .select('id', { count: 'exact', head: true })
-        .eq('status', 'accepted')
+        .eq('status', 'completed')
         .or(`proposer_id.eq.${userId!},receiver_id.eq.${userId!}`);
       if (error) throw error;
       return count ?? 0;

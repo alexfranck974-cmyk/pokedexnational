@@ -1,15 +1,20 @@
+import { useEffect, useRef, useState } from 'react';
 import { Redirect, Tabs, useRouter, usePathname } from 'expo-router';
 import { useSession } from '@/lib/auth';
 import { useIncomingRequests, useFriends } from '@/lib/friends';
 import { useFriendNewsFeed } from '@/lib/friend-news';
-import { usePendingTradeOffers, useFriendsAvailableCards, useFriendsWantedCards, countMarketMatches } from '@/lib/trades';
+import { usePendingTradeOffers, useInProgressTradeOffers, useFriendsAvailableCards, useFriendsWantedCards, countMarketMatches } from '@/lib/trades';
 import { useAllWishedCards, useOwnedCardQuantities } from '@/lib/collection';
 import { useSocialRealtime } from '@/lib/realtime';
-import { Animated, View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { Animated, Easing, View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PokedexDeviceIcon } from '@/components/PokedexDeviceIcon';
 import { FloatingTabBar } from '@/components/FloatingTabBar';
 import { TradeIcon } from '@/components/TradeIcon';
+import { TradeInProgressPopup } from '@/components/TradeInProgressPopup';
+import { Pokeball } from '@/components/Pokeball';
+import { BravoNotificationBanner } from '@/components/BravoNotificationBanner';
+import { useBravoNotifications } from '@/lib/bravo-notifications';
 import { TabBarVisibilityProvider, useTabBarVisibility } from '@/lib/tab-bar-visibility';
 import { withAlpha } from '@/lib/color-utils';
 import { withReturnTo } from '@/lib/navigation';
@@ -43,7 +48,20 @@ function AppLayoutTabs() {
   const { data: friendNews = [] } = useFriendNewsFeed(userId);
   const { data: tradeOffers = [] } = usePendingTradeOffers(userId);
   const incomingTrades = tradeOffers.filter(t => t.direction === 'incoming');
+  const { data: inProgressOffers = [] } = useInProgressTradeOffers(userId);
+  const [openInProgress, setOpenInProgress] = useState<(typeof inProgressOffers)[number] | null>(null);
+  const spin = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (inProgressOffers.length === 0) return;
+    const loop = Animated.loop(
+      Animated.timing(spin, { toValue: 1, duration: 2200, easing: Easing.linear, useNativeDriver: true }),
+    );
+    loop.start();
+    return () => { loop.stop(); spin.setValue(0); };
+  }, [inProgressOffers.length, spin]);
+  const spinDeg = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   useSocialRealtime(userId);
+  const { current: bravoEvent, dismiss: dismissBravo } = useBravoNotifications(userId);
 
   // Market-bubble badge: pending incoming offers + cross-friend duplicate/wishlist
   // matches (same one-directional-per-term logic as the Marché tab's own per-row
@@ -142,6 +160,24 @@ function AppLayoutTabs() {
           )}
         </Pressable>
       </Animated.View>
+      {inProgressOffers.length > 0 && (
+        <Animated.View style={[styles.inProgressFabWrap, { transform: [{ translateY }] }]}>
+          <Pressable
+            onPress={() => setOpenInProgress(inProgressOffers[0])}
+            style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}>
+            <Animated.View style={{ transform: [{ rotate: spinDeg }] }}>
+              <Pokeball size={22} />
+            </Animated.View>
+            {inProgressOffers.length > 1 && (
+              <View style={[styles.tradeBadge, { borderColor: colors.surface }]}>
+                <Text style={styles.tradeBadgeText}>{inProgressOffers.length}</Text>
+              </View>
+            )}
+          </Pressable>
+        </Animated.View>
+      )}
+      <TradeInProgressPopup item={openInProgress} onClose={() => setOpenInProgress(null)} />
+      <BravoNotificationBanner event={bravoEvent} onDone={dismissBravo} />
     </View>
   );
 }
@@ -158,6 +194,9 @@ const styles = StyleSheet.create({
   },
   tradeFabWrap: {
     position: 'absolute', left: BAR_SIDE_INSET, bottom: BAR_BOTTOM_OFFSET + BAR_HEIGHT + spacing.sm,
+  },
+  inProgressFabWrap: {
+    position: 'absolute', left: BAR_SIDE_INSET, bottom: BAR_BOTTOM_OFFSET + BAR_HEIGHT + spacing.sm + 44 + spacing.sm,
   },
   settingsFab: {
     width: 44, height: 44, borderRadius: radius.pill,

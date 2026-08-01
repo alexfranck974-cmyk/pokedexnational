@@ -25,6 +25,7 @@ export function useSocialRealtime(userId?: string) {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'trade_offers' }, () => {
         qc.invalidateQueries({ queryKey: ['trade_offers', userId] });
+        qc.invalidateQueries({ queryKey: ['trade_offers_in_progress', userId] });
         qc.invalidateQueries({ queryKey: ['completed_trades_count', userId] });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => {

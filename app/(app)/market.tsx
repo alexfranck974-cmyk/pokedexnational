@@ -7,12 +7,14 @@ import { useSession } from '@/lib/auth';
 import { useFriends, type FriendProfile } from '@/lib/friends';
 import { useOwnedCardQuantities } from '@/lib/collection';
 import {
-  usePendingTradeOffers, useFriendsAvailableCards, useFriendsWantedCards,
-  type TradeOfferItem, type FriendCardListing,
+  usePendingTradeOffers, useInProgressTradeOffers, useFriendsAvailableCards, useFriendsWantedCards,
+  type TradeOfferItem, type TradeInProgressItem, type FriendCardListing,
 } from '@/lib/trades';
 import { TradeProposalModal, type TradeTarget, type PickedCard } from '@/components/TradeProposalModal';
 import { TradeOfferPopup } from '@/components/TradeOfferPopup';
+import { TradeInProgressPopup } from '@/components/TradeInProgressPopup';
 import { TradeIcon } from '@/components/TradeIcon';
+import { Pokeball } from '@/components/Pokeball';
 import { RefreshButton } from '@/components/RefreshButton';
 import { IconBubble } from '@/components/IconBubble';
 import { useBackTo } from '@/lib/navigation';
@@ -59,7 +61,9 @@ export default function MarketScreen() {
     [myQuantities],
   );
   const { data: tradeOffers = [] } = usePendingTradeOffers(userId);
+  const { data: inProgressOffers = [] } = useInProgressTradeOffers(userId);
   const [openTrade, setOpenTrade] = useState<TradeOfferItem | null>(null);
+  const [openInProgress, setOpenInProgress] = useState<TradeInProgressItem | null>(null);
   const [tradeTarget, setTradeTarget] = useState<TradeTarget | null>(null);
   const [tradePreset, setTradePreset] = useState<{ offered?: PickedCard; requested?: PickedCard }>({});
 
@@ -144,6 +148,36 @@ export default function MarketScreen() {
               </View>
             )}
 
+            {inProgressOffers.length > 0 && (
+              <View style={styles.list}>
+                <View style={styles.sectionTitleRow}>
+                  <IconBubble size={26} color={colors.primarySoft}>
+                    <Pokeball size={15} />
+                  </IconBubble>
+                  <Text style={styles.sectionTitle}>Échanges en cours</Text>
+                  <Text style={styles.sectionCount}>{inProgressOffers.length}</Text>
+                </View>
+                <Text style={styles.marketHint}>Échangez les cartes en vrai, puis confirmez ici tous les deux.</Text>
+                {inProgressOffers.map((t: TradeInProgressItem) => (
+                  <Pressable key={t.id} onPress={() => setOpenInProgress(t)} style={styles.row}>
+                    <Avatar name={t.counterpartyName} />
+                    <View style={styles.rowInfo}>
+                      <Text style={styles.newsText}>
+                        Échange avec <Text style={styles.newsTextBold}>{t.counterpartyName}</Text>
+                      </Text>
+                      <Text style={styles.marketNoteText}>
+                        {t.myConfirmed ? `En attente de ${t.counterpartyName}` : 'À confirmer de ton côté'}
+                      </Text>
+                    </View>
+                    <Image
+                      source={{ uri: t.direction === 'incoming' ? t.offeredCard.imageSmall : t.requestedCard.imageSmall }}
+                      style={styles.newsThumb} resizeMode="contain"
+                    />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
             <View style={styles.list}>
               <View style={styles.sectionTitleRow}>
                 <IconBubble size={26} color={colors.primarySoft}>
@@ -218,6 +252,7 @@ export default function MarketScreen() {
         initialRequested={tradePreset.requested}
       />
       <TradeOfferPopup item={openTrade} onClose={() => setOpenTrade(null)} />
+      <TradeInProgressPopup item={openInProgress} onClose={() => setOpenInProgress(null)} />
     </SafeAreaView>
   );
 }

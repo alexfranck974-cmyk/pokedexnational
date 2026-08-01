@@ -55,7 +55,7 @@ export function TradeOfferPopup({ item, onClose }: Props) {
     if (!item || !receive) return;
     setConfirmingAccept(false);
     accept.mutate(item.id, {
-      onSuccess: () => { toast(`Échange réalisé — tu as maintenant ${receive.name} !`); onClose(); },
+      onSuccess: () => { toast('Échange accepté — retrouve-le dans « Échanges en cours » une fois les cartes échangées en vrai.'); onClose(); },
     });
   };
   const doDecline = () => {
@@ -68,7 +68,10 @@ export function TradeOfferPopup({ item, onClose }: Props) {
   };
 
   const confirmTarget: ConfirmTarget | null = confirmingAccept && give && receive
-    ? { title: 'Confirmer l’échange', message: `Tu donnes ${give.name} et tu reçois ${receive.name}. Cette action est immédiate et définitive.` }
+    ? {
+        title: 'Accepter l’échange',
+        message: `Tu donnes ${give.name} et tu reçois ${receive.name}. Une fois les cartes échangées en vrai, vous devrez tous les deux le confirmer pour que ça devienne définitif.`,
+      }
     : null;
 
   return (
@@ -138,7 +141,7 @@ export function TradeOfferPopup({ item, onClose }: Props) {
       )}
       <ConfirmDialog
         target={confirmTarget}
-        confirmLabel="Confirmer"
+        confirmLabel="Accepter"
         tone="primary"
         onConfirm={doAccept}
         onCancel={() => setConfirmingAccept(false)}
