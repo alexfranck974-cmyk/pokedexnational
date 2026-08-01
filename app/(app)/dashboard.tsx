@@ -11,19 +11,16 @@ import { useShowcase } from '@/lib/favorites';
 import { useSetGoals } from '@/lib/collection-goals';
 import { useTcgSets } from '@/lib/tcg-index';
 import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
-import { topByValue, totalCollectionValue, computeByGeneration, computeSetGoalsProgress, averageProgress } from '@/lib/dashboard-stats';
-import { buildEvolutionFamilies } from '@/lib/evolutions';
+import { totalCollectionValue, computeSetGoalsProgress, averageProgress } from '@/lib/dashboard-stats';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
-import { suggestEvolutionGaps, suggestBinderPages, suggestByGeneration, suggestDexUpgrades } from '@/lib/suggestions';
 import { PokedexHeroCard } from '@/components/PokedexHeroCard';
 import { BadgesSection } from '@/components/BadgesSection';
-import { SuggestionsModal } from '@/components/SuggestionsModal';
 import { VitrineCarousel } from '@/components/VitrineCarousel';
 import { CardZoomModal } from '@/components/CardZoomModal';
 import { RingMenuItem } from '@/components/RingMenuItem';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
-import { TradeHubModal } from '@/components/TradeHubModal';
+import { TradeHistoryModal } from '@/components/TradeHistoryModal';
 import { RefreshButton } from '@/components/RefreshButton';
 import { useCompletedTradesCount } from '@/lib/trades';
 import { useTheme, useThemedStyles, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
@@ -37,9 +34,7 @@ import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 const COLLECTION_ROW_HEIGHT = 130;
 
 const POKEDEX = pokedexData as Pokemon[];
-const EVOLUTION_FAMILIES = buildEvolutionFamilies(POKEDEX);
 const eurFormatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
-const SUGGESTIONS_TINT = '#f472b6';
 const OBJECTIVES_TINT = '#38bdf8';
 const TRADE_TINT = '#2dd4bf';
 const CARDS_TINT = '#a78bfa';
@@ -61,8 +56,7 @@ export default function DashboardScreen() {
     [ownedQuantities],
   );
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
-  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
-  const [tradeHubOpen, setTradeHubOpen] = useState(false);
+  const [tradeHistoryOpen, setTradeHistoryOpen] = useState(false);
   const { data: completedTradesCount = 0 } = useCompletedTradesCount(userId);
   const { data: goals = [] } = useSetGoals(userId);
   const { data: allSets = [] } = useTcgSets();
@@ -89,32 +83,10 @@ export default function DashboardScreen() {
     }).start();
   };
 
-  const byGeneration = useMemo(() => computeByGeneration(POKEDEX, owned), [owned]);
   const wishedCardIds = useMemo(() => new Set(wishedCards.map((c: { id: string }) => c.id)), [wishedCards]);
   const collectionValue = useMemo(() => totalCollectionValue(ownedCards), [ownedCards]);
-  const mostValuable = useMemo(() => topByValue(ownedCards, 6), [ownedCards]);
-
-  const evolutionSuggestions = useMemo(
-    () => suggestEvolutionGaps(POKEDEX, owned, EVOLUTION_FAMILIES),
-    [owned],
-  );
-  const binderSuggestions = useMemo(() => suggestBinderPages(POKEDEX, owned, 16), [owned]);
-  const generationSuggestions = useMemo(
-    () => suggestByGeneration(byGeneration, POKEDEX, owned),
-    [byGeneration, owned],
-  );
   const [zoomIndex, setZoomIndex] = useState<number | null>(null);
   const ownedCardsByDex = useMemo(() => new Map(ownedCards.map(c => [c.dexNum, c])), [ownedCards]);
-  const dexCardIdByDex = useMemo(
-    () => new Map(Array.from(ownedCardsByDex.entries()).map(([num, c]) => [num, c.cardId])),
-    [ownedCardsByDex],
-  );
-  const dexUpgradeSuggestions = useMemo(
-    () => suggestDexUpgrades(POKEDEX, ledgerCards, dexCardIdByDex),
-    [ledgerCards, dexCardIdByDex],
-  );
-  const totalSuggestions = evolutionSuggestions.length + binderSuggestions.length
-    + generationSuggestions.length + dexUpgradeSuggestions.length + mostValuable.length;
   const vitrineCards = useMemo(() => Array.from(showcase)
     .map(dexNum => ownedCardsByDex.get(dexNum))
     .filter((c): c is NonNullable<typeof c> => !!c)
@@ -143,13 +115,18 @@ export default function DashboardScreen() {
     // on wide desktop viewports instead of the rings drifting apart with the
     // container — nothing in this app caps screen width, so this row has to
     // hold its own shape regardless of how wide the page gets.
-    // Gap trimmed from the original 3-item spacing (spacing.xl*1.5) now that a
-    // 4th ring joined the cluster, so it still fits at 390px without wrapping.
-    nebula: { flexDirection: 'row' as const, justifyContent: 'center' as const, alignItems: 'flex-start' as const, gap: spacing.xl },
+    // flexWrap is a safety net, not the primary fix — at 4 rings x 64px this
+    // still fits one row down to ~320px width, but wrapping beats letting a
+    // ring get clipped off-screen if it ever doesn't (bigger font scale, an
+    // extra ring added later, etc). rowGap/columnGap so a wrapped 2nd row
+    // doesn't lose the horizontal gap that `gap` would otherwise apply to both axes.
+    nebula: {
+      flexDirection: 'row' as const, flexWrap: 'wrap' as const, justifyContent: 'center' as const,
+      alignItems: 'flex-start' as const, rowGap: spacing.lg, columnGap: spacing.lg,
+    },
     nebulaItemMid: { marginTop: 26 },
     nebulaItemThird: { marginTop: 10 },
-    nebulaItemFourth: { marginTop: 32 },
-    nebulaItemLast: { marginTop: 18 },
+    nebulaItemLast: { marginTop: 22 },
     addBadge: {
       position: 'absolute' as const, bottom: -2, right: -2, width: 22, height: 22, borderRadius: 11,
       backgroundColor: colors.primary, alignItems: 'center' as const, justifyContent: 'center' as const,
@@ -202,16 +179,7 @@ export default function DashboardScreen() {
               centerLabel={String(completedTradesCount)}
               centerSub="échanges"
               label="Échanges"
-              onPress={() => setTradeHubOpen(true)}
-            />
-          </View>
-          <View style={styles.nebulaItemFourth}>
-            <RingMenuItem
-              tint={SUGGESTIONS_TINT}
-              centerLabel={String(totalSuggestions)}
-              centerSub="idées"
-              label="Achats"
-              onPress={() => setSuggestionsOpen(true)}
+              onPress={() => setTradeHistoryOpen(true)}
             />
           </View>
           <View style={styles.nebulaItemLast}>
@@ -254,18 +222,7 @@ export default function DashboardScreen() {
         onSwipePrev={() => setZoomIndex(i => i === null ? null : (i - 1 + vitrineCards.length) % vitrineCards.length)}
       />
       <SetGoalPicker visible={goalPickerOpen} pinnedSetIds={pinnedSetIds} tint={OBJECTIVES_TINT} onClose={() => setGoalPickerOpen(false)} />
-      <TradeHubModal userId={userId} visible={tradeHubOpen} onClose={() => setTradeHubOpen(false)} />
-      <SuggestionsModal
-        visible={suggestionsOpen}
-        tint={SUGGESTIONS_TINT}
-        onClose={() => setSuggestionsOpen(false)}
-        evolutionSuggestions={evolutionSuggestions}
-        binderSuggestions={binderSuggestions}
-        generationSuggestions={generationSuggestions}
-        dexUpgradeSuggestions={dexUpgradeSuggestions}
-        mostValuable={mostValuable}
-        onSelectPokemon={(dexNum) => enterPokemonDetail(router, `/pokemon/${dexNum}`, '/dashboard')}
-      />
+      <TradeHistoryModal userId={userId} visible={tradeHistoryOpen} onClose={() => setTradeHistoryOpen(false)} />
     </SafeAreaView>
   );
 }

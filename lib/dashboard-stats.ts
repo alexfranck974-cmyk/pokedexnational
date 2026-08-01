@@ -74,13 +74,6 @@ export function computeVariantProgress(
   return result;
 }
 
-export function topByValue(ownedCards: OwnedCardDetail[], limit: number): OwnedCardDetail[] {
-  return ownedCards
-    .filter(c => c.cardmarketTrendEur !== null)
-    .sort((a, b) => (b.cardmarketTrendEur ?? 0) - (a.cardmarketTrendEur ?? 0))
-    .slice(0, limit);
-}
-
 export function totalCollectionValue(ownedCards: OwnedCardDetail[]): number {
   return ownedCards.reduce((sum, c) => sum + (c.cardmarketTrendEur ?? 0), 0);
 }

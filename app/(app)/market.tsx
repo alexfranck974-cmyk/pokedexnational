@@ -56,10 +56,6 @@ export default function MarketScreen() {
   const { data: availableCards = [] } = useFriendsAvailableCards(friendIdsArr);
   const { data: wantedCards = [] } = useFriendsWantedCards(friendIdsArr);
   const { data: myQuantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
-  const myDuplicateIds = useMemo(
-    () => new Set([...myQuantities.entries()].filter(([, q]) => q >= 2).map(([id]) => id)),
-    [myQuantities],
-  );
   const { data: tradeOffers = [] } = usePendingTradeOffers(userId);
   const { data: inProgressOffers = [] } = useInProgressTradeOffers(userId);
   const [openTrade, setOpenTrade] = useState<TradeOfferItem | null>(null);
@@ -215,12 +211,17 @@ export default function MarketScreen() {
                 <Text style={styles.sectionTitle}>Recherché par tes amis</Text>
                 <Text style={styles.sectionCount}>{wantedCards.length}</Text>
               </View>
-              <Text style={styles.marketHint}>Cartes dans la wishlist de tes amis — offre un de tes doublons.</Text>
+              <Text style={styles.marketHint}>Cartes dans la wishlist de tes amis — propose un échange, doublon ou pas.</Text>
               {wantedCards.length === 0 ? (
                 <Text style={styles.marketEmpty}>Tes amis n’ont rien en wishlist pour l’instant.</Text>
               ) : (
                 wantedCards.map((w: FriendCardListing, i: number) => {
-                  const canFulfill = myDuplicateIds.has(w.card.id);
+                  // Manual proposals work from a single unique copy — only the
+                  // automatic suggestion badge/popup (see countMarketMatches,
+                  // _layout.tsx) stays duplicate-gated, so it doesn't nag about
+                  // giving away your only copy of something.
+                  const canFulfill = (myQuantities.get(w.card.id) ?? 0) >= 1;
+                  const isDuplicate = (myQuantities.get(w.card.id) ?? 0) >= 2;
                   return (
                     <Pressable
                       key={`${w.friendId}-${w.card.id}-${i}`}
@@ -234,7 +235,8 @@ export default function MarketScreen() {
                         <Text style={styles.newsText}>
                           <Text style={styles.newsTextBold}>{w.friendName}</Text> recherche {w.card.name}
                         </Text>
-                        {!canFulfill && <Text style={styles.marketNoteText}>Tu n’as pas de doublon de cette carte</Text>}
+                        {!canFulfill && <Text style={styles.marketNoteText}>Tu ne possèdes pas cette carte</Text>}
+                        {canFulfill && !isDuplicate && <Text style={styles.marketNoteText}>Ta seule copie — tu ne l’auras plus après l’échange</Text>}
                       </View>
                       <Image source={{ uri: w.card.imageSmall }} style={styles.newsThumb} resizeMode="contain" />
                     </Pressable>

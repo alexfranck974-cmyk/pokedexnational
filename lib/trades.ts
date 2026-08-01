@@ -28,6 +28,14 @@ export interface TradeInProgressItem extends TradeOfferItem {
   counterpartyConfirmed: boolean;
 }
 
+export interface CompletedTradeItem {
+  id: string;
+  counterpartyName: string;
+  gaveCard: TradeCard;
+  receivedCard: TradeCard;
+  completedAt: string;
+}
+
 const CARD_FIELDS = 'id, name, image_small, image_large, cardmarket_trend_eur';
 
 function toTradeCard(row: any): TradeCard {
@@ -300,6 +308,44 @@ export function useCompletedTradesCount(userId?: string) {
         .or(`proposer_id.eq.${userId!},receiver_id.eq.${userId!}`);
       if (error) throw error;
       return count ?? 0;
+    },
+  });
+}
+
+// Full completed-trade history for the Dashboard "Échanges" ring — most
+// recent first, framed from the viewer's side (gaveCard/receivedCard rather
+// than offered/requested, which are proposer/receiver-relative in storage).
+export function useCompletedTradeOffers(userId?: string) {
+  return useQuery({
+    queryKey: ['completed_trade_offers', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trade_offers')
+        .select(`
+          id, proposer_id, receiver_id, completed_at,
+          proposer:profiles!trade_offers_proposer_id_fkey(username, display_name),
+          receiver:profiles!trade_offers_receiver_id_fkey(username, display_name),
+          offered:tcg_cards!trade_offers_offered_card_id_fkey(${CARD_FIELDS}),
+          requested:tcg_cards!trade_offers_requested_card_id_fkey(${CARD_FIELDS})
+        `)
+        .eq('status', 'completed')
+        .or(`proposer_id.eq.${userId!},receiver_id.eq.${userId!}`)
+        .order('completed_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? [])
+        .filter((row: any) => row.offered && row.requested)
+        .map((row: any): CompletedTradeItem => {
+          const wasProposer = row.proposer_id === userId;
+          const counterparty = wasProposer ? row.receiver : row.proposer;
+          return {
+            id: row.id,
+            counterpartyName: counterparty?.display_name || counterparty?.username || '?',
+            gaveCard: toTradeCard(wasProposer ? row.offered : row.requested),
+            receivedCard: toTradeCard(wasProposer ? row.requested : row.offered),
+            completedAt: row.completed_at,
+          };
+        });
     },
   });
 }
