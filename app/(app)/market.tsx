@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, Image, Pressable, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, Image, Pressable, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -111,14 +111,11 @@ export default function MarketScreen() {
         <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
       </LinearGradient>
 
-      <FlatList
-        data={[1]}
-        keyExtractor={() => 'body'}
+      <ScrollView
         contentContainerStyle={styles.body}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-        {...hideOnScrollProps}
-        renderItem={() => (
-          <>
+        {...hideOnScrollProps}>
+        <>
             {tradeOffers.length > 0 && (
               <View style={styles.list}>
                 <View style={styles.sectionTitleRow}>
@@ -211,9 +208,8 @@ export default function MarketScreen() {
                 })
               )}
             </View>
-          </>
-        )}
-      />
+        </>
+      </ScrollView>
 
       <TradeProposalModal
         target={tradeTarget}

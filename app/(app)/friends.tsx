@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TextInput, Image, Pressable, FlatList, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
+import { View, Text, TextInput, Image, Pressable, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -186,14 +186,11 @@ export default function FriendsScreen() {
         )}
       </View>
 
-      <FlatList
-        data={[1]}
-        keyExtractor={() => 'body'}
+      <ScrollView
         contentContainerStyle={styles.body}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-        {...hideOnScrollProps}
-        renderItem={() => (
-          <>
+        {...hideOnScrollProps}>
+        <>
             {incoming.length > 0 && (
               <View style={styles.list}>
                 <View style={styles.sectionTitleRow}>
@@ -296,9 +293,8 @@ export default function FriendsScreen() {
                 ))
               )}
             </View>
-          </>
-        )}
-      />
+        </>
+      </ScrollView>
 
       <ConfirmDialog
         target={confirmTarget}
