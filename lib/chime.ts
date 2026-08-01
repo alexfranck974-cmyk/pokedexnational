@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-export type ChimeKind = 'type' | 'holo' | 'chase';
+export type ChimeKind = 'type' | 'holo' | 'chase' | 'dex';
 
 // Synthesized in-browser via the Web Audio API — no audio asset to source/ship,
 // and it keeps the effect purely web-only like other web-enhancement patterns in
@@ -55,6 +55,10 @@ export function playChime(kind: ChimeKind) {
     // "captured" without being loud on a fairly common tier.
     tone(context, 783.99, now, 0.12, 0.05);        // G5
     tone(context, 1046.5, now + 0.08, 0.22, 0.06); // C6
+  } else if (kind === 'dex') {
+    // Full fanfare shape, slightly softer/faster than 'type' — a new National
+    // Dex entry is a real moment but shouldn't out-shout a type-completion.
+    captureFanfare(context, now, 0.9, 0.85);
   } else if (kind === 'type') {
     captureFanfare(context, now, 1, 1);
   } else {

@@ -30,7 +30,6 @@ const REGIONS: { id: 'global' | 'jp' | 'cn'; label: string; emoji: string }[] = 
 export default function PokemonDetail() {
   const { num: numStr, wishes, from } = useLocalSearchParams<{ num: string; wishes?: string; from?: string }>();
   const router = useRouter();
-  const goBack = useBackTo('/pokedex');
   const num = parseInt(numStr as string, 10);
   const p = POKEDEX.find(x => x.num === num);
   const { session } = useSession();
@@ -52,6 +51,12 @@ export default function PokemonDetail() {
   const [onlyWishes, setOnlyWishes] = useState(wishes === '1');
   const [zoomCard, setZoomCard] = useState<TcgCardRow | null>(null);
   const [pendingCard, setPendingCard] = useState<TcgCardRow | null>(null);
+  // Set only when this dex_num had no official card before this visit and just
+  // got one — a genuinely new National Dex entry, not swapping an already-owned
+  // Pokémon's chosen printing. Carried through the back navigation so pokedex.tsx
+  // can play the "new card" celebration on arrival (see lib/navigation.ts).
+  const [justCapturedDex, setJustCapturedDex] = useState<number | null>(null);
+  const goBack = useBackTo('/pokedex', justCapturedDex != null ? { newCard: String(justCapturedDex) } : undefined);
 
   // Prev/next reuses this same route (router.replace), so reset per-Pokémon transient
   // filters/state on num change — viewMode is kept as a persistent user preference.
@@ -60,6 +65,7 @@ export default function PokemonDetail() {
     setOnlyWishes(wishes === '1');
     setZoomCard(null);
     setPendingCard(null);
+    setJustCapturedDex(null);
   }, [num]);
 
   // Sets differ per region — clear the set filter when switching region to avoid a
@@ -271,7 +277,11 @@ export default function PokemonDetail() {
         tone="primary"
         onConfirm={() => {
           if (pendingCard) {
-            toggle.mutate({ cardId: pendingCard.id, currentlyOwned: false, dexNum: num, imageSmall: pendingCard.image_small, rarity: pendingCard.rarity });
+            const isNewDexEntry = officialSet.size === 0;
+            toggle.mutate(
+              { cardId: pendingCard.id, currentlyOwned: false, dexNum: num, imageSmall: pendingCard.image_small, rarity: pendingCard.rarity },
+              { onSuccess: () => { if (isNewDexEntry) setJustCapturedDex(num); } },
+            );
           }
           setPendingCard(null);
         }}

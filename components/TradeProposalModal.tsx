@@ -8,6 +8,7 @@ import {
 import { useProposeTrade, eurFormatter } from '@/lib/trades';
 import { TradeIcon } from './TradeIcon';
 import { BubbleSheet } from './BubbleSheet';
+import { toast } from '@/lib/toast';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 export interface TradeTarget {
@@ -190,7 +191,7 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
               if (!target || !offeredCard || !requestedCard) return;
               proposeTrade.mutate(
                 { receiverId: target.id, offeredCardId: offeredCard.cardId, requestedCardId: requestedCard.cardId },
-                { onSuccess: onClose },
+                { onSuccess: () => { toast(`Proposition envoyée à ${target.displayName} !`); onClose(); } },
               );
             }}
             disabled={proposeTrade.isPending}

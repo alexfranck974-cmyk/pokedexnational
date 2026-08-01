@@ -1,20 +1,29 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { TYPE_COLORS } from '@/lib/types-colors';
+import { TYPE_COLORS, TYPE_LABEL_FR } from '@/lib/types-colors';
 import { tcgTypeLabelFr, tcgTypeAsPokemonType } from '@/lib/tcg-types';
+import type { PokemonType } from '@/lib/types';
 import { TypeIcon } from './TypeIcon';
 import { RarityBurstCard } from './RarityBurstCard';
-import { playChime } from '@/lib/chime';
+import { playChime, type ChimeKind } from '@/lib/chime';
 import { fonts } from '@/lib/theme';
 import { CHASE_GOLD } from '@/lib/rarity-tiers';
 import { useMotion } from '@/lib/motion';
 
 export type CaptureEvent =
   // `type` is the TCG card's own printed energy type (e.g. "Water", "Colorless"),
-  // not a video-game PokemonType — see lib/tcg-types.ts.
+  // not a video-game PokemonType — see lib/tcg-types.ts. Fires for completing a
+  // type within one TCG set (lib/set-type-completion.ts).
   | { id: string; kind: 'type'; type: string }
-  | { id: string; kind: 'rarity'; tier: 'holo' | 'chase'; rarityLabel: string; imageSmall: string };
+  | { id: string; kind: 'rarity'; tier: 'holo' | 'chase'; rarityLabel: string; imageSmall: string }
+  // A card was just chosen as a Pokémon's official National Dex representative
+  // — fires on return to the Pokédex grid, not immediately (see pokedex.tsx).
+  | { id: string; kind: 'dex'; pokemonName: string; imageSmall: string }
+  // National-Dex-wide milestone for a video-game PokemonType (2nd, 5th, 10th...
+  // owned overall) — see lib/type-milestones.ts. Distinct from `type` above,
+  // which is set-scoped completion, not a running national count.
+  | { id: string; kind: 'typeMilestone'; type: PokemonType; count: number };
 
 interface Props {
   event: CaptureEvent | null;
@@ -36,6 +45,9 @@ const CARD_ZOOM_WIDTH = 138;
 const CARD_ZOOM_HEIGHT = CARD_ZOOM_WIDTH / CARD_RATIO;
 
 const NEUTRAL = '#9ca3af';
+// Distinct from CHASE_GOLD (rare pull) — this is "added to the dex," a
+// different kind of good news, so it shouldn't read as a rarity signal.
+const DEX_BLUE = '#3b82f6';
 
 export function CaptureEffect({ event, onDone }: Props) {
   const { animationsEnabled } = useMotion();
@@ -59,11 +71,15 @@ export function CaptureEffect({ event, onDone }: Props) {
       appear.setValue(0);
       sparkle.setValue(0);
       Animated.spring(appear, { toValue: 1, useNativeDriver: true, friction: 7, tension: 90 }).start();
-      const showBurst = event.kind === 'type' || (event.kind === 'rarity' && event.tier === 'chase');
-      if (showBurst) Animated.timing(sparkle, { toValue: 1, duration: 900, delay: 100, useNativeDriver: true }).start();
+      // Every remaining kind past the holo-banner early-return wants the burst.
+      Animated.timing(sparkle, { toValue: 1, duration: 900, delay: 100, useNativeDriver: true }).start();
     }
 
-    playChime(event.kind === 'type' ? 'type' : event.tier);
+    const chimeKind: ChimeKind = event.kind === 'type' ? 'type'
+      : event.kind === 'dex' ? 'dex'
+      : event.kind === 'typeMilestone' ? 'holo'
+      : event.tier;
+    playChime(chimeKind);
 
     const holdMs = event.kind === 'rarity' && event.tier === 'holo' ? 1300 : 2300;
     const timer = setTimeout(() => {
@@ -109,17 +125,31 @@ export function CaptureEffect({ event, onDone }: Props) {
   }
 
   const isType = event.kind === 'type';
+  const isDex = event.kind === 'dex';
+  const isTypeMilestone = event.kind === 'typeMilestone';
   const isChase = event.kind === 'rarity' && event.tier === 'chase';
+  // Card-zoom treatment (RarityBurstCard) for anything with an actual card
+  // image; the circular icon badge for the two type-based celebrations.
+  const isCardZoom = isDex || event.kind === 'rarity';
   // "Colorless" has no video-game type equivalent — falls back to a neutral tint/icon.
-  const pokemonType = isType ? tcgTypeAsPokemonType(event.type) : undefined;
-  const accent = isType ? (pokemonType ? TYPE_COLORS[pokemonType] : NEUTRAL) : CHASE_GOLD;
-  const title = isType ? `Type ${tcgTypeLabelFr(event.type)} complet !` : `✨ ${event.rarityLabel} !`;
-  const subtitle = isType
-    ? `Tous les Pokémon de type ${tcgTypeLabelFr(event.type)} sont capturés dans ce set`
+  const pokemonType = isType ? tcgTypeAsPokemonType(event.type) : isTypeMilestone ? event.type : undefined;
+  const accent = isTypeMilestone
+    ? TYPE_COLORS[event.type]
+    : isType ? (pokemonType ? TYPE_COLORS[pokemonType] : NEUTRAL)
+    : isDex ? DEX_BLUE
+    : CHASE_GOLD;
+  const title = isType ? `Type ${tcgTypeLabelFr(event.type)} complet !`
+    : isTypeMilestone ? `${event.count} Pokémon de type ${TYPE_LABEL_FR[event.type]} capturés !`
+    : isDex ? 'Nouvelle carte ajoutée au Pokédex !'
+    : `✨ ${event.rarityLabel} !`;
+  const subtitle = isType ? `Tous les Pokémon de type ${tcgTypeLabelFr(event.type)} sont capturés dans ce set`
+    : isTypeMilestone ? 'Continue comme ça !'
+    : isDex ? event.pokemonName
     : 'Une pépite pour ta collection';
-  // The chase-tier card zoom is bigger than the circular type badge, so
+  const imageUri = isDex ? event.imageSmall : event.kind === 'rarity' ? event.imageSmall : null;
+  // The card-zoom treatment is bigger than the circular type badge, so
   // particles need a wider radius to clear its edges instead of overlapping it.
-  const particleScale = isChase ? 1.7 : 1;
+  const particleScale = isChase || isDex ? 1.7 : 1;
 
   return (
     <View style={styles.overlay} pointerEvents="box-none">
@@ -127,9 +157,9 @@ export function CaptureEffect({ event, onDone }: Props) {
         style={[styles.backdrop, { opacity: appear.interpolate({ inputRange: [0, 1], outputRange: [0, 0.45] }) }]}
       />
       <Pressable style={styles.center} onPress={dismiss}>
-        <View style={[styles.burstWrap, isChase && styles.burstWrapChase]}>
-          {event.kind === 'rarity' ? (
-            <RarityBurstCard imageUri={event.imageSmall} accent={accent} appear={appear} sparkle={sparkle} particleScale={particleScale} />
+        <View style={[styles.burstWrap, (isChase || isDex) && styles.burstWrapChase]}>
+          {isCardZoom && imageUri ? (
+            <RarityBurstCard imageUri={imageUri} accent={accent} appear={appear} sparkle={sparkle} particleScale={particleScale} />
           ) : (
             <>
               {PARTICLES.map((p, i) => {

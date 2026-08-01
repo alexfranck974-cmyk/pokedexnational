@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { View, Text, Image, Pressable } from 'react-native';
 import { type TradeOfferItem, useAcceptTrade, useDeclineTrade, useCancelTrade, eurFormatter } from '@/lib/trades';
 import { TradeIcon } from './TradeIcon';
 import { BubbleSheet } from './BubbleSheet';
+import { ConfirmDialog, type ConfirmTarget } from './ConfirmDialog';
+import { toast } from '@/lib/toast';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 interface Props {
@@ -15,6 +18,7 @@ export function TradeOfferPopup({ item, onClose }: Props) {
   const accept = useAcceptTrade();
   const decline = useDeclineTrade();
   const cancel = useCancelTrade();
+  const [confirmingAccept, setConfirmingAccept] = useState(false);
 
   const styles = useThemedStyles((colors, shadow) => ({
     body: { alignItems: 'center' as const, padding: spacing.lg, gap: spacing.md },
@@ -46,6 +50,26 @@ export function TradeOfferPopup({ item, onClose }: Props) {
   // proposer's side in storage, so flip the labels when viewing an incoming offer.
   const give = item ? (incoming ? item.requestedCard : item.offeredCard) : null;
   const receive = item ? (incoming ? item.offeredCard : item.requestedCard) : null;
+
+  const doAccept = () => {
+    if (!item || !receive) return;
+    setConfirmingAccept(false);
+    accept.mutate(item.id, {
+      onSuccess: () => { toast(`Échange réalisé — tu as maintenant ${receive.name} !`); onClose(); },
+    });
+  };
+  const doDecline = () => {
+    if (!item) return;
+    decline.mutate(item.id, { onSuccess: () => { toast('Offre refusée.'); onClose(); } });
+  };
+  const doCancel = () => {
+    if (!item) return;
+    cancel.mutate(item.id, { onSuccess: () => { toast('Offre annulée.'); onClose(); } });
+  };
+
+  const confirmTarget: ConfirmTarget | null = confirmingAccept && give && receive
+    ? { title: 'Confirmer l’échange', message: `Tu donnes ${give.name} et tu reçois ${receive.name}. Cette action est immédiate et définitive.` }
+    : null;
 
   return (
     <BubbleSheet
@@ -89,13 +113,13 @@ export function TradeOfferPopup({ item, onClose }: Props) {
           {incoming ? (
             <>
               <Pressable
-                onPress={() => accept.mutate(item.id, { onSuccess: onClose })}
+                onPress={() => setConfirmingAccept(true)}
                 disabled={accept.isPending}
                 style={[styles.btn, styles.btnAccept]}>
                 <Text style={styles.btnText}>{accept.isPending ? '…' : 'Accepter'}</Text>
               </Pressable>
               <Pressable
-                onPress={() => decline.mutate(item.id, { onSuccess: onClose })}
+                onPress={doDecline}
                 disabled={decline.isPending}
                 style={[styles.btn, styles.btnDecline]}>
                 <Text style={styles.btnTextDecline}>Refuser</Text>
@@ -103,7 +127,7 @@ export function TradeOfferPopup({ item, onClose }: Props) {
             </>
           ) : (
             <Pressable
-              onPress={() => cancel.mutate(item.id, { onSuccess: onClose })}
+              onPress={doCancel}
               disabled={cancel.isPending}
               style={[styles.btn, styles.btnDecline]}>
               <Text style={styles.btnTextDecline}>{cancel.isPending ? '…' : 'Annuler l’offre'}</Text>
@@ -112,6 +136,13 @@ export function TradeOfferPopup({ item, onClose }: Props) {
         </View>
       </View>
       )}
+      <ConfirmDialog
+        target={confirmTarget}
+        confirmLabel="Confirmer"
+        tone="primary"
+        onConfirm={doAccept}
+        onCancel={() => setConfirmingAccept(false)}
+      />
     </BubbleSheet>
   );
 }

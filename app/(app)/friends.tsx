@@ -22,6 +22,7 @@ import { QRCodeModal } from '@/components/QRCodeModal';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
+import { withReturnTo } from '@/lib/navigation';
 
 function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   const { colors } = useTheme();
@@ -256,7 +257,7 @@ export default function FriendsScreen() {
                 <Text style={styles.empty}>Pas encore d’amis — cherche un pseudo ci-dessus pour envoyer une demande.</Text>
               ) : (
                 friends.map((f: FriendProfile) => (
-                  <Pressable key={f.id} onPress={() => router.push(`/u/${f.username}`)} style={styles.row}>
+                  <Pressable key={f.id} onPress={() => router.push(withReturnTo(`/u/${f.username}`, '/friends') as never)} style={styles.row}>
                     <Avatar name={f.displayName} />
                     <View style={styles.rowInfo}>
                       <Text style={styles.rowName}>{f.displayName}</Text>

@@ -1,4 +1,4 @@
-import { Redirect, Tabs, useRouter } from 'expo-router';
+import { Redirect, Tabs, useRouter, usePathname } from 'expo-router';
 import { useSession } from '@/lib/auth';
 import { useIncomingRequests, useFriends } from '@/lib/friends';
 import { useFriendNewsFeed } from '@/lib/friend-news';
@@ -12,6 +12,7 @@ import { FloatingTabBar } from '@/components/FloatingTabBar';
 import { TradeIcon } from '@/components/TradeIcon';
 import { TabBarVisibilityProvider, useTabBarVisibility } from '@/lib/tab-bar-visibility';
 import { withAlpha } from '@/lib/color-utils';
+import { withReturnTo } from '@/lib/navigation';
 import { useTheme, radius, spacing, fonts } from '@/lib/theme';
 
 const BAR_SIDE_INSET = spacing.lg;
@@ -33,6 +34,7 @@ export default function AppLayout() {
 
 function AppLayoutTabs() {
   const router = useRouter();
+  const pathname = usePathname();
   const { session } = useSession();
   const { colors } = useTheme();
   const { translateY } = useTabBarVisibility();
@@ -130,7 +132,7 @@ function AppLayoutTabs() {
       </Animated.View>
       <Animated.View style={[styles.tradeFabWrap, { transform: [{ translateY }] }]}>
         <Pressable
-          onPress={() => router.push('/market')}
+          onPress={() => router.push(withReturnTo('/market', pathname) as never)}
           style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}>
           <TradeIcon size={20} color={colors.text} />
           {marketBadgeCount > 0 && (

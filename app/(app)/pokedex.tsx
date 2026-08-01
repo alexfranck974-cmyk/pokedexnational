@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import { useSession } from '@/lib/auth';
@@ -18,6 +18,8 @@ import { SearchFilterBar } from '@/components/SearchFilterBar';
 import { ProgressRing } from '@/components/ProgressRing';
 import { CardZoomModal } from '@/components/CardZoomModal';
 import { RefreshButton } from '@/components/RefreshButton';
+import { CaptureEffect, type CaptureEvent } from '@/components/CaptureEffect';
+import { checkTypeMilestones } from '@/lib/type-milestones';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
 import { getName } from '@/lib/i18n';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
@@ -27,6 +29,7 @@ const POKEDEX = pokedexData as Pokemon[];
 
 export default function PokedexScreen() {
   const router = useRouter();
+  const { newCard } = useLocalSearchParams<{ newCard?: string }>();
   const { session } = useSession();
   const userId = session?.user.id;
   const { colors } = useTheme();
@@ -42,9 +45,9 @@ export default function PokedexScreen() {
     heroCount: { fontSize: 20, fontFamily: fonts.monoBold, color: 'white' },
     heroFilter: { fontSize: 11, fontFamily: fonts.body, color: 'rgba(255,255,255,0.8)' },
   }));
-  const { data: owned = new Set<number>() } = useUserDex(userId);
+  const { data: owned = new Set<number>(), refetch: refetchOwned } = useUserDex(userId);
   const { data: collectedDex = new Set<number>() } = useOwnedDexNums(userId);
-  const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
+  const { data: ownedImages = new Map<number, string>(), refetch: refetchOwnedImages } = useOwnedCardImages(userId);
   const { data: ownedCardsDetailed = [] } = useAllOwnedCardsDetailed(userId);
   const { data: wishedInDexSet = new Set<number>() } = useWishedDexNums(userId);
   const [zoomIndex, setZoomIndex] = useState<number | null>(null);
@@ -52,6 +55,40 @@ export default function PokedexScreen() {
   const { data: tcgIndex = new Map() } = useTcgIndex();
   const { data: sets = [] } = useTcgSets();
   const { data: rarities = [] } = useTcgRarities();
+
+  // "New card added" + type-milestone celebration on return from pokemon/[num].tsx
+  // (see useBackTo's extraParams in lib/navigation.ts). useToggleCard's optimistic
+  // update (lib/collection.ts) merges into whatever was already cached for
+  // user_dex/owned_card_images — if this screen's queries hadn't been fetched yet
+  // this session, that optimistic merge starts from an empty set and the result
+  // only contains the just-captured dex_num, silently dropping everything else
+  // until the invalidation-triggered refetch lands. Explicitly refetch both here
+  // and use their settled results directly, instead of trusting whatever `owned`/
+  // `ownedImages` happen to hold on the render right after navigating back.
+  const [captureQueue, setCaptureQueue] = useState<CaptureEvent[]>([]);
+  const currentCapture = captureQueue[0] ?? null;
+  const processedCaptureRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!newCard) return;
+    if (processedCaptureRef.current === newCard) return;
+    const dexNum = parseInt(newCard, 10);
+    const pokemon = POKEDEX.find(p => p.num === dexNum);
+    if (!pokemon) return;
+    processedCaptureRef.current = newCard;
+    router.setParams({ newCard: undefined });
+    (async () => {
+      const [ownedResult, imagesResult] = await Promise.all([refetchOwned(), refetchOwnedImages()]);
+      const freshOwned = ownedResult.data ?? new Set<number>();
+      const image = imagesResult.data?.get(dexNum);
+      if (!image || !freshOwned.has(dexNum)) return; // still not settled — give up rather than show wrong data
+      const milestones = checkTypeMilestones(POKEDEX, dexNum, freshOwned);
+      setCaptureQueue(q => [
+        ...q,
+        { id: `dex-${dexNum}`, kind: 'dex', pokemonName: getName(pokemon), imageSmall: image },
+        ...milestones.map((m, i): CaptureEvent => ({ id: `type-milestone-${dexNum}-${m.type}-${i}`, kind: 'typeMilestone', type: m.type, count: m.count })),
+      ]);
+    })();
+  }, [newCard, router, refetchOwned, refetchOwnedImages]);
 
   const [search, setSearch]         = useState('');
   const [statusFilter, setStatus]   = useState<StatusFilter>('all');
@@ -135,6 +172,7 @@ export default function PokedexScreen() {
         onReset={reset}
         columns={columns} onColumns={setColumns}
       />
+      <CaptureEffect event={currentCapture} onDone={() => setCaptureQueue(q => q.slice(1))} />
     </SafeAreaView>
   );
 }

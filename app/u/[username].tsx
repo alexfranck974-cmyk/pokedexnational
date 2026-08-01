@@ -26,6 +26,8 @@ import { Pokeball } from '@/components/Pokeball';
 import { IconBubble } from '@/components/IconBubble';
 import { getName } from '@/lib/i18n';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useBackTo } from '@/lib/navigation';
+import { TabBarVisibilityProvider } from '@/lib/tab-bar-visibility';
 
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
@@ -38,8 +40,17 @@ const TABS: { key: ProfileTab; label: string }[] = [
 ];
 
 export default function PublicProfile() {
+  return (
+    <TabBarVisibilityProvider>
+      <PublicProfileInner />
+    </TabBarVisibilityProvider>
+  );
+}
+
+function PublicProfileInner() {
   const { username } = useLocalSearchParams<{ username: string }>();
   const router = useRouter();
+  const goBack = useBackTo('/friends');
   const { session } = useSession();
   const viewerId = session?.user.id;
   const [profile, setProfile] = useState<{ id: string; display_name: string; username: string } | 'notfound'>('notfound');
@@ -118,6 +129,8 @@ export default function PublicProfile() {
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
     banner: { padding: spacing.md, backgroundColor: colors.surface, ...shadow.sm, gap: spacing.sm },
+    backRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 2, alignSelf: 'flex-start' as const },
+    backText: { fontSize: 14, fontFamily: fonts.body, color: colors.primary },
     bannerTitleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, gap: spacing.sm },
     bannerTitle: { fontSize: 20, fontFamily: fonts.display, color: colors.text, flex: 1 },
     friendBtn: {
@@ -190,6 +203,10 @@ export default function PublicProfile() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.banner}>
+        <Pressable onPress={goBack} style={styles.backRow} hitSlop={8}>
+          <Ionicons name="chevron-back" size={18} color={colors.primary} />
+          <Text style={styles.backText}>Retour</Text>
+        </Pressable>
         <View style={styles.bannerTitleRow}>
           <Text style={styles.bannerTitle}>Pokédex TCG de {profile.display_name}</Text>
           {viewerId && userId && viewerId !== userId && (
