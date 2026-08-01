@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Modal, Image, Text, View, PanResponder, useWindowDimensions } from 'react-native';
 import { useThemedStyles, fonts, spacing } from '@/lib/theme';
 import { useModalBackClose } from '@/lib/useModalBackClose';
@@ -11,6 +11,9 @@ export interface ZoomableCard {
 interface Props {
   card: ZoomableCard | null;
   caption?: string;
+  /** Extra content below the caption (e.g. a "Proposer un échange" action on a
+   * friend's profile) — omit to keep the modal purely a viewer, as elsewhere. */
+  footer?: ReactNode;
   onClose: () => void;
   onSwipeNext?: () => void;
   onSwipePrev?: () => void;
@@ -19,7 +22,7 @@ interface Props {
 const SWIPE_THRESHOLD = 50;
 const TAP_TOLERANCE = 8;
 
-export function CardZoomModal({ card, caption, onClose, onSwipeNext, onSwipePrev }: Props) {
+export function CardZoomModal({ card, caption, footer, onClose, onSwipeNext, onSwipePrev }: Props) {
   const { width, height } = useWindowDimensions();
   const styles = useThemedStyles((colors) => ({
     backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center' as const, justifyContent: 'center' as const },
@@ -70,6 +73,7 @@ export function CardZoomModal({ card, caption, onClose, onSwipeNext, onSwipePrev
           resizeMode="contain"
         />
         {caption && <Text style={styles.caption}>{caption}</Text>}
+        {footer}
       </View>
     </Modal>
   );

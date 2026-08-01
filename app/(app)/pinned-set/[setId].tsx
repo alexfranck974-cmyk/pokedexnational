@@ -19,6 +19,7 @@ import { useFriendsWantedCards } from '@/lib/trades';
 import { TradeMatchPopup, type TradeMatch } from '@/components/TradeMatchPopup';
 import { TradeProposalModal, type TradeTarget, type PickedCard } from '@/components/TradeProposalModal';
 import { useBackTo } from '@/lib/navigation';
+import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { currentSetTier } from '@/lib/set-tiers';
 import { classifyRarity } from '@/lib/rarity-tiers';
 import { buildSetTypeGroups, typesCompletedByToggle } from '@/lib/set-type-completion';
@@ -79,7 +80,7 @@ export default function PinnedSetDetail() {
   const typeGroups = useMemo(() => buildSetTypeGroups(cards), [cards]);
 
   const set = useMemo(() => allSets.find(s => s.id === setId), [allSets, setId]);
-  const setName = set?.name ?? setId ?? '';
+  const setName = set ? setFlagLabel(set.name, set.region) : (setId ?? '');
   const total = set?.cardCount ?? cards.length;
   const ownedCount = useMemo(() => cards.filter(c => ownedAll.has(c.id)).length, [cards, ownedAll]);
   // Card numbers are free-form strings (can include suffixes like "TG01"), so a plain

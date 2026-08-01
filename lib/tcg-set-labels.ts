@@ -51,3 +51,15 @@ export function setDisplayName(setName: string): string {
   const en = JP_SET_NAME_EN[setName];
   return en ? `${en} · ${setName}` : setName;
 }
+
+const REGION_FLAG: Record<string, string> = { jp: '🇯🇵', cn: '🇨🇳' };
+
+// Flag + English name for a JP/CN set — falls back to the native name when no
+// translation exists yet (JP_SET_NAME_EN is a curated, incomplete table) so a
+// gap never hides a set, it just shows untranslated with its flag.
+export function setFlagLabel(setName: string, region: string | null | undefined): string {
+  const flag = region ? REGION_FLAG[region] : undefined;
+  if (!flag) return setName;
+  const en = region === 'jp' ? JP_SET_NAME_EN[setName] : undefined;
+  return `${flag} ${en ?? setName}`;
+}

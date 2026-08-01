@@ -29,6 +29,7 @@ export interface TcgSetInfo {
   cardCount: number;
   symbol: string | null;
   logo: string | null;
+  region: string;
 }
 
 export function useTcgSets() {
@@ -38,7 +39,7 @@ export function useTcgSets() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tcg_sets')
-        .select('set_id, set_name, release_date, card_count, set_symbol, set_logo')
+        .select('set_id, set_name, release_date, card_count, set_symbol, set_logo, region')
         .order('release_date', { ascending: false, nullsFirst: false });
       if (error) throw error;
       return (data ?? []).map(row => ({
@@ -48,6 +49,7 @@ export function useTcgSets() {
         cardCount: row.card_count as number,
         symbol: (row.set_symbol as string | null) ?? null,
         logo: (row.set_logo as string | null) ?? null,
+        region: (row.region as string | null) ?? 'global',
       })) as TcgSetInfo[];
     },
   });

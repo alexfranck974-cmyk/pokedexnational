@@ -43,6 +43,7 @@ import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } 
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
+import { setFlagLabel } from '@/lib/tcg-set-labels';
 
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
@@ -692,7 +693,7 @@ export default function FavoritesScreen() {
                     key={g.setId}
                     userId={userId}
                     setId={g.setId}
-                    setName={set.name}
+                    setName={setFlagLabel(set.name, set.region)}
                     total={set.cardCount}
                     symbol={set.symbol}
                     onPress={() => router.push(withReturnTo(`/pinned-set/${g.setId}`, '/favorites') as never)}

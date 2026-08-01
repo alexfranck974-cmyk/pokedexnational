@@ -13,6 +13,7 @@ import { useTcgSets } from '@/lib/tcg-index';
 import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
 import { topByValue, totalCollectionValue, computeByGeneration, computeSetGoalsProgress, averageProgress } from '@/lib/dashboard-stats';
 import { buildEvolutionFamilies } from '@/lib/evolutions';
+import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { suggestEvolutionGaps, suggestBinderPages, suggestByGeneration, suggestDexUpgrades } from '@/lib/suggestions';
 import { PokedexHeroCard } from '@/components/PokedexHeroCard';
 import { BadgesSection } from '@/components/BadgesSection';
@@ -235,7 +236,7 @@ export default function DashboardScreen() {
                     key={g.setId}
                     userId={userId}
                     setId={g.setId}
-                    setName={set.name}
+                    setName={setFlagLabel(set.name, set.region)}
                     total={set.cardCount}
                     symbol={set.symbol}
                     onPress={() => router.push(withReturnTo(`/pinned-set/${g.setId}`, '/dashboard') as never)}

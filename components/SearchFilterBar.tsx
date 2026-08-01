@@ -5,6 +5,7 @@ import type { PokemonType } from '@/lib/types';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
 import { GENERATIONS } from '@/lib/generations';
+import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts, SCREEN_FAB_CLEARANCE } from '@/lib/theme';
 
 interface Props {
@@ -15,7 +16,7 @@ interface Props {
   rarityFilter: string | null;          onRarity: (v: string | null) => void;
   generationFilter: number | null;      onGeneration: (v: number | null) => void;
   sort: SortKey;                        onSort: (v: SortKey) => void;
-  sets: { id: string; name: string }[];
+  sets: { id: string; name: string; region?: string }[];
   rarities: string[];
   onReset: () => void;
   columns: 2 | 3 | 4 | null;            onColumns: (v: 2 | 3 | 4 | null) => void;
@@ -132,12 +133,12 @@ export function SearchFilterBar(p: Props) {
 
   const typeOptions: PickerOption[] = (Object.keys(TYPE_LABEL_FR) as PokemonType[])
     .map(t => ({ id: t, label: TYPE_LABEL_FR[t] }));
-  const setOptions: PickerOption[]  = p.sets.map(s => ({ id: s.id, label: s.name }));
+  const setOptions: PickerOption[]  = p.sets.map(s => ({ id: s.id, label: setFlagLabel(s.name, s.region) }));
   const rarityOptions: PickerOption[] = p.rarities.map(r => ({ id: r, label: r }));
   const genOptions: PickerOption[] = GENERATIONS.map(g => ({ id: String(g.gen), label: g.label }));
 
   const typeChipLabel   = p.typeFilter   ? `Type: ${TYPE_LABEL_FR[p.typeFilter]}` : 'Type';
-  const setChipLabel    = p.setFilter    ? `Set: ${p.sets.find(s => s.id === p.setFilter)?.name ?? p.setFilter}` : 'Set';
+  const setChipLabel    = p.setFilter    ? `Set: ${setOptions.find(s => s.id === p.setFilter)?.label ?? p.setFilter}` : 'Set';
   const rarityChipLabel = p.rarityFilter ? `Rareté: ${p.rarityFilter}` : 'Rareté';
   const genChipLabel    = p.generationFilter ? `Gen ${p.generationFilter}` : 'Génération';
 

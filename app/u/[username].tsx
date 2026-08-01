@@ -22,12 +22,15 @@ import { VitrineCarousel } from '@/components/VitrineCarousel';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { FriendSetGalleryModal, type FriendSetGalleryTarget } from '@/components/FriendSetGalleryModal';
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
+import { TradeProposalModal, type TradeTarget, type PickedCard } from '@/components/TradeProposalModal';
+import { TradeIcon } from '@/components/TradeIcon';
 import { Pokeball } from '@/components/Pokeball';
 import { IconBubble } from '@/components/IconBubble';
 import { getName } from '@/lib/i18n';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useBackTo } from '@/lib/navigation';
 import { TabBarVisibilityProvider } from '@/lib/tab-bar-visibility';
+import { setFlagLabel } from '@/lib/tcg-set-labels';
 
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
@@ -86,7 +89,14 @@ function PublicProfileInner() {
   const [gallerySet, setGallerySet] = useState<FriendSetGalleryTarget | null>(null);
   // Grid taps zoom a single card; Vitrine taps zoom into the curated list and
   // support swiping to the next/previous showcased card without closing.
-  const [zoom, setZoom] = useState<{ kind: 'grid'; card: ZoomableCard } | { kind: 'vitrine'; index: number } | null>(null);
+  // tradeCard is only set for cards this friend actually owns (the Statistiques
+  // grid) — wishlist thumbnails also zoom via 'grid' but leave it undefined,
+  // since you can't propose a trade for a card someone doesn't have yet.
+  const [zoom, setZoom] = useState<
+    { kind: 'grid'; card: ZoomableCard; tradeCard?: PickedCard } | { kind: 'vitrine'; index: number } | null
+  >(null);
+  const [tradeTarget, setTradeTarget] = useState<TradeTarget | null>(null);
+  const [tradePreset, setTradePreset] = useState<PickedCard | undefined>(undefined);
 
   const ownedCardsByDex = useMemo(() => new Map(ownedCardsDetailed.map(c => [c.dexNum, c])), [ownedCardsDetailed]);
   const vitrineCards = useMemo(() => Array.from(showcase)
@@ -141,6 +151,12 @@ function PublicProfileInner() {
     friendBtnSecondary: { backgroundColor: colors.surfaceAlt },
     friendBtnText: { fontSize: 12, fontFamily: fonts.bodyBold, color: 'white' },
     friendBtnTextSecondary: { color: colors.text },
+    proposeTradeBtn: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, marginTop: spacing.md,
+      paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill,
+      backgroundColor: '#2dd4bf',
+    },
+    proposeTradeBtnText: { fontSize: 13, fontFamily: fonts.bodyBold, color: 'white' },
     center: { flex: 1, justifyContent: 'center' as const, alignItems: 'center' as const, padding: spacing.xl, gap: spacing.lg, backgroundColor: colors.bg },
     notFoundTitle: { fontSize: 18, textAlign: 'center' as const, fontFamily: fonts.display, color: colors.text },
     cta: { backgroundColor: colors.primary, padding: 14, borderRadius: radius.md },
@@ -262,11 +278,17 @@ function PublicProfileInner() {
             onSelect={(num) => {
               // No detail page for visitors — a tap zooms the owned card directly instead.
               const card = ownedCardsByDex.get(num);
-              if (card) setZoom({ kind: 'grid', card: { image_small: card.imageSmall, image_large: card.imageLarge } });
+              if (card) setZoom({
+                kind: 'grid', card: { image_small: card.imageSmall, image_large: card.imageLarge },
+                tradeCard: { cardId: card.cardId, name: card.name, imageSmall: card.imageSmall, cardmarketTrendEur: card.cardmarketTrendEur },
+              });
             }}
             onLongSelect={(num) => {
               const card = ownedCardsByDex.get(num);
-              if (card) setZoom({ kind: 'grid', card: { image_small: card.imageSmall, image_large: card.imageLarge } });
+              if (card) setZoom({
+                kind: 'grid', card: { image_small: card.imageSmall, image_large: card.imageLarge },
+                tradeCard: { cardId: card.cardId, name: card.name, imageSmall: card.imageSmall, cardmarketTrendEur: card.cardmarketTrendEur },
+              });
             }}
           />
           <SearchFilterBar
@@ -308,7 +330,7 @@ function PublicProfileInner() {
                       key={g.setId}
                       userId={userId}
                       setId={g.setId}
-                      setName={set.name}
+                      setName={setFlagLabel(set.name, set.region)}
                       total={set.cardCount}
                       symbol={set.symbol}
                       onPress={() => {
@@ -318,7 +340,7 @@ function PublicProfileInner() {
                           .filter(c => c.setId === g.setId)
                           .sort((a, b) => a.cardNumber.localeCompare(b.cardNumber, undefined, { numeric: true }));
                         setGallerySet({
-                          setName: set.name, owned: setCards.length, total: set.cardCount,
+                          setName: setFlagLabel(set.name, set.region), owned: setCards.length, total: set.cardCount,
                           cards: setCards.map(c => ({ key: c.cardId, imageSmall: c.imageSmall, imageLarge: c.imageLarge })),
                         });
                       }}
@@ -386,6 +408,26 @@ function PublicProfileInner() {
         onClose={() => setZoom(null)}
         onSwipeNext={zoom?.kind === 'vitrine' ? () => setZoom({ kind: 'vitrine', index: (zoom.index + 1) % vitrineCards.length }) : undefined}
         onSwipePrev={zoom?.kind === 'vitrine' ? () => setZoom({ kind: 'vitrine', index: (zoom.index - 1 + vitrineCards.length) % vitrineCards.length }) : undefined}
+        footer={
+          zoom?.kind === 'grid' && zoom.tradeCard && viewerId && userId && viewerId !== userId && friendStatus === 'friends' ? (
+            <Pressable
+              onPress={() => {
+                const tradeCard = zoom.tradeCard;
+                setZoom(null);
+                setTradePreset(tradeCard);
+                setTradeTarget({ id: userId, displayName: profile.display_name });
+              }}
+              style={styles.proposeTradeBtn}>
+              <TradeIcon size={15} color="white" />
+              <Text style={styles.proposeTradeBtnText}>Proposer un échange</Text>
+            </Pressable>
+          ) : undefined
+        }
+      />
+      <TradeProposalModal
+        target={tradeTarget}
+        onClose={() => { setTradeTarget(null); setTradePreset(undefined); }}
+        initialRequested={tradePreset}
       />
     </SafeAreaView>
   );

@@ -63,12 +63,15 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
   const friendWishlistIds = useMemo(() => new Set(friendWishlist.map((c: { id: string }) => c.id)), [friendWishlist]);
   const myWishlistIds = useMemo(() => new Set(myWishlist.map((c: { id: string }) => c.id)), [myWishlist]);
 
-  const myDuplicates = useMemo(
-    () => myLedger.filter(c => (myQuantities.get(c.cardId) ?? 0) >= 2),
-    [myLedger, myQuantities],
-  );
-  const offerMatches = useMemo(() => myDuplicates.filter(c => friendWishlistIds.has(c.cardId)), [myDuplicates, friendWishlistIds]);
-  const offerCandidates = offerMatches.length > 0 ? offerMatches : myDuplicates;
+  // Anything you own can be offered — not just duplicates. Wishlist matches
+  // (what the friend is actually looking for) surface first regardless of
+  // duplicate status, then the rest of your collection so a trade is never a
+  // dead end just because you happen to have no spare copies right now.
+  const offerMatches = useMemo(() => myLedger.filter(c => friendWishlistIds.has(c.cardId)), [myLedger, friendWishlistIds]);
+  const offerCandidates = useMemo(() => {
+    const matchIds = new Set(offerMatches.map(c => c.cardId));
+    return [...offerMatches, ...myLedger.filter(c => !matchIds.has(c.cardId))];
+  }, [myLedger, offerMatches]);
 
   const friendDuplicates = useMemo(
     () => friendLedger.filter(c => (friendQuantities.get(c.cardId) ?? 0) >= 2),
@@ -90,6 +93,9 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
     thumb: { width: 34, height: 34 / 0.72, borderRadius: 3 },
     rowName: { flex: 1, fontSize: 14, fontFamily: fonts.body, color: colors.text },
     matchTag: { fontSize: 11, fontFamily: fonts.bodyBold, color: TINT },
+    dupTag: { fontSize: 12, fontFamily: fonts.monoBold, color: colors.textMuted },
+    uniqueTag: { fontSize: 10, fontFamily: fonts.bodyBold, color: colors.danger, textTransform: 'uppercase' as const },
+    uniqueWarning: { fontSize: 12, fontFamily: fonts.body, color: colors.danger, textAlign: 'center' as const },
     confirmWrap: { alignItems: 'center' as const, padding: spacing.lg, gap: spacing.md },
     confirmRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md },
     confirmCard: { alignItems: 'center' as const, gap: spacing.xs, width: 110 },
@@ -109,20 +115,26 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
   }));
 
   const step: 'offer' | 'request' | 'confirm' = !offeredCard ? 'offer' : !requestedCard ? 'request' : 'confirm';
-  const title = step === 'offer' ? `Offrir un doublon à ${target?.displayName ?? ''}`
+  const title = step === 'offer' ? `Offrir une carte à ${target?.displayName ?? ''}`
     : step === 'request' ? 'Demander en retour' : 'Confirmer l’échange';
 
-  const renderList = (data: OwnedCardDetail[], onPick: (c: OwnedCardDetail) => void, matchIds: Set<string>) => (
+  const renderList = (data: OwnedCardDetail[], onPick: (c: OwnedCardDetail) => void, matchIds: Set<string>, quantities?: Map<string, number>) => (
     <FlatList
       data={data}
       keyExtractor={c => c.cardId}
-      renderItem={({ item }) => (
-        <Pressable onPress={() => onPick(item)} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-          <Image source={{ uri: item.imageSmall }} style={styles.thumb} resizeMode="contain" />
-          <Text style={styles.rowName} numberOfLines={1}>{item.name}</Text>
-          {matchIds.has(item.cardId) && <Text style={styles.matchTag}>★ wishlist</Text>}
-        </Pressable>
-      )}
+      renderItem={({ item }) => {
+        const qty = quantities?.get(item.cardId) ?? 0;
+        return (
+          <Pressable onPress={() => onPick(item)} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+            <Image source={{ uri: item.imageSmall }} style={styles.thumb} resizeMode="contain" />
+            <Text style={styles.rowName} numberOfLines={1}>{item.name}</Text>
+            {matchIds.has(item.cardId) && <Text style={styles.matchTag}>★ wishlist</Text>}
+            {quantities && (qty >= 2
+              ? <Text style={styles.dupTag}>×{qty}</Text>
+              : <Text style={styles.uniqueTag}>unique</Text>)}
+          </Pressable>
+        );
+      }}
     />
   );
 
@@ -132,13 +144,15 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
         <ActivityIndicator style={{ margin: spacing.xl }} />
       ) : step === 'offer' ? (
         offerCandidates.length === 0 ? (
-          <Text style={styles.empty}>Tu n’as aucun doublon à proposer pour l’instant.</Text>
+          <Text style={styles.empty}>Tu ne possèdes aucune carte pour l’instant.</Text>
         ) : (
           <>
-            {offerMatches.length > 0 && (
-              <Text style={styles.hint}>Ces doublons sont dans la wishlist de {target?.displayName}.</Text>
-            )}
-            {renderList(offerCandidates, setOfferedCard, friendWishlistIds)}
+            <Text style={styles.hint}>
+              {offerMatches.length > 0
+                ? `Ces cartes sont dans la wishlist de ${target?.displayName}.`
+                : 'Choisis une carte à proposer — les cartes marquées "unique" sont ta seule copie.'}
+            </Text>
+            {renderList(offerCandidates, setOfferedCard, friendWishlistIds, myQuantities)}
           </>
         )
       ) : step === 'request' ? (
@@ -176,6 +190,9 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
               )}
             </View>
           </View>
+          {(myQuantities.get(offeredCard!.cardId) ?? 0) < 2 && (
+            <Text style={styles.uniqueWarning}>C’est ta seule copie — tu ne l’auras plus après l’échange.</Text>
+          )}
           {offeredCard!.cardmarketTrendEur != null && requestedCard!.cardmarketTrendEur != null && (
             <Text style={styles.deltaText}>
               {(() => {

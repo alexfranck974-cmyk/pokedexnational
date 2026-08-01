@@ -21,6 +21,7 @@ import { RefreshButton } from '@/components/RefreshButton';
 import { CaptureEffect, type CaptureEvent } from '@/components/CaptureEffect';
 import { checkTypeMilestones } from '@/lib/type-milestones';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
+import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { getName } from '@/lib/i18n';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
@@ -112,7 +113,10 @@ export default function PokedexScreen() {
   const filterHintParts: string[] = [];
   if (generationFilter) filterHintParts.push(`Gen ${generationFilter}`);
   if (typeFilter) filterHintParts.push(TYPE_LABEL_FR[typeFilter]);
-  if (setFilter)  filterHintParts.push(sets.find(s => s.id === setFilter)?.name ?? setFilter);
+  if (setFilter) {
+    const s = sets.find(s => s.id === setFilter);
+    filterHintParts.push(s ? setFlagLabel(s.name, s.region) : setFilter);
+  }
   if (rarityFilter) filterHintParts.push(rarityFilter);
   const filterHint = filterHintParts.length ? filterHintParts.join(' + ') : undefined;
 

@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, FlatList, Image } from 'react-native'
 import { Ionicons } from '@expo/vector-icons';
 import { useTcgSets, type TcgSetInfo } from '@/lib/tcg-index';
 import { useToggleSetGoal } from '@/lib/collection-goals';
+import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { BubbleSheet } from './BubbleSheet';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
@@ -29,7 +30,7 @@ export function SetGoalPicker({ visible, pinnedSetIds, tint, onClose }: Props) {
   const filtered = useMemo(() => {
     const q = normalize(search.trim());
     if (!q) return sets;
-    return sets.filter(s => normalize(s.name).includes(q));
+    return sets.filter(s => normalize(s.name).includes(q) || normalize(setFlagLabel(s.name, s.region)).includes(q));
   }, [sets, search]);
 
   const styles = useThemedStyles((colors) => ({
@@ -77,7 +78,7 @@ export function SetGoalPicker({ visible, pinnedSetIds, tint, onClose }: Props) {
                       <View style={styles.rowIconPlaceholder} />
                     )}
                     <View style={styles.rowText}>
-                      <Text style={styles.rowLabel} numberOfLines={1}>{item.name}</Text>
+                      <Text style={styles.rowLabel} numberOfLines={1}>{setFlagLabel(item.name, item.region)}</Text>
                       <Text style={styles.rowCaption}>
                         {year ? `${year} · ` : ''}{item.cardCount} cartes
                       </Text>
