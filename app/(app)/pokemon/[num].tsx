@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { View, Text, Image, ActivityIndicator, Pressable, ScrollView, PanResponder } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, Image, ActivityIndicator, Pressable, ScrollView, PanResponder, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,6 +57,27 @@ export default function PokemonDetail() {
   // can play the "new card" celebration on arrival (see lib/navigation.ts).
   const [justCapturedDex, setJustCapturedDex] = useState<number | null>(null);
   const goBack = useBackTo('/pokedex', justCapturedDex != null ? { newCard: String(justCapturedDex) } : undefined);
+
+  // pokemon/[num] is a hidden Tabs.Screen (see app/(app)/_layout.tsx), so the
+  // whole tab navigator treats it as just another sibling tab — its web history
+  // integration collapses tab-to-tab navigation via replaceState, meaning the
+  // phone/browser back gesture jumps straight past this screen's real history
+  // to whatever collapsed entry sits underneath (Dashboard), bypassing React
+  // Navigation's own action system entirely (confirmed live: a `beforeRemove`
+  // listener never even fires for it). Pushing one extra "guard" history entry
+  // on mount means that jump lands on OUR entry first, firing a `popstate` we
+  // can catch and correct by replacing the URL with the same `from`-aware
+  // target the on-screen "Retour" button uses.
+  const goBackRef = useRef(goBack);
+  goBackRef.current = goBack;
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    window.history.pushState({ __pokemonDetailBackGuard: true }, '', window.location.href);
+    const onPopState = () => { goBackRef.current(); };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Prev/next reuses this same route (router.replace), so reset per-Pokémon transient
   // filters/state on num change — viewMode is kept as a persistent user preference.
@@ -229,6 +250,7 @@ export default function PokemonDetail() {
             cards={regionCards}
             selectedSetIds={selectedSetIds}
             onChange={setSelectedSetIds}
+            onOpenSet={setId => router.push(withReturnTo(`/pinned-set/${setId}`, `/pokemon/${num}`) as never)}
           />
           {onlyWishes && (
             <View style={styles.wishBannerRow}>

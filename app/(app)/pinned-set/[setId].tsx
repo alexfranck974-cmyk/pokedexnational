@@ -13,7 +13,7 @@ import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForSet } from '@/lib/tcg';
 import { useTcgSets } from '@/lib/tcg-index';
 import { useSession } from '@/lib/auth';
-import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity } from '@/lib/collection';
+import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity, useAllWishedCards, useToggleWish } from '@/lib/collection';
 import { useFriends } from '@/lib/friends';
 import { useFriendsWantedCards } from '@/lib/trades';
 import { TradeMatchPopup, type TradeMatch } from '@/components/TradeMatchPopup';
@@ -40,6 +40,9 @@ export default function PinnedSetDetail() {
   const { data: allSets = [] } = useTcgSets();
   const toggleOwned = useToggleOwnedCard();
   const adjustQuantity = useAdjustOwnedCardQuantity();
+  const { data: wishedCards = [] } = useAllWishedCards(userId);
+  const wishedSet = useMemo(() => new Set(wishedCards.map(c => c.id)), [wishedCards]);
+  const toggleWish = useToggleWish();
 
   const { data: friends = [] } = useFriends(userId);
   const friendIdsArr = useMemo(() => friends.map(f => f.id), [friends]);
@@ -163,6 +166,7 @@ export default function PinnedSetDetail() {
         <CardGallery
           cards={sortedCards}
           ownedSet={ownedAll}
+          wishedSet={wishedSet}
           readOnly={false}
           viewMode={viewMode}
           columnsOverride={columns}
@@ -210,6 +214,10 @@ export default function PinnedSetDetail() {
               { cardId: c.id, currentlyOwned: wasOwned, rarity: c.rarity },
               { onSuccess: () => qc.invalidateQueries({ queryKey: ['set_goal_progress', userId, setId] }) },
             );
+          }}
+          onToggleWish={c => {
+            if (c.dex_num == null) return; // trainer/energy cards aren't tied to a Pokémon — nothing to wishlist
+            toggleWish.mutate({ cardId: c.id, currentlyWished: wishedSet.has(c.id), dexNum: c.dex_num });
           }}
           onZoom={c => setZoomCard(c)}
         />

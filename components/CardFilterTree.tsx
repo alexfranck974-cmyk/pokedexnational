@@ -1,13 +1,17 @@
 import { useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { TcgCardRow } from '@/lib/tcg';
 import { setDisplayName } from '@/lib/tcg-set-labels';
-import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 interface Props {
   cards: TcgCardRow[];
   selectedSetIds: Set<string> | null;
   onChange: (v: Set<string> | null) => void;
+  /** When given, each set row gets a small link to browse that extension's full
+   * gallery (pinned-set/[setId]) — omit to keep this purely a filter control. */
+  onOpenSet?: (setId: string) => void;
 }
 
 interface SetEntry { id: string; name: string; count: number; releaseDate: string | null; }
@@ -33,10 +37,11 @@ function buildGroups(cards: TcgCardRow[]): SeriesGroup[] {
   return groups.sort((a, b) => b.latestDate.localeCompare(a.latestDate));
 }
 
-export function CardFilterTree({ cards, selectedSetIds, onChange }: Props) {
+export function CardFilterTree({ cards, selectedSetIds, onChange, onOpenSet }: Props) {
   const groups = useMemo(() => buildGroups(cards), [cards]);
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const { colors: themeColors } = useTheme();
   const styles = useThemedStyles((colors) => ({
     wrap: { backgroundColor: colors.surface, borderRadius: radius.md, marginHorizontal: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
     headerRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, padding: 12 },
@@ -127,6 +132,11 @@ export function CardFilterTree({ cards, selectedSetIds, onChange }: Props) {
                     <Text style={styles.check}>{isSetSelected(s.id) ? '☑' : '☐'}</Text>
                     <Text style={styles.setName}>{setDisplayName(s.name)}</Text>
                     <Text style={styles.count}>({s.count})</Text>
+                    {onOpenSet && (
+                      <Pressable onPress={(e) => { e.stopPropagation(); onOpenSet(s.id); }} hitSlop={8}>
+                        <Ionicons name="open-outline" size={15} color={themeColors.primary} />
+                      </Pressable>
+                    )}
                   </Pressable>
                 ))}
               </View>

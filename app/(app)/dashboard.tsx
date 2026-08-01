@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
 import { useSession } from '@/lib/auth';
-import { useUserDex, useAllOwnedCardsDetailed, useAllOwnedCardsLedgerDetailed, useAllWishedCards } from '@/lib/collection';
+import { useUserDex, useAllOwnedCardsDetailed, useAllOwnedCardsLedgerDetailed, useAllWishedCards, useOwnedCardQuantities } from '@/lib/collection';
 import { useShowcase } from '@/lib/favorites';
 import { useSetGoals } from '@/lib/collection-goals';
 import { useTcgSets } from '@/lib/tcg-index';
@@ -41,6 +41,7 @@ const eurFormatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currenc
 const SUGGESTIONS_TINT = '#f472b6';
 const OBJECTIVES_TINT = '#38bdf8';
 const TRADE_TINT = '#2dd4bf';
+const CARDS_TINT = '#a78bfa';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -51,6 +52,13 @@ export default function DashboardScreen() {
   const { data: showcase = new Set<number>() } = useShowcase(userId);
   const { data: wishedCards = [] } = useAllWishedCards(userId);
   const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
+  const { data: ownedQuantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
+  // Distinct from the National Dex ring (one official card per Pokémon) —
+  // this is the raw physical count, duplicates included.
+  const totalCardsOwned = useMemo(
+    () => Array.from(ownedQuantities.values()).reduce((sum, q) => sum + q, 0),
+    [ownedQuantities],
+  );
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [tradeHubOpen, setTradeHubOpen] = useState(false);
@@ -139,7 +147,8 @@ export default function DashboardScreen() {
     nebula: { flexDirection: 'row' as const, justifyContent: 'center' as const, alignItems: 'flex-start' as const, gap: spacing.xl },
     nebulaItemMid: { marginTop: 26 },
     nebulaItemThird: { marginTop: 10 },
-    nebulaItemLast: { marginTop: 32 },
+    nebulaItemFourth: { marginTop: 32 },
+    nebulaItemLast: { marginTop: 18 },
     addBadge: {
       position: 'absolute' as const, bottom: -2, right: -2, width: 22, height: 22, borderRadius: 11,
       backgroundColor: colors.primary, alignItems: 'center' as const, justifyContent: 'center' as const,
@@ -195,13 +204,22 @@ export default function DashboardScreen() {
               onPress={() => setTradeHubOpen(true)}
             />
           </View>
-          <View style={styles.nebulaItemLast}>
+          <View style={styles.nebulaItemFourth}>
             <RingMenuItem
               tint={SUGGESTIONS_TINT}
               centerLabel={String(totalSuggestions)}
               centerSub="idées"
               label="Achats"
               onPress={() => setSuggestionsOpen(true)}
+            />
+          </View>
+          <View style={styles.nebulaItemLast}>
+            <RingMenuItem
+              tint={CARDS_TINT}
+              centerLabel={String(totalCardsOwned)}
+              centerSub="cartes"
+              label="Possédées"
+              onPress={() => router.push('/favorites' as never)}
             />
           </View>
         </View>
