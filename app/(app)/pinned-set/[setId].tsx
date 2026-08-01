@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { View, Text, ActivityIndicator, Pressable, ScrollView } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, ActivityIndicator, Pressable, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,6 +30,26 @@ export default function PinnedSetDetail() {
   const { setId } = useLocalSearchParams<{ setId: string }>();
   const router = useRouter();
   const goBack = useBackTo('/dashboard');
+
+  // pinned-set/[setId] is a hidden Tabs.Screen (see app/(app)/_layout.tsx),
+  // same class of bug as pokemon/[num]: the phone/browser back gesture jumps
+  // straight past this screen's real history to the tab navigator's collapsed
+  // entry (Dashboard), bypassing React Navigation's action system entirely —
+  // a `beforeRemove` listener never fires for it. Pushing one extra "guard"
+  // history entry on mount means that jump lands on OUR entry first, firing a
+  // `popstate` we can catch and correct via the same `from`-aware target the
+  // on-screen "Retour" button uses.
+  const goBackRef = useRef(goBack);
+  goBackRef.current = goBack;
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    window.history.pushState({ __pinnedSetBackGuard: true }, '', window.location.href);
+    const onPopState = () => { goBackRef.current(); };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const qc = useQueryClient();
   const { session } = useSession();
   const userId = session?.user.id;
