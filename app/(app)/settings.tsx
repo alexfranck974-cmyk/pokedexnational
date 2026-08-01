@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TextInput, Pressable, Switch, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, Pressable, Switch, Alert, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,13 @@ import { IconBubble } from '@/components/IconBubble';
 import { QRCodeModal } from '@/components/QRCodeModal';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE, PALETTE_ORDER, PALETTE_META } from '@/lib/theme';
 import { useMotion } from '@/lib/motion';
+import { useMyFeedback, useSubmitFeedback, type FeedbackKind, type FeedbackItem } from '@/lib/feedback';
+
+const FEEDBACK_KIND_LABEL: Record<FeedbackKind, string> = { bug: 'Bug', suggestion: 'Suggestion' };
+
+function formatFeedbackDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 export default function Settings() {
   const router = useRouter();
@@ -54,11 +61,31 @@ export default function Settings() {
     },
     paletteDotSelected: { borderColor: colors.text },
     paletteName: { fontSize: 12, fontFamily: fonts.body, color: colors.textDim, marginTop: 2 },
+    kindRow: { flexDirection: 'row' as const, gap: spacing.sm },
+    kindChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
+    kindChipActive: { backgroundColor: colors.primary },
+    kindChipText: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
+    kindChipTextActive: { color: 'white' },
+    feedbackInput: {
+      borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, minHeight: 80,
+      fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt, textAlignVertical: 'top' as const,
+    },
+    feedbackHistory: { gap: spacing.sm, marginTop: spacing.xs },
+    feedbackItem: { gap: 2, paddingTop: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+    feedbackItemHead: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
+    feedbackKindBadge: { fontSize: 11, fontFamily: fonts.bodyBold, color: colors.primary },
+    feedbackDate: { fontSize: 11, fontFamily: fonts.mono, color: colors.textDim },
+    feedbackMessageText: { fontSize: 13, fontFamily: fonts.body, color: colors.text },
   }));
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
   const [isPublic, setIsPublic] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const { data: myFeedback = [] } = useMyFeedback(userId);
+  const submitFeedback = useSubmitFeedback();
+  const [feedbackKind, setFeedbackKind] = useState<FeedbackKind>('suggestion');
+  const [feedbackMessage, setFeedbackMessage] = useState('');
 
   useEffect(() => {
     if (!userId) return;
@@ -89,6 +116,16 @@ export default function Settings() {
     if (!shareUrl) return;
     await Clipboard.setStringAsync(shareUrl);
     Alert.alert('Copié', shareUrl);
+  };
+
+  const submitFeedbackMessage = async () => {
+    if (!userId || !feedbackMessage.trim()) return;
+    try {
+      await submitFeedback.mutateAsync({ userId, kind: feedbackKind, message: feedbackMessage });
+      setFeedbackMessage('');
+    } catch {
+      Alert.alert('Erreur', 'Impossible d\'envoyer ton message, réessaie.');
+    }
   };
 
   return (
@@ -206,6 +243,55 @@ export default function Settings() {
           {!saving && <Ionicons name="checkmark" size={18} color="white" />}
           <Text style={styles.btnText}>{saving ? '…' : 'Enregistrer'}</Text>
         </Pressable>
+
+        <View style={styles.row}>
+          <View style={styles.rowHead}>
+            <IconBubble size={28} color={colors.primarySoft}>
+              <Ionicons name="chatbubble-ellipses-outline" size={14} color={colors.primary} />
+            </IconBubble>
+            <Text style={styles.label}>Suggestions & bugs</Text>
+          </View>
+          <View style={styles.kindRow}>
+            <Pressable
+              onPress={() => setFeedbackKind('suggestion')}
+              style={[styles.kindChip, feedbackKind === 'suggestion' && styles.kindChipActive]}>
+              <Text style={[styles.kindChipText, feedbackKind === 'suggestion' && styles.kindChipTextActive]}>Suggestion</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setFeedbackKind('bug')}
+              style={[styles.kindChip, feedbackKind === 'bug' && styles.kindChipActive]}>
+              <Text style={[styles.kindChipText, feedbackKind === 'bug' && styles.kindChipTextActive]}>Bug</Text>
+            </Pressable>
+          </View>
+          <TextInput
+            value={feedbackMessage}
+            onChangeText={setFeedbackMessage}
+            placeholder={feedbackKind === 'bug' ? 'Décris le bug que tu as rencontré...' : 'Décris ton idée d\'amélioration...'}
+            placeholderTextColor={colors.textDim}
+            multiline
+            style={styles.feedbackInput}
+          />
+          <Pressable
+            onPress={submitFeedbackMessage}
+            disabled={!feedbackMessage.trim() || submitFeedback.isPending}
+            style={[styles.btnSecondary, { alignSelf: 'flex-end' }]}>
+            <Ionicons name="send-outline" size={14} color={colors.text} />
+            <Text style={styles.btnSecondaryText}>{submitFeedback.isPending ? 'Envoi…' : 'Envoyer'}</Text>
+          </Pressable>
+          {myFeedback.length > 0 && (
+            <View style={styles.feedbackHistory}>
+              {myFeedback.map((f: FeedbackItem) => (
+                <View key={f.id} style={styles.feedbackItem}>
+                  <View style={styles.feedbackItemHead}>
+                    <Text style={styles.feedbackKindBadge}>{FEEDBACK_KIND_LABEL[f.kind]}</Text>
+                    <Text style={styles.feedbackDate}>{formatFeedbackDate(f.createdAt)}</Text>
+                  </View>
+                  <Text style={styles.feedbackMessageText}>{f.message}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
 
         <Pressable onPress={() => signOut()} style={styles.btnDanger}>
           <Ionicons name="log-out-outline" size={18} color="white" />
