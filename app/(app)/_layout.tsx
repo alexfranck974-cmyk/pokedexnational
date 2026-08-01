@@ -13,8 +13,8 @@ import { FloatingTabBar } from '@/components/FloatingTabBar';
 import { TradeIcon } from '@/components/TradeIcon';
 import { TradeInProgressPopup } from '@/components/TradeInProgressPopup';
 import { Pokeball } from '@/components/Pokeball';
-import { BravoNotificationBanner } from '@/components/BravoNotificationBanner';
-import { useBravoNotifications } from '@/lib/bravo-notifications';
+import { NotificationBanner } from '@/components/NotificationBanner';
+import { useAppNotifications } from '@/lib/notifications';
 import { TabBarVisibilityProvider, useTabBarVisibility } from '@/lib/tab-bar-visibility';
 import { withAlpha } from '@/lib/color-utils';
 import { withReturnTo } from '@/lib/navigation';
@@ -61,7 +61,7 @@ function AppLayoutTabs() {
   }, [inProgressOffers.length, spin]);
   const spinDeg = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   useSocialRealtime(userId);
-  const { current: bravoEvent, dismiss: dismissBravo } = useBravoNotifications(userId);
+  const { current: notification, dismiss: dismissNotification } = useAppNotifications(userId);
 
   // Market-bubble badge: pending incoming offers + cross-friend duplicate/wishlist
   // matches (same one-directional-per-term logic as the Marché tab's own per-row
@@ -177,7 +177,7 @@ function AppLayoutTabs() {
         </Animated.View>
       )}
       <TradeInProgressPopup item={openInProgress} onClose={() => setOpenInProgress(null)} />
-      <BravoNotificationBanner event={bravoEvent} onDone={dismissBravo} />
+      <NotificationBanner event={notification} onDone={dismissNotification} />
     </View>
   );
 }

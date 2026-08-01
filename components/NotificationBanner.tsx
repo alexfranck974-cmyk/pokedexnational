@@ -2,21 +2,24 @@ import { useEffect, useRef } from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import type { BravoEvent } from '@/lib/bravo-notifications';
+import type { AppNotification } from '@/lib/notifications';
 import { TypeIcon } from './TypeIcon';
+import { TradeIcon } from './TradeIcon';
+import { IconBubble } from './IconBubble';
 import { TYPE_COLORS } from '@/lib/types-colors';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useMotion } from '@/lib/motion';
 
 interface Props {
-  event: BravoEvent | null;
+  event: AppNotification | null;
   onDone: () => void;
 }
 
 const HOLD_MS = 3000;
 const NEUTRAL = '#9ca3af';
+const TRADE_TINT = '#2dd4bf';
 
-export function BravoNotificationBanner({ event, onDone }: Props) {
+export function NotificationBanner({ event, onDone }: Props) {
   const insets = useSafeAreaInsets();
   const { animationsEnabled } = useMotion();
   const translateY = useRef(new Animated.Value(-80)).current;
@@ -50,25 +53,36 @@ export function BravoNotificationBanner({ event, onDone }: Props) {
   }, [event?.id, animationsEnabled, translateY]);
 
   if (!event) return null;
-  const accent = event.pokemonType ? TYPE_COLORS[event.pokemonType] : NEUTRAL;
 
   const dismiss = () => {
     if (!animationsEnabled) { onDoneRef.current(); return; }
     Animated.timing(translateY, { toValue: -80, duration: 180, useNativeDriver: true }).start(() => onDoneRef.current());
   };
 
+  const icon = event.kind === 'bravo' ? (
+    event.pokemonType ? <TypeIcon type={event.pokemonType} size={30} /> : <Ionicons name="happy" size={30} color={NEUTRAL} />
+  ) : (
+    <IconBubble size={30} color={TRADE_TINT + '22'}>
+      <TradeIcon size={15} color={TRADE_TINT} />
+    </IconBubble>
+  );
+
+  const text = event.kind === 'bravo' ? (
+    <><Text style={styles.textBold}>👏 Bravo</Text> reçu de <Text style={styles.textBold}>{event.counterpartyName}</Text></>
+  ) : event.kind === 'trade_received' ? (
+    <><Text style={styles.textBold}>{event.counterpartyName}</Text> te propose un échange</>
+  ) : event.kind === 'trade_accepted' ? (
+    <><Text style={styles.textBold}>{event.counterpartyName}</Text> a accepté ta proposition d’échange</>
+  ) : (
+    <>Échange avec <Text style={styles.textBold}>{event.counterpartyName}</Text> finalisé !</>
+  );
+
   return (
     <View style={styles.wrap} pointerEvents="box-none">
       <Animated.View style={{ transform: [{ translateY }] }}>
         <Pressable onPress={dismiss} style={styles.banner}>
-          {event.pokemonType ? (
-            <TypeIcon type={event.pokemonType} size={30} />
-          ) : (
-            <Ionicons name="happy" size={30} color={accent} />
-          )}
-          <Text style={styles.text}>
-            <Text style={styles.textBold}>👏 Bravo</Text> reçu de <Text style={styles.textBold}>{event.reactorName}</Text>
-          </Text>
+          {icon}
+          <Text style={styles.text}>{text}</Text>
         </Pressable>
       </Animated.View>
     </View>
