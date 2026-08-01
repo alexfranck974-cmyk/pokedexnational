@@ -4,6 +4,7 @@ import { CardTile } from './CardTile';
 import { CardListRow } from './CardListRow';
 import type { TcgCardRow } from '@/lib/tcg';
 import { TAB_BAR_CLEARANCE } from '@/lib/theme';
+import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 
 interface Props {
   cards: TcgCardRow[];
@@ -35,6 +36,7 @@ function numColsFor(width: number): number {
 
 export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, viewMode = 'grid', columnsOverride, quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom }: Props) {
   const { width } = useWindowDimensions();
+  const hideOnScrollProps = useHideOnScrollProps();
   if (viewMode === 'list') {
     return (
       <FlashList
@@ -43,6 +45,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
         contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
         maintainVisibleContentPosition={{ disabled: true }}
         keyExtractor={c => c.id}
+        {...hideOnScrollProps}
         renderItem={({ item }) => !item ? null : (
           <CardListRow
             card={item}
@@ -69,6 +72,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
       contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
       maintainVisibleContentPosition={{ disabled: true }}
       keyExtractor={c => c.id}
+      {...hideOnScrollProps}
       renderItem={({ item }) => !item ? null : (
         <CardTile
           card={item}

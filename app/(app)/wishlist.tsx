@@ -21,6 +21,7 @@ import { enterPokemonDetail } from '@/lib/navigation';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { getName } from '@/lib/i18n';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
+import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import pokedexData from '@/data/pokedex.json';
 
@@ -44,6 +45,7 @@ export default function WishlistScreen() {
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
+  const hideOnScrollProps = useHideOnScrollProps();
   const [gallery, setGallery] = useState<FriendSetGalleryTarget | null>(null);
 
   const [search, setSearch] = useState('');
@@ -190,6 +192,7 @@ export default function WishlistScreen() {
           contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
           maintainVisibleContentPosition={{ disabled: true }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+          {...hideOnScrollProps}
           keyExtractor={(g: WishlistGroup) => String(g.dexNum)}
           renderItem={({ item }: { item: WishlistGroup }) => {
             if (!item) return null;
@@ -237,6 +240,7 @@ export default function WishlistScreen() {
           contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
           maintainVisibleContentPosition={{ disabled: true }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+          {...hideOnScrollProps}
           keyExtractor={c => c.id}
           renderItem={({ item }) => {
             if (!item) return null;

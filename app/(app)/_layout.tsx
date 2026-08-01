@@ -4,9 +4,11 @@ import { useIncomingRequests } from '@/lib/friends';
 import { useFriendNewsFeed } from '@/lib/friend-news';
 import { usePendingTradeOffers } from '@/lib/trades';
 import { useSocialRealtime } from '@/lib/realtime';
-import { View, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { Animated, View, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PokedexDeviceIcon } from '@/components/PokedexDeviceIcon';
+import { FloatingTabBar } from '@/components/FloatingTabBar';
+import { TabBarVisibilityProvider, useTabBarVisibility } from '@/lib/tab-bar-visibility';
 import { withAlpha } from '@/lib/color-utils';
 import { useTheme, radius, spacing } from '@/lib/theme';
 
@@ -15,43 +17,36 @@ const BAR_BOTTOM_OFFSET = spacing.lg;
 const BAR_HEIGHT = 62;
 
 export default function AppLayout() {
-  const router = useRouter();
   const { session, loading } = useSession();
+
+  if (loading) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
+  if (!session) return <Redirect href="/login" />;
+
+  return (
+    <TabBarVisibilityProvider>
+      <AppLayoutTabs />
+    </TabBarVisibilityProvider>
+  );
+}
+
+function AppLayoutTabs() {
+  const router = useRouter();
+  const { session } = useSession();
   const { colors } = useTheme();
+  const { translateY } = useTabBarVisibility();
   const { data: incomingRequests = [] } = useIncomingRequests(session?.user.id);
   const { data: friendNews = [] } = useFriendNewsFeed(session?.user.id);
   const { data: tradeOffers = [] } = usePendingTradeOffers(session?.user.id);
   const incomingTrades = tradeOffers.filter(t => t.direction === 'incoming');
   useSocialRealtime(session?.user.id);
 
-  if (loading) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
-  if (!session) return <Redirect href="/login" />;
-
   return (
     <View style={{ flex: 1 }}>
       <Tabs
+        tabBar={(props) => <FloatingTabBar {...props} />}
         screenOptions={{
           headerShown: false,
           animation: 'fade',
-          tabBarStyle: {
-            position: 'absolute',
-            left: BAR_SIDE_INSET,
-            right: BAR_SIDE_INSET,
-            bottom: BAR_BOTTOM_OFFSET,
-            height: BAR_HEIGHT,
-            borderRadius: radius.xl,
-            backgroundColor: withAlpha(colors.surface, 0.86),
-            borderTopWidth: 0,
-            borderWidth: 1,
-            borderColor: withAlpha(colors.border, 0.6),
-            shadowColor: '#000',
-            shadowOpacity: 0.12,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 8,
-          },
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.textMuted,
         }}
       >
         {/*
@@ -107,11 +102,13 @@ export default function AppLayout() {
         <Tabs.Screen name="pokemon/[num]" options={{ href: null }} />
         <Tabs.Screen name="pinned-set/[setId]" options={{ href: null }} />
       </Tabs>
-      <Pressable
-        onPress={() => router.push('/settings')}
-        style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}>
-        <Ionicons name="settings-outline" size={22} color={colors.text} />
-      </Pressable>
+      <Animated.View style={[styles.settingsFabWrap, { transform: [{ translateY }] }]}>
+        <Pressable
+          onPress={() => router.push('/settings')}
+          style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}>
+          <Ionicons name="settings-outline" size={22} color={colors.text} />
+        </Pressable>
+      </Animated.View>
     </View>
   );
 }
@@ -123,8 +120,10 @@ const styles = StyleSheet.create({
     position: 'absolute', top: -1, right: -3, width: 9, height: 9, borderRadius: 5,
     backgroundColor: '#ef4444', borderWidth: 1.5,
   },
-  settingsFab: {
+  settingsFabWrap: {
     position: 'absolute', right: BAR_SIDE_INSET, bottom: BAR_BOTTOM_OFFSET + BAR_HEIGHT + spacing.sm,
+  },
+  settingsFab: {
     width: 44, height: 44, borderRadius: radius.pill,
     borderWidth: 1, alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 4,

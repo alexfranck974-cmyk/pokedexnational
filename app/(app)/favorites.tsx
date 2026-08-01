@@ -42,6 +42,7 @@ import { RefreshButton } from '@/components/RefreshButton';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
+import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
@@ -82,6 +83,7 @@ export default function FavoritesScreen() {
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
+  const hideOnScrollProps = useHideOnScrollProps();
 
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
@@ -380,6 +382,7 @@ export default function FavoritesScreen() {
                 contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
                 maintainVisibleContentPosition={{ disabled: true }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+                {...hideOnScrollProps}
                 keyExtractor={p => String(p.num)}
                 renderItem={({ item }) => !item ? null : (
                   <FavoriteTile
@@ -478,6 +481,7 @@ export default function FavoritesScreen() {
                 data={teams}
                 contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+                {...hideOnScrollProps}
                 keyExtractor={t => t.id}
                 renderItem={({ item }) => (
                   <Pressable onPress={() => setSelectedTeamId(item.id)} style={({ pressed }) => [styles.teamRow, pressed && styles.teamRowPressed]}>
@@ -533,6 +537,7 @@ export default function FavoritesScreen() {
               contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
               maintainVisibleContentPosition={{ disabled: true }}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+              {...hideOnScrollProps}
               keyExtractor={c => c.cardId}
               renderItem={({ item }) => {
                 if (!item) return null;
@@ -591,6 +596,7 @@ export default function FavoritesScreen() {
               data={collections}
               contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+              {...hideOnScrollProps}
               keyExtractor={c => c.id}
               renderItem={({ item }) => (
                 <Pressable onPress={() => setSelectedCollectionId(item.id)} style={({ pressed }) => [styles.teamRow, pressed && styles.teamRowPressed]}>
@@ -637,6 +643,7 @@ export default function FavoritesScreen() {
               contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
               maintainVisibleContentPosition={{ disabled: true }}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+              {...hideOnScrollProps}
               keyExtractor={c => c.cardId}
               renderItem={({ item }) => {
                 if (!item) return null;
@@ -675,7 +682,8 @@ export default function FavoritesScreen() {
           ) : (
             <ScrollView
               contentContainerStyle={styles.goalsGrid}
-              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}>
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+              {...hideOnScrollProps}>
               {goals.map(g => {
                 const set = setsById.get(g.setId);
                 if (!set) return null;

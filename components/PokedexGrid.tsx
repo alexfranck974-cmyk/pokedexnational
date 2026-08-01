@@ -6,6 +6,7 @@ import type { PokemonWithState } from '@/lib/pokedex-list';
 import { GENERATIONS, GEN_COLORS, GEN_EMOJI } from '@/lib/generations';
 import { withAlpha } from '@/lib/color-utils';
 import { useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
+import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 
 interface Props {
   items: PokemonWithState[];
@@ -31,6 +32,7 @@ function numColsFor(width: number): number {
 
 export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverride, ListHeaderComponent, refreshControl, onSelect, onLongSelect }: Props) {
   const { width } = useWindowDimensions();
+  const hideOnScrollProps = useHideOnScrollProps();
   const cols = columnsOverride ?? numColsFor(width);
   const styles = useThemedStyles((colors) => ({
     headerRow: {
@@ -76,6 +78,7 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverrid
       contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
       maintainVisibleContentPosition={{ disabled: true }}
       stickyHeaderIndices={stickyHeaderIndices}
+      {...hideOnScrollProps}
       overrideItemLayout={(layout, row, _index, maxColumns) => {
         if (row?.type === 'header') layout.span = maxColumns;
       }}

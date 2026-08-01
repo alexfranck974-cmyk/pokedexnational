@@ -28,6 +28,7 @@ import { useCompletedTradesCount } from '@/lib/trades';
 import { useTheme, useThemedStyles, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useMotion } from '@/lib/motion';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
+import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 
 // SetGoalTile's rendered height (ring + 2 text lines + tile padding) — fixed rather
 // than measured via onLayout so the accordion animation doesn't depend on a layout
@@ -118,6 +119,7 @@ export default function DashboardScreen() {
 
   const { colors } = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
+  const hideOnScrollProps = useHideOnScrollProps();
   const styles = useThemedStyles((colors) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
     scroll: { padding: spacing.lg, paddingBottom: spacing.lg + TAB_BAR_CLEARANCE, gap: spacing.lg },
@@ -149,7 +151,8 @@ export default function DashboardScreen() {
     <SafeAreaView style={styles.screen}>
       <ScrollView
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+        {...hideOnScrollProps}>
         <View style={styles.titleRow}>
           <Text style={styles.h1}>Dashboard</Text>
           <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />

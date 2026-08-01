@@ -28,6 +28,7 @@ import { IconBubble } from '@/components/IconBubble';
 import { QRCodeModal } from '@/components/QRCodeModal';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
+import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 
 const TRADE_TINT = '#2dd4bf';
 
@@ -65,6 +66,7 @@ export default function FriendsScreen() {
   const userId = session?.user.id;
   const { colors } = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
+  const hideOnScrollProps = useHideOnScrollProps();
 
   const { data: friends = [], isLoading: friendsLoading } = useFriends(userId);
   const { data: incoming = [] } = useIncomingRequests(userId);
@@ -219,6 +221,7 @@ export default function FriendsScreen() {
         keyExtractor={() => 'body'}
         contentContainerStyle={styles.body}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+        {...hideOnScrollProps}
         renderItem={() => (
           <>
           {subTab === 'friends' && (
