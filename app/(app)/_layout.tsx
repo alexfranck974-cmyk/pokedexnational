@@ -116,6 +116,7 @@ function AppLayoutTabs() {
         />
         <Tabs.Screen name="wishlist" options={{ href: null }} />
         <Tabs.Screen name="favorites" options={{ href: null }} />
+        <Tabs.Screen name="market" options={{ href: null }} />
         <Tabs.Screen name="settings" options={{ href: null }} />
         <Tabs.Screen name="pokemon/[num]" options={{ href: null }} />
         <Tabs.Screen name="pinned-set/[setId]" options={{ href: null }} />
@@ -129,7 +130,7 @@ function AppLayoutTabs() {
       </Animated.View>
       <Animated.View style={[styles.tradeFabWrap, { transform: [{ translateY }] }]}>
         <Pressable
-          onPress={() => router.push('/friends?tab=market')}
+          onPress={() => router.push('/market')}
           style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}>
           <TradeIcon size={20} color={colors.text} />
           {marketBadgeCount > 0 && (

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, TextInput, Image, Pressable, FlatList, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useSession } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import {
@@ -10,18 +10,11 @@ import {
   useSendFriendRequest, useAcceptFriendRequest, useRemoveFriendship,
   type FriendProfile, type FriendRequest,
 } from '@/lib/friends';
-import { useOwnedCardQuantities } from '@/lib/collection';
 import { useFriendNewsFeed, useFriendNewsHistory, type FriendNewsItem } from '@/lib/friend-news';
 import { FriendCardReveal } from '@/components/FriendCardReveal';
 import { BubbleSheet } from '@/components/BubbleSheet';
 import { CHASE_GOLD } from '@/lib/rarity-tiers';
-import {
-  usePendingTradeOffers, useFriendsAvailableCards, useFriendsWantedCards,
-  type TradeOfferItem, type FriendCardListing,
-} from '@/lib/trades';
-import { TradeProposalModal, type TradeTarget, type PickedCard } from '@/components/TradeProposalModal';
-import { TradeOfferPopup } from '@/components/TradeOfferPopup';
-import { TradeIcon } from '@/components/TradeIcon';
+import { BRAVO_EMOJI } from '@/lib/friend-news';
 import { RefreshButton } from '@/components/RefreshButton';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
 import { IconBubble } from '@/components/IconBubble';
@@ -29,22 +22,6 @@ import { QRCodeModal } from '@/components/QRCodeModal';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
-
-const TRADE_TINT = '#2dd4bf';
-
-const Chip = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => {
-  const chipStyles = useThemedStyles((colors) => ({
-    chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
-    active: { backgroundColor: colors.primary },
-    text: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
-    textActive: { color: 'white' },
-  }));
-  return (
-    <Pressable onPress={onPress} style={[chipStyles.chip, active && chipStyles.active]}>
-      <Text style={[chipStyles.text, active && chipStyles.textActive]}>{label}</Text>
-    </Pressable>
-  );
-};
 
 function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   const { colors } = useTheme();
@@ -62,7 +39,6 @@ function Avatar({ name, size = 40 }: { name: string; size?: number }) {
 
 export default function FriendsScreen() {
   const router = useRouter();
-  const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { session } = useSession();
   const userId = session?.user.id;
   const { colors } = useTheme();
@@ -77,29 +53,6 @@ export default function FriendsScreen() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyReveal, setHistoryReveal] = useState<FriendNewsItem | null>(null);
   const { data: newsHistory = [] } = useFriendNewsHistory(userId, historyOpen);
-  const { data: tradeOffers = [] } = usePendingTradeOffers(userId);
-  const [openTrade, setOpenTrade] = useState<TradeOfferItem | null>(null);
-  const [tradeTarget, setTradeTarget] = useState<TradeTarget | null>(null);
-  const [tradePreset, setTradePreset] = useState<{ offered?: PickedCard; requested?: PickedCard }>({});
-  // Only reads ?tab= on the initial mount (lazy useState initializer) — once the
-  // user has navigated away from the deep-linked value, further re-renders (e.g.
-  // params staying in the URL) shouldn't yank them back to Marché.
-  const [subTab, setSubTab] = useState<'friends' | 'market'>(() => (tab === 'market' ? 'market' : 'friends'));
-
-  const friendIdsArr = useMemo(() => friends.map(f => f.id), [friends]);
-  const { data: availableCards = [] } = useFriendsAvailableCards(friendIdsArr);
-  const { data: wantedCards = [] } = useFriendsWantedCards(friendIdsArr);
-  const { data: myQuantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
-  const myDuplicateIds = useMemo(
-    () => new Set([...myQuantities.entries()].filter(([, q]) => q >= 2).map(([id]) => id)),
-    [myQuantities],
-  );
-
-  const closeTradeModal = () => { setTradeTarget(null); setTradePreset({}); };
-  const openTradeWith = (friendId: string, friendName: string, preset: { offered?: PickedCard; requested?: PickedCard } = {}) => {
-    setTradePreset(preset);
-    setTradeTarget({ id: friendId, displayName: friendName });
-  };
 
   const [search, setSearch] = useState('');
   const { data: found, isFetching: searching } = useFindProfileByUsername(search);
@@ -152,14 +105,15 @@ export default function FriendsScreen() {
     actionBtnText: { fontSize: 12, fontFamily: fonts.bodyBold, color: 'white' },
     secondaryBtn: { padding: 6 },
     list: { gap: spacing.sm },
-    newsThumb: { width: 28, height: 28 / 0.72, borderRadius: 3 },
+    // Bigger than the other sections' 28px icon-thumb — Nouveautés is meant to
+    // show off "les plus belles cartes obtenues," not just flag that news exists.
+    newsThumb: { width: 56, height: 78, borderRadius: 4 },
     newsText: { flex: 1, fontSize: 13, fontFamily: fonts.body, color: colors.text },
     newsTextBold: { fontFamily: fonts.bodyBold },
-    tradeBtn: { padding: 6 },
-    chipRow: { flexDirection: 'row' as const, gap: spacing.sm },
-    marketHint: { fontSize: 12, fontFamily: fonts.body, color: colors.textDim },
-    marketEmpty: { fontSize: 13, fontFamily: fonts.body, color: colors.textDim, fontStyle: 'italic' as const, padding: spacing.sm },
-    marketNoteText: { fontSize: 11, fontFamily: fonts.body, color: colors.textDim, fontStyle: 'italic' as const },
+    newsRowInfo: { flex: 1, gap: 3 },
+    reactionRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4 },
+    reactionEmoji: { fontSize: 12 },
+    reactionCount: { fontSize: 11, fontFamily: fonts.mono, color: colors.textMuted },
   }));
 
   const alreadyRelated = found && (friendIds.has(found.id) || outgoingIds.has(found.id) || found.id === userId);
@@ -168,11 +122,29 @@ export default function FriendsScreen() {
     ? { title: 'Retirer cet ami', message: `Retirer "${unfriendTarget.name}" de tes amis ?` }
     : null;
 
+  const NewsRow = ({ item, onPress }: { item: FriendNewsItem; onPress: () => void }) => (
+    <Pressable onPress={onPress} style={styles.row}>
+      <Avatar name={item.authorName} />
+      <View style={styles.newsRowInfo}>
+        <Text style={styles.newsText}>
+          <Text style={styles.newsTextBold}>{item.authorName}</Text> a obtenu une carte {item.rarityLabel}
+        </Text>
+        {item.reactionCount > 0 && (
+          <View style={styles.reactionRow}>
+            <Text style={styles.reactionEmoji}>{BRAVO_EMOJI}</Text>
+            <Text style={styles.reactionCount}>{item.reactionCount}</Text>
+          </View>
+        )}
+      </View>
+      <Image source={{ uri: item.imageSmall }} style={styles.newsThumb} resizeMode="contain" />
+    </Pressable>
+  );
+
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Text style={styles.title}>{subTab === 'friends' ? 'Amis' : 'Marché'}</Text>
+          <Text style={styles.title}>Amis</Text>
           <View style={styles.headerActions}>
             <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
             <Pressable onPress={() => setQrOpen(true)} style={styles.qrBtn} hitSlop={8}>
@@ -180,11 +152,6 @@ export default function FriendsScreen() {
             </Pressable>
           </View>
         </View>
-        <View style={styles.chipRow}>
-          <Chip label="Amis" active={subTab === 'friends'} onPress={() => setSubTab('friends')} />
-          <Chip label="Marché" active={subTab === 'market'} onPress={() => setSubTab('market')} />
-        </View>
-        {subTab === 'friends' && (
         <TextInput
           placeholder="Chercher un pseudo pour ajouter un ami"
           value={search}
@@ -192,8 +159,7 @@ export default function FriendsScreen() {
           autoCapitalize="none"
           style={styles.searchInput}
         />
-        )}
-        {subTab === 'friends' && search.trim().length >= 3 && (
+        {search.trim().length >= 3 && (
           searching ? (
             <ActivityIndicator />
           ) : found ? (
@@ -228,59 +194,6 @@ export default function FriendsScreen() {
         {...hideOnScrollProps}
         renderItem={() => (
           <>
-          {subTab === 'friends' && (
-          <>
-            <View style={styles.list}>
-              <View style={styles.sectionTitleRow}>
-                <IconBubble size={26} color={colors.primarySoft}>
-                  <Ionicons name="sparkles-outline" size={13} color={colors.primary} />
-                </IconBubble>
-                <Text style={styles.sectionTitle}>Nouveautés</Text>
-                {friendNews.length > 0 && <Text style={styles.sectionCount}>{friendNews.length}</Text>}
-                <View style={{ flex: 1 }} />
-                <Pressable onPress={() => setHistoryOpen(true)} hitSlop={8}>
-                  <Ionicons name="time-outline" size={16} color={colors.textMuted} />
-                </Pressable>
-              </View>
-              {friendNews.map((n: FriendNewsItem) => (
-                <Pressable key={n.id} onPress={() => setOpenNews(n)} style={styles.row}>
-                  <Avatar name={n.authorName} />
-                  <Text style={styles.newsText}>
-                    <Text style={styles.newsTextBold}>{n.authorName}</Text> a obtenu une carte {n.rarityLabel}
-                  </Text>
-                  <Image source={{ uri: n.imageSmall }} style={styles.newsThumb} resizeMode="contain" />
-                </Pressable>
-              ))}
-            </View>
-
-            {tradeOffers.length > 0 && (
-              <View style={styles.list}>
-                <View style={styles.sectionTitleRow}>
-                  <IconBubble size={26} color={colors.primarySoft}>
-                    <TradeIcon size={13} color={TRADE_TINT} />
-                  </IconBubble>
-                  <Text style={styles.sectionTitle}>Échanges</Text>
-                  <Text style={styles.sectionCount}>{tradeOffers.length}</Text>
-                </View>
-                {tradeOffers.map((t: TradeOfferItem) => (
-                  <Pressable key={t.id} onPress={() => setOpenTrade(t)} style={styles.row}>
-                    <Avatar name={t.counterpartyName} />
-                    <Text style={styles.newsText}>
-                      {t.direction === 'incoming' ? (
-                        <><Text style={styles.newsTextBold}>{t.counterpartyName}</Text> te propose un échange</>
-                      ) : (
-                        <>En attente de <Text style={styles.newsTextBold}>{t.counterpartyName}</Text></>
-                      )}
-                    </Text>
-                    <Image
-                      source={{ uri: t.direction === 'incoming' ? t.offeredCard.imageSmall : t.requestedCard.imageSmall }}
-                      style={styles.newsThumb} resizeMode="contain"
-                    />
-                  </Pressable>
-                ))}
-              </View>
-            )}
-
             {incoming.length > 0 && (
               <View style={styles.list}>
                 <View style={styles.sectionTitleRow}>
@@ -354,11 +267,6 @@ export default function FriendsScreen() {
                     </View>
                     <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                     <Pressable
-                      onPress={(e) => { e.stopPropagation(); openTradeWith(f.id, f.displayName); }}
-                      style={styles.tradeBtn} hitSlop={8}>
-                      <TradeIcon size={18} color={TRADE_TINT} />
-                    </Pressable>
-                    <Pressable
                       onPress={(e) => { e.stopPropagation(); setUnfriendTarget({ id: f.id, name: f.displayName }); }}
                       style={styles.secondaryBtn} hitSlop={8}>
                       <Ionicons name="person-remove-outline" size={18} color={colors.danger} />
@@ -367,77 +275,27 @@ export default function FriendsScreen() {
                 ))
               )}
             </View>
-          </>
-          )}
 
-          {subTab === 'market' && (
-          <>
             <View style={styles.list}>
               <View style={styles.sectionTitleRow}>
                 <IconBubble size={26} color={colors.primarySoft}>
-                  <TradeIcon size={13} color={TRADE_TINT} />
+                  <Ionicons name="sparkles-outline" size={13} color={colors.primary} />
                 </IconBubble>
-                <Text style={styles.sectionTitle}>Disponible chez tes amis</Text>
-                <Text style={styles.sectionCount}>{availableCards.length}</Text>
+                <Text style={styles.sectionTitle}>Nouveautés</Text>
+                {friendNews.length > 0 && <Text style={styles.sectionCount}>{friendNews.length}</Text>}
+                <View style={{ flex: 1 }} />
+                <Pressable onPress={() => setHistoryOpen(true)} hitSlop={8}>
+                  <Ionicons name="time-outline" size={16} color={colors.textMuted} />
+                </Pressable>
               </View>
-              <Text style={styles.marketHint}>Doublons de tes amis — propose un échange pour en récupérer un.</Text>
-              {availableCards.length === 0 ? (
-                <Text style={styles.marketEmpty}>Aucun doublon disponible chez tes amis pour l’instant.</Text>
+              {friendNews.length === 0 ? (
+                <Text style={styles.empty}>Rien de notable chez tes amis pour l’instant.</Text>
               ) : (
-                availableCards.map((a: FriendCardListing, i: number) => (
-                  <Pressable
-                    key={`${a.friendId}-${a.card.id}-${i}`}
-                    onPress={() => openTradeWith(a.friendId, a.friendName, {
-                      requested: { cardId: a.card.id, name: a.card.name, imageSmall: a.card.imageSmall, cardmarketTrendEur: a.card.cardmarketTrendEur },
-                    })}
-                    style={styles.row}>
-                    <Avatar name={a.friendName} />
-                    <Text style={styles.newsText}>
-                      <Text style={styles.newsTextBold}>{a.friendName}</Text> a {a.card.name} en double
-                    </Text>
-                    <Image source={{ uri: a.card.imageSmall }} style={styles.newsThumb} resizeMode="contain" />
-                  </Pressable>
+                friendNews.map((n: FriendNewsItem) => (
+                  <NewsRow key={n.id} item={n} onPress={() => setOpenNews(n)} />
                 ))
               )}
             </View>
-
-            <View style={styles.list}>
-              <View style={styles.sectionTitleRow}>
-                <IconBubble size={26} color={colors.primarySoft}>
-                  <Ionicons name="heart-outline" size={13} color={colors.primary} />
-                </IconBubble>
-                <Text style={styles.sectionTitle}>Recherché par tes amis</Text>
-                <Text style={styles.sectionCount}>{wantedCards.length}</Text>
-              </View>
-              <Text style={styles.marketHint}>Cartes dans la wishlist de tes amis — offre un de tes doublons.</Text>
-              {wantedCards.length === 0 ? (
-                <Text style={styles.marketEmpty}>Tes amis n’ont rien en wishlist pour l’instant.</Text>
-              ) : (
-                wantedCards.map((w: FriendCardListing, i: number) => {
-                  const canFulfill = myDuplicateIds.has(w.card.id);
-                  return (
-                    <Pressable
-                      key={`${w.friendId}-${w.card.id}-${i}`}
-                      disabled={!canFulfill}
-                      onPress={() => openTradeWith(w.friendId, w.friendName, {
-                        offered: { cardId: w.card.id, name: w.card.name, imageSmall: w.card.imageSmall, cardmarketTrendEur: w.card.cardmarketTrendEur },
-                      })}
-                      style={[styles.row, !canFulfill && { opacity: 0.5 }]}>
-                      <Avatar name={w.friendName} />
-                      <View style={styles.rowInfo}>
-                        <Text style={styles.newsText}>
-                          <Text style={styles.newsTextBold}>{w.friendName}</Text> recherche {w.card.name}
-                        </Text>
-                        {!canFulfill && <Text style={styles.marketNoteText}>Tu n’as pas de doublon de cette carte</Text>}
-                      </View>
-                      <Image source={{ uri: w.card.imageSmall }} style={styles.newsThumb} resizeMode="contain" />
-                    </Pressable>
-                  );
-                })
-              )}
-            </View>
-          </>
-          )}
           </>
         )}
       />
@@ -455,25 +313,12 @@ export default function FriendsScreen() {
             <Text style={styles.empty}>Aucune pêche notable pour l'instant.</Text>
           ) : (
             newsHistory.map((n: FriendNewsItem) => (
-              <Pressable key={n.id} onPress={() => setHistoryReveal(n)} style={styles.row}>
-                <Avatar name={n.authorName} />
-                <Text style={styles.newsText}>
-                  <Text style={styles.newsTextBold}>{n.authorName}</Text> a obtenu une carte {n.rarityLabel}
-                </Text>
-                <Image source={{ uri: n.imageSmall }} style={styles.newsThumb} resizeMode="contain" />
-              </Pressable>
+              <NewsRow key={n.id} item={n} onPress={() => setHistoryReveal(n)} />
             ))
           )}
         </ScrollView>
       </BubbleSheet>
       <FriendCardReveal item={historyReveal} mode="history" onClose={() => setHistoryReveal(null)} />
-      <TradeProposalModal
-        target={tradeTarget}
-        onClose={closeTradeModal}
-        initialOffered={tradePreset.offered}
-        initialRequested={tradePreset.requested}
-      />
-      <TradeOfferPopup item={openTrade} onClose={() => setOpenTrade(null)} />
     </SafeAreaView>
   );
 }

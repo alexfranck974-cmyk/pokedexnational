@@ -30,10 +30,11 @@ export interface FriendNewsItem {
   setId: string;
   setName: string;
   cardNumber: string;
+  reactionCount: number;
 }
 
 const FRIEND_NEWS_SELECT =
-  'id, user_id, card_id, rarity_label, created_at, author:profiles!friend_news_user_id_fkey(username, display_name), card:tcg_cards(name, image_small, image_large, dex_num, set_id, set_name, card_number)';
+  'id, user_id, card_id, rarity_label, created_at, author:profiles!friend_news_user_id_fkey(username, display_name), card:tcg_cards(name, image_small, image_large, dex_num, set_id, set_name, card_number), reactions:friend_news_reactions(emoji)';
 
 function mapFriendNewsRow(row: any): FriendNewsItem {
   return {
@@ -50,6 +51,7 @@ function mapFriendNewsRow(row: any): FriendNewsItem {
     setId: row.card?.set_id ?? '',
     setName: row.card?.set_name ?? '',
     cardNumber: row.card?.card_number ?? '',
+    reactionCount: row.reactions?.length ?? 0,
   };
 }
 
@@ -120,6 +122,7 @@ export function useDismissFriendNews() {
 }
 
 export function useReactToFriendNews() {
+  const qc = useQueryClient();
   const { session } = useSession();
   const userId = session?.user.id;
   return useMutation({
@@ -129,6 +132,10 @@ export function useReactToFriendNews() {
         .from('friend_news_reactions')
         .upsert({ news_id: newsId, user_id: userId, emoji: BRAVO_EMOJI }, { onConflict: 'news_id,user_id' });
       if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['friend_news_feed', userId] });
+      qc.invalidateQueries({ queryKey: ['friend_news_history', userId] });
     },
   });
 }
