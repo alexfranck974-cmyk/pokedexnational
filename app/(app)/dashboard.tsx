@@ -8,7 +8,7 @@ import type { Pokemon } from '@/lib/types';
 import { useSession } from '@/lib/auth';
 import { useUserDex, useAllOwnedCardsDetailed, useAllOwnedCardsLedgerDetailed, useAllWishedCards, useOwnedCardQuantities } from '@/lib/collection';
 import { useShowcase } from '@/lib/favorites';
-import { useSetGoals } from '@/lib/collection-goals';
+import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
 import { useTcgSets } from '@/lib/tcg-index';
 import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
 import { totalCollectionValue, computeSetGoalsProgress, averageProgress } from '@/lib/dashboard-stats';
@@ -20,6 +20,7 @@ import { CardZoomModal } from '@/components/CardZoomModal';
 import { RingMenuItem } from '@/components/RingMenuItem';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { TradeHistoryModal } from '@/components/TradeHistoryModal';
 import { RefreshButton } from '@/components/RefreshButton';
 import { useCompletedTradesCount } from '@/lib/trades';
@@ -57,9 +58,11 @@ export default function DashboardScreen() {
   );
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
   const [tradeHistoryOpen, setTradeHistoryOpen] = useState(false);
+  const [unpinTarget, setUnpinTarget] = useState<{ setId: string; setName: string } | null>(null);
   const { data: completedTradesCount = 0 } = useCompletedTradesCount(userId);
   const { data: goals = [] } = useSetGoals(userId);
   const { data: allSets = [] } = useTcgSets();
+  const toggleGoal = useToggleSetGoal();
   const setsById = useMemo(() => new Map(allSets.map(s => [s.id, s])), [allSets]);
   const pinnedSetIds = useMemo(() => new Set(goals.map(g => g.setId)), [goals]);
   const goalsProgress = useMemo(() => computeSetGoalsProgress(goals, ledgerCards, allSets), [goals, ledgerCards, allSets]);
@@ -199,15 +202,17 @@ export default function DashboardScreen() {
               {goals.map(g => {
                 const set = setsById.get(g.setId);
                 if (!set) return null;
+                const setName = setFlagLabel(set.name, set.region);
                 return (
                   <SetGoalTile
                     key={g.setId}
                     userId={userId}
                     setId={g.setId}
-                    setName={setFlagLabel(set.name, set.region)}
+                    setName={setName}
                     total={set.cardCount}
                     symbol={set.symbol}
                     onPress={() => router.push(withReturnTo(`/pinned-set/${g.setId}`, '/dashboard') as never)}
+                    onUnpin={() => setUnpinTarget({ setId: g.setId, setName })}
                   />
                 );
               })}
@@ -222,6 +227,15 @@ export default function DashboardScreen() {
         onSwipePrev={() => setZoomIndex(i => i === null ? null : (i - 1 + vitrineCards.length) % vitrineCards.length)}
       />
       <SetGoalPicker visible={goalPickerOpen} pinnedSetIds={pinnedSetIds} tint={OBJECTIVES_TINT} onClose={() => setGoalPickerOpen(false)} />
+      <ConfirmDialog
+        target={unpinTarget ? { title: 'Retirer cet objectif ?', message: `${unpinTarget.setName} ne sera plus suivie comme objectif de complétion.` } : null}
+        confirmLabel="Désépingler"
+        onConfirm={() => {
+          if (unpinTarget) toggleGoal.mutate({ setId: unpinTarget.setId, currentlyPinned: true });
+          setUnpinTarget(null);
+        }}
+        onCancel={() => setUnpinTarget(null)}
+      />
       <TradeHistoryModal userId={userId} visible={tradeHistoryOpen} onClose={() => setTradeHistoryOpen(false)} />
     </SafeAreaView>
   );

@@ -12,9 +12,10 @@ interface Props {
   icon?: ReactNode;
   hideCaption?: boolean;
   onPress?: () => void;
+  onLongPress?: () => void;
 }
 
-export function StatRingTile({ label, owned, total, color, size = 64, icon, hideCaption, onPress }: Props) {
+export function StatRingTile({ label, owned, total, color, size = 64, icon, hideCaption, onPress, onLongPress }: Props) {
   const { colors } = useTheme();
   const ringColor = color ?? colors.primary;
   const styles = useThemedStyles((colors) => ({
@@ -27,6 +28,7 @@ export function StatRingTile({ label, owned, total, color, size = 64, icon, hide
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
       disabled={!onPress}
       accessibilityLabel={`${label} : ${pct}%, ${owned}/${total}`}
       style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}>

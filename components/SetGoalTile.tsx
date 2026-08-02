@@ -12,9 +12,10 @@ interface Props {
   total: number;
   symbol?: string | null;
   onPress: () => void;
+  onUnpin?: () => void;
 }
 
-export function SetGoalTile({ userId, setId, setName, total, symbol, onPress }: Props) {
+export function SetGoalTile({ userId, setId, setName, total, symbol, onPress, onUnpin }: Props) {
   const { data: owned = 0 } = useSetGoalProgress(userId, setId);
   const { colors } = useTheme();
   const pct = total > 0 ? Math.round((owned / total) * 100) : 0;
@@ -22,7 +23,7 @@ export function SetGoalTile({ userId, setId, setName, total, symbol, onPress }: 
   return (
     <View style={styles.wrap}>
       <StatRingTile
-        label={setName} owned={owned} total={total} onPress={onPress}
+        label={setName} owned={owned} total={total} onPress={onPress} onLongPress={onUnpin}
         color={tier?.color}
       />
       {symbol && (

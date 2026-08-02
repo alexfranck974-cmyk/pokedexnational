@@ -26,7 +26,7 @@ import {
   useCollections, useCreateCollection, useRenameCollection, useDeleteCollection,
   useCollectionCards, useRemoveCardFromCollection,
 } from '@/lib/collections';
-import { useSetGoals } from '@/lib/collection-goals';
+import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
 import { useTcgSets } from '@/lib/tcg-index';
 import { FavoriteTile } from '@/components/FavoriteTile';
 import { TeamSlotPicker } from '@/components/TeamSlotPicker';
@@ -112,6 +112,7 @@ export default function FavoritesScreen() {
   const removeCardFromCollection = useRemoveCardFromCollection();
 
   const { data: goals = [] } = useSetGoals(userId);
+  const toggleGoal = useToggleSetGoal();
   const { data: allSets = [] } = useTcgSets();
   const setsById = useMemo(() => new Map(allSets.map(s => [s.id, s])), [allSets]);
   const pinnedSetIds = useMemo(() => new Set(goals.map(g => g.setId)), [goals]);
@@ -129,7 +130,7 @@ export default function FavoritesScreen() {
   const [collectionRenaming, setCollectionRenaming] = useState(false);
   const [collectionRenameValue, setCollectionRenameValue] = useState('');
   const [cardPickerOpen, setCardPickerOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ kind: 'team' | 'collection'; id: string; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ kind: 'team' | 'collection' | 'setGoal'; id: string; name: string } | null>(null);
 
   const [favSearch, setFavSearch] = useState('');
   const [favStatusFilter, setFavStatusFilter] = useState<FavStatusFilter>('all');
@@ -242,17 +243,19 @@ export default function FavoritesScreen() {
     if (deleteTarget.kind === 'team') {
       deleteTeam.mutate(deleteTarget.id);
       if (selectedTeamId === deleteTarget.id) setSelectedTeamId(null);
-    } else {
+    } else if (deleteTarget.kind === 'collection') {
       deleteCollection.mutate(deleteTarget.id);
       if (selectedCollectionId === deleteTarget.id) setSelectedCollectionId(null);
+    } else {
+      toggleGoal.mutate({ setId: deleteTarget.id, currentlyPinned: true });
     }
     setDeleteTarget(null);
   };
 
   const confirmTarget: ConfirmTarget | null = deleteTarget
     ? {
-        title: deleteTarget.kind === 'team' ? 'Supprimer l’équipe' : 'Supprimer la liste',
-        message: `Supprimer "${deleteTarget.name}" ?`,
+        title: deleteTarget.kind === 'team' ? 'Supprimer l’équipe' : deleteTarget.kind === 'collection' ? 'Supprimer la liste' : 'Retirer cet objectif ?',
+        message: deleteTarget.kind === 'setGoal' ? `${deleteTarget.name} ne sera plus suivie comme objectif de complétion.` : `Supprimer "${deleteTarget.name}" ?`,
       }
     : null;
 
@@ -688,15 +691,17 @@ export default function FavoritesScreen() {
               {goals.map(g => {
                 const set = setsById.get(g.setId);
                 if (!set) return null;
+                const setName = setFlagLabel(set.name, set.region);
                 return (
                   <SetGoalTile
                     key={g.setId}
                     userId={userId}
                     setId={g.setId}
-                    setName={setFlagLabel(set.name, set.region)}
+                    setName={setName}
                     total={set.cardCount}
                     symbol={set.symbol}
                     onPress={() => router.push(withReturnTo(`/pinned-set/${g.setId}`, '/favorites') as never)}
+                    onUnpin={() => setDeleteTarget({ kind: 'setGoal', id: g.setId, name: setName })}
                   />
                 );
               })}
@@ -733,6 +738,7 @@ export default function FavoritesScreen() {
 
       <ConfirmDialog
         target={confirmTarget}
+        confirmLabel={deleteTarget?.kind === 'setGoal' ? 'Désépingler' : 'Supprimer'}
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
