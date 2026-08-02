@@ -200,7 +200,7 @@ export function useAllWishedCards(userId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_wishlist')
-        .select('card_id, wished_at, tcg_cards(id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date)')
+        .select('card_id, wished_at, tcg_cards(id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, cardmarket_trend_eur)')
         .eq('user_id', userId!)
         .order('wished_at', { ascending: false });
       if (error) throw error;

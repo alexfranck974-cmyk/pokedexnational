@@ -174,7 +174,7 @@ export default function PinnedSetDetail() {
         <Ionicons name="information-circle" size={16} color={colors.primary} />
         <Text style={styles.bannerText}>
           Cocher une carte ici l'ajoute à ta collection de cartes possédées, sans changer ta carte
-          officielle du Pokédex national — rends-toi sur sa fiche pour l'utiliser comme carte officielle
+          choisie du Pokédex national — rends-toi sur sa fiche pour l'utiliser comme carte choisie
           si tu le souhaites.
         </Text>
       </View>

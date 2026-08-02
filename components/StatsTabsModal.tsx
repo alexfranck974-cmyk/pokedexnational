@@ -3,9 +3,10 @@ import { View, Text, Pressable, ScrollView } from 'react-native';
 import { BubbleSheet } from './BubbleSheet';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
-export type StatsTab = 'generation' | 'type' | 'variants' | 'artists';
+export type StatsTab = 'progress' | 'generation' | 'type' | 'variants' | 'artists';
 
 const TABS: { key: StatsTab; label: string }[] = [
+  { key: 'progress', label: 'Progression' },
   { key: 'generation', label: 'Génération' },
   { key: 'type', label: 'Type' },
   { key: 'variants', label: 'Formes' },

@@ -263,7 +263,7 @@ export default function PokemonDetail() {
             <Ionicons name="information-circle" size={16} color={colors.primary} />
             <Text style={styles.infoBannerText}>
               Les cartes possédées apparaissent déverrouillées. Touche une carte pour en faire
-              ta carte officielle du Pokédex national.
+              ta carte choisie du Pokédex national.
             </Text>
           </View>
           {sortedCards.length === 0 ? (
@@ -293,7 +293,7 @@ export default function PokemonDetail() {
       <ConfirmDialog
         target={pendingCard ? {
           title: 'Choisir cette carte',
-          message: `Faire de « ${pendingCard.name} » ta carte officielle du Pokédex national pour ${getName(p)} ?`,
+          message: `Faire de « ${pendingCard.name} » ta carte choisie du Pokédex national pour ${getName(p)} ?`,
         } : null}
         confirmLabel="Choisir"
         tone="primary"

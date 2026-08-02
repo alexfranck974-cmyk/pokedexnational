@@ -4,12 +4,17 @@ import { Ionicons } from '@expo/vector-icons';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
-import { useUserDex, useAllOwnedCardIds, useAllOwnedCardsDetailed } from '@/lib/collection';
+import {
+  useUserDex, useAllOwnedCardIds, useAllOwnedCardsDetailed, useOwnedDexNums, useWishedDexNums,
+  useAllOwnedCardsLedgerDetailed, useOwnedCardQuantities, useAllWishedCards,
+} from '@/lib/collection';
 import { useVariantCards } from '@/lib/tcg-index';
 import {
   computeOverallProgress, computeByGeneration, computeByType,
-  bucketVariantCards, computeVariantProgress, topArtists,
+  bucketVariantCards, computeVariantProgress, topArtists, totalCollectionValue,
 } from '@/lib/dashboard-stats';
+import { computeDexProgress, dexStateFor, type DexState } from '@/lib/dex-progress';
+import { eurFormatter } from '@/lib/trades';
 import { getGeneration, GEN_EMOJI, GEN_COLORS } from '@/lib/generations';
 import { ProgressRing } from './ProgressRing';
 import { StatRingTile } from './StatRingTile';
@@ -17,6 +22,7 @@ import { StatBreakdownModal, type BreakdownTarget, type BreakdownItem } from './
 import { StatsTabsModal, type StatsTab } from './StatsTabsModal';
 import { TypeIcon } from './TypeIcon';
 import { IconBubble } from './IconBubble';
+import { Pokeball } from './Pokeball';
 import { TYPE_COLORS, TYPE_LABEL_FR } from '@/lib/types-colors';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { usePressSpring } from '@/lib/use-press-spring';
@@ -66,10 +72,33 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
   const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
   const { data: ownedCards = [] } = useAllOwnedCardsDetailed(userId);
   const { data: variantCards = [] } = useVariantCards();
+  const { data: capturedDex = new Set<number>() } = useOwnedDexNums(userId);
+  const { data: wishedDex = new Set<number>() } = useWishedDexNums(userId);
+  const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
+  const { data: ownedQuantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
+  const { data: wishedCards = [] } = useAllWishedCards(userId);
   const [breakdown, setBreakdown] = useState<BreakdownTarget | null>(null);
   const [statsOpen, setStatsOpen] = useState(false);
-  const [statsTab, setStatsTab] = useState<StatsTab>('generation');
+  const [statsTab, setStatsTab] = useState<StatsTab>('progress');
   const { scale, pressIn, pressOut } = usePressSpring();
+
+  // "Choisi" = has a card picked to represent it in the grid (user_cards).
+  // "Capturé" = owns at least one printing (user_owned_cards) but hasn't
+  // picked one yet. "Vu" = only on the wishlist. Mutually exclusive, in that
+  // priority order — see lib/dex-progress.ts.
+  const dexProgress = useMemo(
+    () => computeDexProgress(POKEDEX, owned, capturedDex, wishedDex),
+    [owned, capturedDex, wishedDex],
+  );
+  // "Choisi" value: the single card picked per Pokémon, at most 1025 cards.
+  const chosenValue = useMemo(() => ownedCards.reduce((sum, c) => sum + (c.cardmarketTrendEur ?? 0), 0), [ownedCards]);
+  // Full owned ledger weighted by quantity — chosen + captured-but-not-chosen + duplicates.
+  const totalOwnedValue = useMemo(() => totalCollectionValue(ledgerCards, ownedQuantities), [ledgerCards, ownedQuantities]);
+  // Theoretical: what completing the wishlist would cost, deduped per card (not owned yet, so no quantity to weigh by).
+  const wishlistValue = useMemo(
+    () => wishedCards.reduce((sum: number, c: { cardmarket_trend_eur?: number | null }) => sum + (c.cardmarket_trend_eur ?? 0), 0),
+    [wishedCards],
+  );
 
   const overall = useMemo(() => computeOverallProgress(POKEDEX, owned), [owned]);
   const byGeneration = useMemo(() => computeByGeneration(POKEDEX, owned), [owned]);
@@ -97,6 +126,8 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
       key: c.id, dexNum: c.dex_num, image: c.imageSmall, imageLarge: c.imageLarge ?? null,
       label: c.name, owned: ownedCardIds.has(c.id),
     }));
+  const stateItems = (state: DexState): BreakdownItem[] =>
+    pokemonItems(POKEDEX.filter(p => dexStateFor(p.num, owned, capturedDex, wishedDex) === state));
 
   const styles = useThemedStyles((colors, shadow) => ({
     hero: {
@@ -128,6 +159,14 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
     grid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, justifyContent: 'center' as const, gap: spacing.xs },
     bubbleEmoji: { fontSize: 22 },
 
+    valueRow: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
+      paddingVertical: spacing.xs,
+    },
+    valueRowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+    valueLabel: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted },
+    valueAmount: { fontSize: 13, fontFamily: fonts.monoBold, color: colors.success },
+
     artistRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, paddingVertical: spacing.sm },
     artistRowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
     artistRowPressed: { backgroundColor: colors.surfaceAlt },
@@ -141,7 +180,7 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
   return (
     <>
       <Pressable
-        onPress={() => { setStatsTab('generation'); setStatsOpen(true); }}
+        onPress={() => { setStatsTab('progress'); setStatsOpen(true); }}
         onPressIn={pressIn}
         onPressOut={pressOut}>
         <Animated.View style={[styles.hero, { transform: [{ scale }] }]}>
@@ -170,6 +209,58 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
         onTabChange={setStatsTab}
         tint={colors.primary}
         onClose={() => setStatsOpen(false)}>
+        {statsTab === 'progress' && (
+          <>
+            <View style={[styles.card, styles.grid]}>
+              <StatRingTile
+                label="Choisi" owned={dexProgress.chosen} total={POKEDEX.length} color={colors.primary} size={76}
+                icon={<IconBubble size={44} color={colors.primary}><Pokeball size={26} /></IconBubble>}
+                onPress={() => setBreakdown({
+                  title: 'Choisi', owned: dexProgress.chosen, total: POKEDEX.length, color: colors.primary,
+                  items: stateItems('chosen'),
+                })}
+              />
+              <StatRingTile
+                label="Capturé" owned={dexProgress.captured} total={POKEDEX.length} color={colors.success} size={76}
+                icon={<IconBubble size={44} color={colors.success}><Ionicons name="cube" size={22} color="white" /></IconBubble>}
+                onPress={() => setBreakdown({
+                  title: 'Capturé', owned: dexProgress.captured, total: POKEDEX.length, color: colors.success,
+                  items: stateItems('captured'),
+                })}
+              />
+              <StatRingTile
+                label="Vu" owned={dexProgress.seen} total={POKEDEX.length} color={colors.danger} size={76}
+                icon={<IconBubble size={44} color={colors.danger}><Ionicons name="heart" size={20} color="white" /></IconBubble>}
+                onPress={() => setBreakdown({
+                  title: 'Vu', owned: dexProgress.seen, total: POKEDEX.length, color: colors.danger,
+                  items: stateItems('seen'),
+                })}
+              />
+              <StatRingTile
+                label="Restant" owned={dexProgress.remaining} total={POKEDEX.length} color={colors.textDim} size={76}
+                icon={<IconBubble size={44} color={colors.textDim}><Ionicons name="help" size={22} color="white" /></IconBubble>}
+                onPress={() => setBreakdown({
+                  title: 'Restant à voir', owned: dexProgress.remaining, total: POKEDEX.length, color: colors.textDim,
+                  items: stateItems('remaining'),
+                })}
+              />
+            </View>
+            <View style={styles.card}>
+              <View style={styles.valueRow}>
+                <Text style={styles.valueLabel}>Valeur des cartes choisies</Text>
+                <Text style={styles.valueAmount}>{eurFormatter.format(chosenValue)}</Text>
+              </View>
+              <View style={[styles.valueRow, styles.valueRowBorder]}>
+                <Text style={styles.valueLabel}>Valeur totale possédée</Text>
+                <Text style={styles.valueAmount}>{eurFormatter.format(totalOwnedValue)}</Text>
+              </View>
+              <View style={[styles.valueRow, styles.valueRowBorder]}>
+                <Text style={styles.valueLabel}>Valeur théorique de ta wishlist</Text>
+                <Text style={styles.valueAmount}>{eurFormatter.format(wishlistValue)}</Text>
+              </View>
+            </View>
+          </>
+        )}
         {statsTab === 'generation' && (
           <View style={[styles.card, styles.grid]}>
             {byGeneration.map(g => (
