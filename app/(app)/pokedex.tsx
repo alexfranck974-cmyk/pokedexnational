@@ -22,6 +22,7 @@ import { CaptureEffect, type CaptureEvent } from '@/components/CaptureEffect';
 import { checkTypeMilestones } from '@/lib/type-milestones';
 import { TYPE_LABEL_FR } from '@/lib/types-colors';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
+import { eurFormatter } from '@/lib/trades';
 import { getName } from '@/lib/i18n';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
@@ -45,6 +46,7 @@ export default function PokedexScreen() {
     heroTitle: { fontSize: 13, fontFamily: fonts.display, color: 'white' },
     heroCount: { fontSize: 20, fontFamily: fonts.monoBold, color: 'white' },
     heroFilter: { fontSize: 11, fontFamily: fonts.body, color: 'rgba(255,255,255,0.8)' },
+    heroValue: { fontSize: 12, fontFamily: fonts.monoBold, color: 'rgba(255,255,255,0.85)' },
   }));
   const { data: owned = new Set<number>(), refetch: refetchOwned } = useUserDex(userId);
   const { data: collectedDex = new Set<number>() } = useOwnedDexNums(userId);
@@ -53,6 +55,18 @@ export default function PokedexScreen() {
   const { data: wishedInDexSet = new Set<number>() } = useWishedDexNums(userId);
   const [zoomIndex, setZoomIndex] = useState<number | null>(null);
   const ownedCardsByDex = useMemo(() => new Map(ownedCardsDetailed.map(c => [c.dexNum, c])), [ownedCardsDetailed]);
+  // The official National Dex card's value only — distinct from "Valeur
+  // estimée de ta collection" on the Dashboard, which sums the full owned
+  // ledger (duplicates, non-official printings) instead.
+  const nationalDexValue = useMemo(
+    () => ownedCardsDetailed.reduce((sum, c) => sum + (c.cardmarketTrendEur ?? 0), 0),
+    [ownedCardsDetailed],
+  );
+  const dexPrices = useMemo(
+    () => new Map(ownedCardsDetailed.map(c => [c.dexNum, c.cardmarketTrendEur])),
+    [ownedCardsDetailed],
+  );
+  const [showValues, setShowValues] = useState(false);
   const { data: tcgIndex = new Map() } = useTcgIndex();
   const { data: sets = [] } = useTcgSets();
   const { data: rarities = [] } = useTcgRarities();
@@ -140,6 +154,7 @@ export default function PokedexScreen() {
         <View style={styles.heroText}>
           <Text style={styles.heroTitle}>Pokédex National</Text>
           <Text style={styles.heroCount}>{ownedCount} / {items.length}</Text>
+          <Text style={styles.heroValue}>≈ {eurFormatter.format(nationalDexValue)}</Text>
           {filterHint && <Text style={styles.heroFilter}>Filtre : {filterHint}</Text>}
         </View>
         <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
@@ -150,6 +165,7 @@ export default function PokedexScreen() {
         ownedImages={ownedImages}
         wishedInDexSet={wishedInDexSet}
         columnsOverride={columns}
+        cardPrices={showValues ? dexPrices : undefined}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
         onLongSelect={num => {
@@ -175,6 +191,7 @@ export default function PokedexScreen() {
         sets={sets} rarities={rarities}
         onReset={reset}
         columns={columns} onColumns={setColumns}
+        showValues={showValues} onToggleValues={() => setShowValues(v => !v)}
       />
       <CaptureEffect event={currentCapture} onDone={() => setCaptureQueue(q => q.slice(1))} />
     </SafeAreaView>

@@ -5,18 +5,22 @@ import { getName } from '@/lib/i18n';
 import { useTheme, useThemedStyles, radius, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
 
+const eurFormatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
+
 interface Props {
   pokemon: Pokemon;
   owned: boolean;
   collected?: boolean;
   ownedCardImage?: string;
   cardCount?: number;
+  /** Shown instead of cardCount when the value toggle (SearchFilterBar) is on. */
+  priceEur?: number | null;
   wishedInDex?: boolean;
   onPress: () => void;
   onZoom?: () => void;
 }
 
-export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCount, wishedInDex, onPress, onZoom }: Props) {
+export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCount, priceEur, wishedInDex, onPress, onZoom }: Props) {
   const useCard = owned && !!ownedCardImage;
   // "In color" reflects owning ANY card for this species (the ledger); the card-art
   // swap / Pokéball badge / count below stay gated on `owned` — the one specifically
@@ -96,8 +100,12 @@ export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCou
       <Text style={[styles.name, !inColor && styles.textDim]} numberOfLines={1}>
         {getName(pokemon)}
       </Text>
-      {owned && cardCount !== undefined && cardCount > 0 && (
-        <Text style={styles.cardCount}>×{cardCount}</Text>
+      {owned && priceEur !== undefined ? (
+        <Text style={styles.cardCount} numberOfLines={1}>{priceEur == null ? '—' : eurFormatter.format(priceEur)}</Text>
+      ) : (
+        owned && cardCount !== undefined && cardCount > 0 && (
+          <Text style={styles.cardCount}>×{cardCount}</Text>
+        )
       )}
     </Pressable>
   );

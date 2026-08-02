@@ -22,6 +22,9 @@ interface Props {
   columns: 2 | 3 | 4 | null;            onColumns: (v: 2 | 3 | 4 | null) => void;
   /** Clearance above the floating tab bar + Settings FAB (app/(app)/_layout.tsx). Screens without that chrome (e.g. the public profile) pass spacing.lg instead. */
   bottomInset?: number;
+  /** Optional 4th FAB toggling a per-card €-value overlay — omit to keep the
+   * 3-button stack (e.g. Wishlist, which doesn't wire this yet). */
+  showValues?: boolean;                 onToggleValues?: () => void;
 }
 
 const COLUMN_CYCLE: (2 | 3 | 4 | null)[] = [null, 2, 3, 4];
@@ -182,6 +185,11 @@ export function SearchFilterBar(p: Props) {
             <Text style={styles.columnsLabel}>×{p.columns}</Text>
           )}
         </Pressable>
+        {p.onToggleValues && (
+          <Pressable onPress={p.onToggleValues} style={styles.fab}>
+            <Ionicons name="pricetag" size={20} color={p.showValues ? colors.primary : colors.text} />
+          </Pressable>
+        )}
       </View>
 
       <Modal visible={filterSheetOpen} transparent animationType="slide" onRequestClose={() => setFilterSheetOpen(false)}>

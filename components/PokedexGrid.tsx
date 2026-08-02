@@ -12,6 +12,10 @@ interface Props {
   items: PokemonWithState[];
   ownedImages?: Map<number, string>;
   wishedInDexSet?: Set<number>;
+  /** dex_num -> cardmarket trend price of the owned official card — only pass
+   * this when the value toggle is on, so tiles fall back to the (unrelated)
+   * cardCount slot otherwise. */
+  cardPrices?: Map<number, number | null>;
   columnsOverride?: 2 | 3 | 4 | null;
   /** Scrolls together with the grid instead of sitting in a fixed header above it. */
   ListHeaderComponent?: ReactElement | null;
@@ -30,7 +34,7 @@ function numColsFor(width: number): number {
   return 8;
 }
 
-export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverride, ListHeaderComponent, refreshControl, onSelect, onLongSelect }: Props) {
+export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, columnsOverride, ListHeaderComponent, refreshControl, onSelect, onLongSelect }: Props) {
   const { width } = useWindowDimensions();
   const hideOnScrollProps = useHideOnScrollProps();
   const cols = columnsOverride ?? numColsFor(width);
@@ -101,6 +105,7 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, columnsOverrid
             owned={row.item.owned}
             collected={row.item.collected}
             ownedCardImage={ownedImages?.get(row.item.num)}
+            priceEur={cardPrices?.get(row.item.num)}
             wishedInDex={wishedInDexSet?.has(row.item.num)}
             onPress={() => onSelect(row.item.num)}
             onZoom={onLongSelect ? () => onLongSelect(row.item.num) : undefined}
