@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useUserDex, useAllOwnedCardIds, useAllOwnedCardsDetailed, useAllOwnedCardsLedgerDetailed } from '@/lib/collection';
+import { useUserDex, useAllOwnedCardIds, useAllOwnedCardsDetailed, useAllOwnedCardsLedgerDetailed, useOwnedCardQuantities } from '@/lib/collection';
 import { useSetGoals } from '@/lib/collection-goals';
 import { useVariantCards, useTcgSets } from '@/lib/tcg-index';
 import {
@@ -36,6 +36,7 @@ export function BadgesSection({
   const { data: ownedCards = [] } = useAllOwnedCardsDetailed(userId);
   const { data: variantCards = [] } = useVariantCards();
   const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
+  const { data: ownedQuantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
   const { data: pinnedGoals = [] } = useSetGoals(userId);
   const { data: allSets = [] } = useTcgSets();
   const { data: completedTradesCount = 0 } = useCompletedTradesCount(userId);
@@ -48,7 +49,7 @@ export function BadgesSection({
     () => computeVariantProgress(variantBuckets, ownedCardIds),
     [variantBuckets, ownedCardIds],
   );
-  const collectionValue = useMemo(() => totalCollectionValue(ownedCards), [ownedCards]);
+  const collectionValue = useMemo(() => totalCollectionValue(ledgerCards, ownedQuantities), [ledgerCards, ownedQuantities]);
   const bySet = useMemo(
     () => computeSetGoalsProgress(pinnedGoals, ledgerCards, allSets),
     [ledgerCards, pinnedGoals, allSets],

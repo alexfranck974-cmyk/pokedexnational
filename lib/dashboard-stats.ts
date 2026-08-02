@@ -74,8 +74,16 @@ export function computeVariantProgress(
   return result;
 }
 
-export function totalCollectionValue(ownedCards: OwnedCardDetail[]): number {
-  return ownedCards.reduce((sum, c) => sum + (c.cardmarketTrendEur ?? 0), 0);
+// Takes the full owned-cards ledger (every distinct printing you have, not
+// just the one chosen as each Pokemon's official National Dex card) and
+// weights each by how many copies you actually own — a card you have 3x
+// should count 3x toward the total, and a holo you own but didn't pick as
+// "official" still needs to count at all.
+export function totalCollectionValue(
+  ledgerCards: { cardId: string; cardmarketTrendEur: number | null }[],
+  quantities: Map<string, number>,
+): number {
+  return ledgerCards.reduce((sum, c) => sum + (c.cardmarketTrendEur ?? 0) * (quantities.get(c.cardId) ?? 1), 0);
 }
 
 export interface SetGoalProgress extends Progress { setId: string; setName: string; symbol: string | null; }

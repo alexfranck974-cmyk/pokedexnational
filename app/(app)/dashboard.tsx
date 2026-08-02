@@ -84,7 +84,7 @@ export default function DashboardScreen() {
   };
 
   const wishedCardIds = useMemo(() => new Set(wishedCards.map((c: { id: string }) => c.id)), [wishedCards]);
-  const collectionValue = useMemo(() => totalCollectionValue(ownedCards), [ownedCards]);
+  const collectionValue = useMemo(() => totalCollectionValue(ledgerCards, ownedQuantities), [ledgerCards, ownedQuantities]);
   const [zoomIndex, setZoomIndex] = useState<number | null>(null);
   const ownedCardsByDex = useMemo(() => new Map(ownedCards.map(c => [c.dexNum, c])), [ownedCards]);
   const vitrineCards = useMemo(() => Array.from(showcase)
