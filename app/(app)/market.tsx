@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, Image, Pressable, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, Image, Pressable, ScrollView, RefreshControl, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +23,10 @@ import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 
 const TRADE_TINT = '#2dd4bf';
+
+function normalize(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
 
 function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   const { colors } = useTheme();
@@ -62,12 +66,24 @@ export default function MarketScreen() {
   const [openInProgress, setOpenInProgress] = useState<TradeInProgressItem | null>(null);
   const [tradeTarget, setTradeTarget] = useState<TradeTarget | null>(null);
   const [tradePreset, setTradePreset] = useState<{ offered?: PickedCard; requested?: PickedCard }>({});
+  const [friendSearch, setFriendSearch] = useState('');
+  const [pickingFriend, setPickingFriend] = useState(false);
 
   const closeTradeModal = () => { setTradeTarget(null); setTradePreset({}); };
   const openTradeWith = (friendId: string, friendName: string, preset: { offered?: PickedCard; requested?: PickedCard } = {}) => {
     setTradePreset(preset);
     setTradeTarget({ id: friendId, displayName: friendName });
   };
+
+  // A "start a free trade" entry point, not gated behind an existing
+  // duplicate/wishlist match — opens TradeProposalModal with no card preset,
+  // so the offer/request steps (search, set filters, wishlist matches surfaced
+  // first) do all the work of picking what to give and what to ask for.
+  const friendSearchN = normalize(friendSearch.trim());
+  const filteredFriends = useMemo(
+    () => friendSearchN ? friends.filter((f: FriendProfile) => normalize(f.displayName).includes(friendSearchN)) : friends,
+    [friends, friendSearchN],
+  );
 
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
@@ -95,6 +111,15 @@ export default function MarketScreen() {
     marketHint: { fontSize: 12, fontFamily: fonts.body, color: colors.textDim },
     marketEmpty: { fontSize: 13, fontFamily: fonts.body, color: colors.textDim, fontStyle: 'italic' as const, padding: spacing.sm },
     marketNoteText: { fontSize: 11, fontFamily: fonts.body, color: colors.textDim, fontStyle: 'italic' as const },
+    freeTradeBtn: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'center' as const, gap: spacing.xs,
+      backgroundColor: TRADE_TINT, borderRadius: radius.md, padding: spacing.sm,
+    },
+    freeTradeBtnText: { fontFamily: fonts.bodyBold, color: 'white', fontSize: 14 },
+    searchInput: {
+      borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 10,
+      fontSize: 14, fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt,
+    },
   }));
 
   return (
@@ -116,6 +141,50 @@ export default function MarketScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         {...hideOnScrollProps}>
         <>
+            <View style={styles.list}>
+              {!pickingFriend ? (
+                <Pressable onPress={() => setPickingFriend(true)} style={styles.freeTradeBtn}>
+                  <TradeIcon size={15} color="white" />
+                  <Text style={styles.freeTradeBtnText}>Proposer un échange à un ami</Text>
+                </Pressable>
+              ) : (
+                <>
+                  <View style={styles.sectionTitleRow}>
+                    <IconBubble size={26} color={colors.primarySoft}>
+                      <TradeIcon size={13} color={TRADE_TINT} />
+                    </IconBubble>
+                    <Text style={styles.sectionTitle}>Choisir un ami</Text>
+                    <View style={{ flex: 1 }} />
+                    <Pressable onPress={() => { setPickingFriend(false); setFriendSearch(''); }} hitSlop={8}>
+                      <Ionicons name="close" size={20} color={colors.textMuted} />
+                    </Pressable>
+                  </View>
+                  <TextInput
+                    placeholder="Chercher un ami…"
+                    value={friendSearch}
+                    onChangeText={setFriendSearch}
+                    style={styles.searchInput}
+                  />
+                  {filteredFriends.length === 0 ? (
+                    <Text style={styles.marketEmpty}>
+                      {friends.length === 0 ? 'Ajoute des amis depuis Social pour pouvoir échanger.' : 'Aucun ami ne correspond à cette recherche.'}
+                    </Text>
+                  ) : (
+                    filteredFriends.map((f: FriendProfile) => (
+                      <Pressable
+                        key={f.id}
+                        onPress={() => { setPickingFriend(false); setFriendSearch(''); openTradeWith(f.id, f.displayName); }}
+                        style={styles.row}>
+                        <Avatar name={f.displayName} />
+                        <Text style={styles.newsText}>{f.displayName}</Text>
+                        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                      </Pressable>
+                    ))
+                  )}
+                </>
+              )}
+            </View>
+
             {tradeOffers.length > 0 && (
               <View style={styles.list}>
                 <View style={styles.sectionTitleRow}>

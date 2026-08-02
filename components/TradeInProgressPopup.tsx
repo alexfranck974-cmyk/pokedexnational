@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { View, Text, Image, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { type TradeInProgressItem, useConfirmTradeExchange, eurFormatter } from '@/lib/trades';
+import { type TradeInProgressItem, useConfirmTradeExchange, useCancelTrade, eurFormatter } from '@/lib/trades';
 import { TradeIcon } from './TradeIcon';
 import { BubbleSheet } from './BubbleSheet';
+import { ConfirmDialog } from './ConfirmDialog';
 import { toast } from '@/lib/toast';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
@@ -19,6 +21,8 @@ const TINT = '#2dd4bf';
 // finally moves the cards (see confirm_trade_exchange in migration 035).
 export function TradeInProgressPopup({ item, onClose }: Props) {
   const confirm = useConfirmTradeExchange();
+  const cancel = useCancelTrade();
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   const { colors } = useTheme();
 
   const styles = useThemedStyles((colors, shadow) => ({
@@ -42,7 +46,9 @@ export function TradeInProgressPopup({ item, onClose }: Props) {
       borderRadius: radius.pill, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
     btnConfirm: { backgroundColor: TINT },
+    btnCancel: { backgroundColor: colors.surfaceAlt },
     btnText: { fontFamily: fonts.bodyBold, color: 'white' },
+    btnTextCancel: { fontFamily: fonts.bodyBold, color: colors.textMuted },
   }));
 
   const incoming = item?.direction === 'incoming';
@@ -59,6 +65,14 @@ export function TradeInProgressPopup({ item, onClose }: Props) {
           : `Confirmation enregistrée — en attente de ${item.counterpartyName}.`);
         onClose();
       },
+    });
+  };
+
+  const doCancel = () => {
+    if (!item) return;
+    setConfirmingCancel(false);
+    cancel.mutate(item.id, {
+      onSuccess: () => { toast('Échange annulé.'); onClose(); },
     });
   };
 
@@ -98,18 +112,28 @@ export function TradeInProgressPopup({ item, onClose }: Props) {
               <Text style={[styles.statusText, item.counterpartyConfirmed && styles.statusTextDone]}>{item.counterpartyName}</Text>
             </View>
           </View>
-          {item.myConfirmed ? (
-            <Text style={styles.hint}>En attente de la confirmation de {item.counterpartyName}.</Text>
-          ) : (
-            <View style={styles.actions}>
+          {item.myConfirmed && <Text style={styles.hint}>En attente de la confirmation de {item.counterpartyName}.</Text>}
+          <View style={styles.actions}>
+            {!item.myConfirmed && (
               <Pressable onPress={doConfirm} disabled={confirm.isPending} style={[styles.btn, styles.btnConfirm]}>
                 <Ionicons name="checkmark" size={16} color="white" />
                 <Text style={styles.btnText}>{confirm.isPending ? '…' : 'J’ai échangé la carte'}</Text>
               </Pressable>
-            </View>
-          )}
+            )}
+            <Pressable onPress={() => setConfirmingCancel(true)} disabled={cancel.isPending} style={[styles.btn, styles.btnCancel]}>
+              <Text style={styles.btnTextCancel}>{cancel.isPending ? '…' : 'Annuler l’échange'}</Text>
+            </Pressable>
+          </View>
         </View>
       )}
+      <ConfirmDialog
+        target={confirmingCancel ? { title: 'Annuler l’échange', message: `Annuler cet échange avec ${item?.counterpartyName} ? Aucune carte n’a encore changé de main.` } : null}
+        confirmLabel="Annuler l’échange"
+        cancelLabel="Retour"
+        tone="danger"
+        onConfirm={doCancel}
+        onCancel={() => setConfirmingCancel(false)}
+      />
     </BubbleSheet>
   );
 }

@@ -145,7 +145,16 @@ export function useProposeTrade() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['trade_offers', userId] }),
-    onError: () => toast('Impossible de proposer cet échange, réessaie.'),
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('offered_card_already_committed')) {
+        toast('Cette carte est déjà engagée dans un autre échange en cours.');
+      } else if (message.includes('proposer_does_not_own_offered_card')) {
+        toast('Tu ne possèdes plus cette carte.');
+      } else {
+        toast('Impossible de proposer cet échange, réessaie.');
+      }
+    },
   });
 }
 

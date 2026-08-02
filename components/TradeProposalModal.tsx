@@ -100,8 +100,11 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
     [friendLedger, friendQuantities],
   );
   const requestCandidates = useMemo(
-    () => [...friendDuplicates].sort((a, b) => Number(myWishlistIds.has(b.cardId)) - Number(myWishlistIds.has(a.cardId))),
-    [friendDuplicates, myWishlistIds],
+    () => [...friendDuplicates]
+      // Requesting back the exact card you're offering would be a no-op trade.
+      .filter(c => c.cardId !== offeredCard?.cardId)
+      .sort((a, b) => Number(myWishlistIds.has(b.cardId)) - Number(myWishlistIds.has(a.cardId))),
+    [friendDuplicates, myWishlistIds, offeredCard],
   );
 
   // Search + set filter — collections can run into the hundreds of cards, so
