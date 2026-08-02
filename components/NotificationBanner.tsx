@@ -18,6 +18,7 @@ interface Props {
 const HOLD_MS = 3000;
 const NEUTRAL = '#9ca3af';
 const TRADE_TINT = '#2dd4bf';
+const FRIEND_TINT = '#f472b6';
 
 export function NotificationBanner({ event, onDone }: Props) {
   const insets = useSafeAreaInsets();
@@ -59,8 +60,13 @@ export function NotificationBanner({ event, onDone }: Props) {
     Animated.timing(translateY, { toValue: -80, duration: 180, useNativeDriver: true }).start(() => onDoneRef.current());
   };
 
+  const isFriendKind = event.kind === 'friend_request_received' || event.kind === 'friend_request_accepted';
   const icon = event.kind === 'bravo' ? (
     event.pokemonType ? <TypeIcon type={event.pokemonType} size={30} /> : <Ionicons name="happy" size={30} color={NEUTRAL} />
+  ) : isFriendKind ? (
+    <IconBubble size={30} color={FRIEND_TINT + '22'}>
+      <Ionicons name="person-add" size={15} color={FRIEND_TINT} />
+    </IconBubble>
   ) : (
     <IconBubble size={30} color={TRADE_TINT + '22'}>
       <TradeIcon size={15} color={TRADE_TINT} />
@@ -73,8 +79,12 @@ export function NotificationBanner({ event, onDone }: Props) {
     <><Text style={styles.textBold}>{event.counterpartyName}</Text> te propose un échange</>
   ) : event.kind === 'trade_accepted' ? (
     <><Text style={styles.textBold}>{event.counterpartyName}</Text> a accepté ta proposition d’échange</>
-  ) : (
+  ) : event.kind === 'trade_completed' ? (
     <>Échange avec <Text style={styles.textBold}>{event.counterpartyName}</Text> finalisé !</>
+  ) : event.kind === 'friend_request_received' ? (
+    <><Text style={styles.textBold}>{event.counterpartyName}</Text> t’a envoyé une demande d’ami</>
+  ) : (
+    <><Text style={styles.textBold}>{event.counterpartyName}</Text> a accepté ta demande d’ami</>
   );
 
   return (

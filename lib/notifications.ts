@@ -10,7 +10,9 @@ export type AppNotification =
   | { id: string; kind: 'bravo'; counterpartyName: string; pokemonType: PokemonType | null }
   | { id: string; kind: 'trade_received'; counterpartyName: string }
   | { id: string; kind: 'trade_accepted'; counterpartyName: string }
-  | { id: string; kind: 'trade_completed'; counterpartyName: string };
+  | { id: string; kind: 'trade_completed'; counterpartyName: string }
+  | { id: string; kind: 'friend_request_received'; counterpartyName: string }
+  | { id: string; kind: 'friend_request_accepted'; counterpartyName: string };
 
 async function counterpartyName(userId: string): Promise<string> {
   const { data } = await supabase.from('profiles').select('display_name, username').eq('id', userId).single();
@@ -95,6 +97,32 @@ export function useAppNotifications(userId?: string) {
             const key = `trade_completed:${newRow.id}:${userId}`;
             push({ id: key, kind: 'trade_completed', counterpartyName: await counterpartyName(counterpartyId) });
           }
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'friendships' },
+        async (payload) => {
+          const row = payload.new as { requester_id: string; addressee_id: string };
+          if (row.addressee_id !== userId) return; // only the recipient gets pinged
+
+          const key = `friend_request_received:${row.requester_id}:${row.addressee_id}`;
+          push({ id: key, kind: 'friend_request_received', counterpartyName: await counterpartyName(row.requester_id) });
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'friendships' },
+        async (payload) => {
+          // The RLS policy (friendships_update_addressee) only lets the
+          // addressee update a row, and the app never calls it for anything
+          // but accepting — so unlike trade_offers, no old.status check is
+          // needed to know an UPDATE here means "accepted."
+          const row = payload.new as { requester_id: string; addressee_id: string };
+          if (row.requester_id !== userId) return; // only the original sender finds this notable
+
+          const key = `friend_request_accepted:${row.requester_id}:${row.addressee_id}`;
+          push({ id: key, kind: 'friend_request_accepted', counterpartyName: await counterpartyName(row.addressee_id) });
         },
       )
       .subscribe();
