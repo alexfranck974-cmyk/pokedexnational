@@ -116,10 +116,10 @@ function PublicProfileInner() {
 
   const [search, setSearch]       = useState('');
   const [statusFilter, setStatus] = useState<StatusFilter>('all');
-  const [typeFilter, setType]     = useState<PokemonType | null>(null);
+  const [typeFilter, setType]     = useState<PokemonType[]>([]);
   const [setFilter, setSet]       = useState<string | null>(null);
   const [rarityFilter, setRarity] = useState<string | null>(null);
-  const [generationFilter, setGeneration] = useState<number | null>(null);
+  const [generationFilter, setGeneration] = useState<number[]>([]);
   const [sort, setSort]           = useState<SortKey>('num-asc');
   const [columns, setColumns]     = useState<2 | 3 | 4 | null>(null);
 
@@ -300,7 +300,7 @@ function PublicProfileInner() {
             generationFilter={generationFilter} onGeneration={setGeneration}
             sort={sort} onSort={setSort}
             sets={sets} rarities={rarities}
-            onReset={() => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); }}
+            onReset={() => { setStatus('all'); setType([]); setSet(null); setRarity(null); setGeneration([]); }}
             columns={columns} onColumns={setColumns}
             bottomInset={spacing.lg}
           />

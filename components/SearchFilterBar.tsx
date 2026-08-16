@@ -11,10 +11,10 @@ import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius,
 interface Props {
   search: string;                       onSearch: (v: string) => void;
   statusFilter: StatusFilter;           onStatus: (v: StatusFilter) => void;
-  typeFilter: PokemonType | null;       onType: (v: PokemonType | null) => void;
+  typeFilter: PokemonType[];            onType: (v: PokemonType[]) => void;
   setFilter: string | null;             onSet: (v: string | null) => void;
   rarityFilter: string | null;          onRarity: (v: string | null) => void;
-  generationFilter: number | null;      onGeneration: (v: number | null) => void;
+  generationFilter: number[];           onGeneration: (v: number[]) => void;
   sort: SortKey;                        onSort: (v: SortKey) => void;
   sets: { id: string; name: string; region?: string }[];
   rarities: string[];
@@ -124,6 +124,59 @@ function PickerModal({
   );
 }
 
+function MultiPickerModal({
+  visible, title, options, selectedIds, onToggle, onClear, onClose,
+}: {
+  visible: boolean;
+  title: string;
+  options: PickerOption[];
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+  onClear: () => void;
+  onClose: () => void;
+}) {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
+          <View style={styles.sheetHeader}>
+            <Text style={styles.sheetTitle}>{title}</Text>
+            <Pressable onPress={onClose} hitSlop={8}>
+              <Text style={styles.close}>✕</Text>
+            </Pressable>
+          </View>
+          <FlatList
+            data={options}
+            keyExtractor={i => i.id}
+            ListHeaderComponent={
+              <Pressable
+                onPress={onClear}
+                style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+                <Text style={styles.rowLabel}>Tous</Text>
+                {selectedIds.length === 0 && <Text style={styles.check}>✓</Text>}
+              </Pressable>
+            }
+            renderItem={({ item }) => {
+              const isSelected = selectedIds.includes(item.id);
+              return (
+                <Pressable
+                  onPress={() => onToggle(item.id)}
+                  style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+                  <Text style={styles.rowLabel}>{item.label}</Text>
+                  {isSelected && <Text style={styles.check}>✓</Text>}
+                </Pressable>
+              );
+            }}
+          />
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 export function SearchFilterBar(p: Props) {
   const [openPicker, setOpenPicker] = useState<null | 'type' | 'set' | 'rarity' | 'gen'>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -132,7 +185,7 @@ export function SearchFilterBar(p: Props) {
   const isDesktop = width >= 768;
   const { colors } = useTheme();
   const styles = useThemedStyles((colors, shadow) => makeStyles(colors, shadow, p.bottomInset));
-  const hasFilters = p.statusFilter !== 'all' || p.typeFilter || p.setFilter || p.rarityFilter || p.generationFilter !== null;
+  const hasFilters = p.statusFilter !== 'all' || p.typeFilter.length > 0 || p.setFilter || p.rarityFilter || p.generationFilter.length > 0;
 
   const typeOptions: PickerOption[] = (Object.keys(TYPE_LABEL_FR) as PokemonType[])
     .map(t => ({ id: t, label: TYPE_LABEL_FR[t] }));
@@ -140,10 +193,16 @@ export function SearchFilterBar(p: Props) {
   const rarityOptions: PickerOption[] = p.rarities.map(r => ({ id: r, label: r }));
   const genOptions: PickerOption[] = GENERATIONS.map(g => ({ id: String(g.gen), label: g.label }));
 
-  const typeChipLabel   = p.typeFilter   ? `Type: ${TYPE_LABEL_FR[p.typeFilter]}` : 'Type';
+  const typeChipLabel =
+    p.typeFilter.length === 0 ? 'Type'
+    : p.typeFilter.length === 1 ? `Type: ${TYPE_LABEL_FR[p.typeFilter[0]]}`
+    : `Type (${p.typeFilter.length})`;
   const setChipLabel    = p.setFilter    ? `Set: ${setOptions.find(s => s.id === p.setFilter)?.label ?? p.setFilter}` : 'Set';
   const rarityChipLabel = p.rarityFilter ? `Rareté: ${p.rarityFilter}` : 'Rareté';
-  const genChipLabel    = p.generationFilter ? `Gen ${p.generationFilter}` : 'Génération';
+  const genChipLabel =
+    p.generationFilter.length === 0 ? 'Génération'
+    : p.generationFilter.length === 1 ? `Gen ${p.generationFilter[0]}`
+    : `Génération (${p.generationFilter.length})`;
 
   return (
     <View style={styles.overlay} pointerEvents="box-none">
@@ -211,8 +270,8 @@ export function SearchFilterBar(p: Props) {
 
               <Text style={styles.sectionLabel}>Génération / Type / Set / Rareté</Text>
               <View style={styles.chipRow}>
-                <Chip label={genChipLabel}    active={p.generationFilter !== null} onPress={() => setOpenPicker('gen')} />
-                <Chip label={typeChipLabel}   active={p.typeFilter !== null}   onPress={() => setOpenPicker('type')} />
+                <Chip label={genChipLabel}    active={p.generationFilter.length > 0} onPress={() => setOpenPicker('gen')} />
+                <Chip label={typeChipLabel}   active={p.typeFilter.length > 0}   onPress={() => setOpenPicker('type')} />
                 <Chip label={setChipLabel}    active={p.setFilter !== null}    onPress={() => setOpenPicker('set')} />
                 <Chip label={rarityChipLabel} active={p.rarityFilter !== null} onPress={() => setOpenPicker('rarity')} />
               </View>
@@ -235,12 +294,16 @@ export function SearchFilterBar(p: Props) {
         </Pressable>
       </Modal>
 
-      <PickerModal
+      <MultiPickerModal
         visible={openPicker === 'type'}
         title="Type"
         options={typeOptions}
-        selectedId={p.typeFilter}
-        onSelect={(id) => p.onType(id as PokemonType | null)}
+        selectedIds={p.typeFilter}
+        onToggle={(id) => {
+          const t = id as PokemonType;
+          p.onType(p.typeFilter.includes(t) ? p.typeFilter.filter(x => x !== t) : [...p.typeFilter, t]);
+        }}
+        onClear={() => p.onType([])}
         onClose={() => setOpenPicker(null)}
       />
       <PickerModal
@@ -259,12 +322,16 @@ export function SearchFilterBar(p: Props) {
         onSelect={p.onRarity}
         onClose={() => setOpenPicker(null)}
       />
-      <PickerModal
+      <MultiPickerModal
         visible={openPicker === 'gen'}
         title="Génération"
         options={genOptions}
-        selectedId={p.generationFilter !== null ? String(p.generationFilter) : null}
-        onSelect={(id) => p.onGeneration(id === null ? null : parseInt(id, 10))}
+        selectedIds={p.generationFilter.map(String)}
+        onToggle={(id) => {
+          const g = parseInt(id, 10);
+          p.onGeneration(p.generationFilter.includes(g) ? p.generationFilter.filter(x => x !== g) : [...p.generationFilter, g]);
+        }}
+        onClear={() => p.onGeneration([])}
         onClose={() => setOpenPicker(null)}
       />
     </View>

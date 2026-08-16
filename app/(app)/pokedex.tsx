@@ -107,10 +107,10 @@ export default function PokedexScreen() {
 
   const [search, setSearch]         = useState('');
   const [statusFilter, setStatus]   = useState<StatusFilter>('all');
-  const [typeFilter, setType]       = useState<PokemonType | null>(null);
+  const [typeFilter, setType]       = useState<PokemonType[]>([]);
   const [setFilter, setSet]         = useState<string | null>(null);
   const [rarityFilter, setRarity]   = useState<string | null>(null);
-  const [generationFilter, setGeneration] = useState<number | null>(null);
+  const [generationFilter, setGeneration] = useState<number[]>([]);
   const [sort, setSort]             = useState<SortKey>('num-asc');
   const [columns, setColumns]       = useState<2 | 3 | 4 | null>(null);
 
@@ -125,8 +125,8 @@ export default function PokedexScreen() {
   );
 
   const filterHintParts: string[] = [];
-  if (generationFilter) filterHintParts.push(`Gen ${generationFilter}`);
-  if (typeFilter) filterHintParts.push(TYPE_LABEL_FR[typeFilter]);
+  if (generationFilter.length) filterHintParts.push(generationFilter.map(g => `Gen ${g}`).join(' + '));
+  if (typeFilter.length) filterHintParts.push(typeFilter.map(t => TYPE_LABEL_FR[t]).join(' ou '));
   if (setFilter) {
     const s = sets.find(s => s.id === setFilter);
     filterHintParts.push(s ? setFlagLabel(s.name, s.region) : setFilter);
@@ -142,7 +142,7 @@ export default function PokedexScreen() {
   const zoomCard = zoomPokemon ? ownedCardsByDex.get(zoomPokemon.num) : null;
   const zoomCardImage = zoomCard ? { image_small: zoomCard.imageSmall, image_large: zoomCard.imageLarge } : null;
 
-  const reset = () => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); };
+  const reset = () => { setStatus('all'); setType([]); setSet(null); setRarity(null); setGeneration([]); };
 
   return (
     <SafeAreaView style={styles.screen}>

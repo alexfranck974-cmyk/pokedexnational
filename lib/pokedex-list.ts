@@ -8,10 +8,10 @@ export type SortKey = 'num-asc' | 'num-desc' | 'name-asc' | 'name-desc';
 export interface PipelineOptions {
   search: string;
   statusFilter: StatusFilter;
-  typeFilter: PokemonType | null;
+  typeFilter: PokemonType[];
   setFilter: string | null;
   rarityFilter: string | null;
-  generationFilter?: number | null;
+  generationFilter?: number[];
   sort: SortKey;
 }
 
@@ -41,7 +41,7 @@ export function applyPokedexPipeline(
     if (opts.statusFilter === 'owned' && !p.owned) return false;
     if (opts.statusFilter === 'missing' && p.owned) return false;
 
-    if (opts.typeFilter && !p.types.includes(opts.typeFilter)) return false;
+    if (opts.typeFilter.length > 0 && !opts.typeFilter.some(t => p.types.includes(t))) return false;
 
     if (opts.setFilter) {
       const idx = tcgIndex.get(p.num);
@@ -52,9 +52,12 @@ export function applyPokedexPipeline(
       if (!idx || !idx.rarities.includes(opts.rarityFilter)) return false;
     }
 
-    if (opts.generationFilter) {
-      const g = GENERATIONS.find(x => x.gen === opts.generationFilter);
-      if (!g || p.num < g.min || p.num > g.max) return false;
+    if (opts.generationFilter && opts.generationFilter.length > 0) {
+      const matches = opts.generationFilter.some(gen => {
+        const g = GENERATIONS.find(x => x.gen === gen);
+        return g && p.num >= g.min && p.num <= g.max;
+      });
+      if (!matches) return false;
     }
 
     if (searchN) {
