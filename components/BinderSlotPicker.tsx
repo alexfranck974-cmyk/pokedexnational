@@ -1,14 +1,20 @@
 import { useMemo, useState, useEffect } from 'react';
-import { View, Text, TextInput, Pressable, Image, FlatList, Modal, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, TextInput, Pressable, Image, FlatList, Modal, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { useCardsForPokemon } from '@/lib/tcg';
-import { useAssignCardToSlot } from '@/lib/binders';
+import { useAssignCardToSlot, useUploadBinderImage } from '@/lib/binders';
+import { toast } from '@/lib/toast';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
+
+// Matches the aspectRatio: 0.72 card tiles used everywhere else in the app.
+const TARGET_RATIO = 0.72;
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -20,6 +26,20 @@ function numColsFor(width: number): number {
   return 6;
 }
 
+// Native allowsEditing+aspect already lets the user drag/zoom to a card-shaped
+// crop on iOS/Android, but web has no such UI and the native crop isn't
+// guaranteed pixel-exact either — so every picked photo still gets run through
+// a deterministic center-crop to TARGET_RATIO before upload.
+function centerCropRect(width: number, height: number) {
+  const currentRatio = width / height;
+  if (currentRatio > TARGET_RATIO) {
+    const cropWidth = Math.round(height * TARGET_RATIO);
+    return { originX: Math.round((width - cropWidth) / 2), originY: 0, width: cropWidth, height };
+  }
+  const cropHeight = Math.round(width / TARGET_RATIO);
+  return { originX: 0, originY: Math.round((height - cropHeight) / 2), width, height: cropHeight };
+}
+
 interface Props {
   visible: boolean;
   binderId: string | null;
@@ -29,19 +49,25 @@ interface Props {
   onClose: () => void;
 }
 
-// Same two-step "nom -> exemplaire" flow as the old CollectionCardPicker, but
-// a tap assigns straight to the target slot and closes — a binder slot holds
-// exactly one card, there's no multi-add toggle here.
+type Mode = 'card' | 'photo';
+
+// Same two-step "nom -> exemplaire" flow as the old CollectionCardPicker for
+// cards, plus a "Photo" mode that picks from the camera roll, crops to the
+// binder slot's aspect ratio, and uploads to the user's private Storage
+// folder — either way a tap/pick assigns straight to the target slot and closes.
 export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder, onClose }: Props) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
+  const [mode, setMode] = useState<Mode>('card');
   const [search, setSearch] = useState('');
   const [selectedNum, setSelectedNum] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
   const assignCard = useAssignCardToSlot();
+  const uploadImage = useUploadBinderImage();
   const { data: cards = [] } = useCardsForPokemon(selectedNum ?? undefined);
 
   useEffect(() => {
-    if (!visible) { setSearch(''); setSelectedNum(null); }
+    if (!visible) { setSearch(''); setSelectedNum(null); setMode('card'); setUploading(false); }
   }, [visible]);
 
   const matches = useMemo(() => {
@@ -52,6 +78,35 @@ export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder,
 
   const selected = selectedNum !== null ? POKEDEX.find((p) => p.num === selectedNum) : undefined;
 
+  const pickPhoto = async () => {
+    if (binderId == null || position == null) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      toast('Autorise l’accès à tes photos pour importer une image.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images', allowsEditing: true, aspect: [72, 100], quality: 0.9,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setUploading(true);
+    try {
+      const crop = centerCropRect(asset.width, asset.height);
+      const manipulated = await manipulateAsync(
+        asset.uri,
+        [{ crop }, { resize: { width: 640 } }],
+        { compress: 0.85, format: SaveFormat.JPEG },
+      );
+      await uploadImage.mutateAsync({ binderId, position, uri: manipulated.uri });
+      onClose();
+    } catch {
+      toast('Impossible d’importer cette photo, réessaie.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const styles = useThemedStyles((colors, shadow) => ({
     backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' as const, alignItems: 'center' as const },
     sheet: { width: '100%' as const, maxHeight: '85%' as const, backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
@@ -59,6 +114,11 @@ export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder,
     header: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
     headerTitle: { flex: 1, fontSize: 16, fontFamily: fonts.display, color: colors.text },
     close: { fontSize: 20, color: colors.textMuted },
+    modeRow: { flexDirection: 'row' as const, gap: spacing.sm, padding: spacing.md, paddingBottom: 0 },
+    modeChip: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, alignItems: 'center' as const },
+    modeChipActive: { backgroundColor: colors.primary },
+    modeChipText: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
+    modeChipTextActive: { color: 'white' },
     search: { margin: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, fontSize: 15, fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt },
     empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: spacing.xl, fontStyle: 'italic' as const },
     row: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, paddingHorizontal: 16, height: 52 },
@@ -75,6 +135,13 @@ export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder,
       position: 'absolute' as const, top: 4, right: 4, width: 22, height: 22, borderRadius: 11,
       backgroundColor: colors.textDim, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
+    photoPane: { padding: spacing.xl, gap: spacing.md, alignItems: 'center' as const },
+    photoHint: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
+    photoBtn: {
+      flexDirection: 'row' as const, gap: spacing.sm, alignItems: 'center' as const, justifyContent: 'center' as const,
+      backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.lg,
+    },
+    photoBtnText: { color: 'white', fontFamily: fonts.bodyBold, fontSize: 14 },
   }));
 
   return (
@@ -88,14 +155,35 @@ export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder,
                 </Pressable>
               ) : null}
               <Text style={styles.headerTitle} numberOfLines={1}>
-                {selected ? getName(selected) : 'Choisir une carte'}
+                {selected ? getName(selected) : mode === 'card' ? 'Choisir une carte' : 'Importer une photo'}
               </Text>
               <Pressable onPress={onClose} hitSlop={8}>
                 <Text style={styles.close}>✕</Text>
               </Pressable>
             </View>
 
-            {!selected ? (
+            {!selected && (
+              <View style={styles.modeRow}>
+                <Pressable onPress={() => setMode('card')} style={[styles.modeChip, mode === 'card' && styles.modeChipActive]}>
+                  <Text style={[styles.modeChipText, mode === 'card' && styles.modeChipTextActive]}>Carte</Text>
+                </Pressable>
+                <Pressable onPress={() => setMode('photo')} style={[styles.modeChip, mode === 'photo' && styles.modeChipActive]}>
+                  <Text style={[styles.modeChipText, mode === 'photo' && styles.modeChipTextActive]}>Photo</Text>
+                </Pressable>
+              </View>
+            )}
+
+            {mode === 'photo' && !selected ? (
+              <View style={styles.photoPane}>
+                <Text style={styles.photoHint}>
+                  Importe une photo perso pour cet emplacement — elle sera recadrée au format d'une carte.
+                </Text>
+                <Pressable onPress={pickPhoto} disabled={uploading} style={styles.photoBtn}>
+                  {uploading ? <ActivityIndicator color="white" /> : <Ionicons name="image-outline" size={18} color="white" />}
+                  <Text style={styles.photoBtnText}>{uploading ? 'Import…' : 'Choisir une photo'}</Text>
+                </Pressable>
+              </View>
+            ) : !selected ? (
               <>
                 <TextInput
                   placeholder="Chercher un Pokémon (nom ou n°)"

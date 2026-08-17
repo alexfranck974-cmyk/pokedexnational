@@ -29,7 +29,13 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Autorise l'accès à tes photos pour ajouter une image personnalisée dans un binder."
+        }
+      ]
     ],
     "extra": {
       "router": {},

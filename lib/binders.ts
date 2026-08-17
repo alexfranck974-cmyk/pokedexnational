@@ -15,7 +15,7 @@ export interface Binder {
   id: string;
   name: string;
   layout: BinderLayout;
-  cardIds: string[];
+  itemCount: number;
 }
 
 export function useBinders(userId?: string) {
@@ -25,7 +25,7 @@ export function useBinders(userId?: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_collections')
-        .select('id, name, layout, user_collection_items(card_id, position)')
+        .select('id, name, layout, user_collection_items(position)')
         .eq('user_id', userId!)
         .order('created_at');
       if (error) throw error;
@@ -33,55 +33,91 @@ export function useBinders(userId?: string) {
         id: c.id as string,
         name: c.name as string,
         layout: c.layout as BinderLayout,
-        cardIds: ((c.user_collection_items ?? []) as any[])
-          .sort((a, b) => a.position - b.position)
-          .map((i) => i.card_id as string),
+        itemCount: ((c.user_collection_items ?? []) as any[]).length,
       }));
     },
   });
 }
 
-export interface BinderCardDetail {
-  cardId: string;
+// A binder slot holds either a catalog card ('card') or a user-uploaded photo
+// ('image') — see 043_binder_custom_images.sql. `imageUrl` is always the
+// ready-to-render URL: the card's small art for 'card' slots, a short-lived
+// signed Storage URL for 'image' slots. `imagePath` (Storage object path) is
+// only set for 'image' slots — needed to delete the file on removal.
+export interface BinderSlotItem {
   position: number;
-  dexNum: number;
+  kind: 'card' | 'image';
+  cardId: string | null;
+  imagePath: string | null;
+  imageUrl: string;
+  dexNum: number | null;
   name: string;
-  imageSmall: string;
-  imageLarge: string | null;
-  setName: string;
-  cardNumber: string;
+  setName: string | null;
+  cardNumber: string | null;
   rarity: string | null;
   addedAt: string;
 }
+
+const SIGNED_URL_TTL_SECONDS = 3600;
 
 export function useBinderCards(binderId?: string) {
   return useQuery({
     queryKey: ['binder_cards', binderId],
     enabled: !!binderId,
+    staleTime: 50 * 60_000, // just under SIGNED_URL_TTL_SECONDS, so signed URLs don't go stale mid-render
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_collection_items')
-        .select('card_id, position, added_at, tcg_cards(dex_num, name, image_small, image_large, set_name, card_number, rarity)')
+        .select('card_id, image_url, position, added_at, tcg_cards(dex_num, name, image_small, image_large, set_name, card_number, rarity)')
         .eq('collection_id', binderId!)
         .order('position', { ascending: true });
       if (error) throw error;
-      return (data ?? [])
-        .filter((r) => r.tcg_cards != null)
-        .map((r): BinderCardDetail => {
+      const rows = (data ?? []).filter((r) => r.card_id != null ? r.tcg_cards != null : true);
+
+      const imagePaths = rows.filter((r) => r.image_url).map((r) => r.image_url as string);
+      const signedByPath = new Map<string, string>();
+      if (imagePaths.length > 0) {
+        const { data: signed, error: signErr } = await supabase.storage
+          .from('binder-images')
+          .createSignedUrls(imagePaths, SIGNED_URL_TTL_SECONDS);
+        if (signErr) throw signErr;
+        for (const s of signed ?? []) {
+          if (s.path && s.signedUrl) signedByPath.set(s.path, s.signedUrl);
+        }
+      }
+
+      return rows.map((r): BinderSlotItem => {
+        if (r.card_id) {
           const card = r.tcg_cards as any;
           return {
-            cardId: r.card_id as string,
             position: r.position as number,
-            addedAt: r.added_at as string,
+            kind: 'card',
+            cardId: r.card_id as string,
+            imagePath: null,
+            imageUrl: card.image_small as string,
             dexNum: card.dex_num as number,
             name: card.name as string,
-            imageSmall: card.image_small as string,
-            imageLarge: (card.image_large as string | undefined) ?? null,
             setName: card.set_name as string,
             cardNumber: card.card_number as string,
             rarity: (card.rarity as string | undefined) ?? null,
+            addedAt: r.added_at as string,
           };
-        });
+        }
+        const path = r.image_url as string;
+        return {
+          position: r.position as number,
+          kind: 'image',
+          cardId: null,
+          imagePath: path,
+          imageUrl: signedByPath.get(path) ?? '',
+          dexNum: null,
+          name: '',
+          setName: null,
+          cardNumber: null,
+          rarity: null,
+          addedAt: r.added_at as string,
+        };
+      });
     },
   });
 }
@@ -153,10 +189,10 @@ export function useSetBinderLayout() {
 }
 
 // Places a card in a specific slot — upserts on the (collection_id, position)
-// unique index, so tapping an already-filled slot replaces its card instead
-// of erroring on the PK conflict. Fails harmlessly (toast) if the card is
-// already placed elsewhere in this binder, since the PK is (collection_id, card_id) —
-// the picker UI disables that case rather than expecting a silent move.
+// unique index, so tapping an already-filled slot replaces whatever was there
+// (card or photo) instead of erroring on conflict. image_url is explicitly
+// nulled so overwriting a photo slot with a card satisfies the exactly-one
+// CHECK constraint (leftover photo file cleanup is best-effort, not done here).
 export function useAssignCardToSlot() {
   const qc = useQueryClient();
   const { session } = useSession();
@@ -165,7 +201,7 @@ export function useAssignCardToSlot() {
     mutationFn: async ({ binderId, position, cardId }: { binderId: string; position: number; cardId: string }) => {
       const { error } = await supabase
         .from('user_collection_items')
-        .upsert({ collection_id: binderId, card_id: cardId, position }, { onConflict: 'collection_id,position' });
+        .upsert({ collection_id: binderId, card_id: cardId, image_url: null, position }, { onConflict: 'collection_id,position' });
       if (error) throw error;
     },
     onSuccess: (_r, { binderId }) => {
@@ -176,18 +212,54 @@ export function useAssignCardToSlot() {
   });
 }
 
-export function useRemoveCardFromBinder() {
+// Uploads an already-cropped local image into the user's private folder of
+// the binder-images bucket, then points the slot at it (see useAssignCardToSlot
+// for why card_id is explicitly nulled on the upsert). previousImagePath, when
+// given, is removed from Storage after the new upload succeeds.
+export function useUploadBinderImage() {
   const qc = useQueryClient();
   const { session } = useSession();
   const userId = session?.user.id;
   return useMutation({
-    mutationFn: async ({ binderId, cardId }: { binderId: string; cardId: string }) => {
+    mutationFn: async ({ binderId, position, uri, previousImagePath }: {
+      binderId: string; position: number; uri: string; previousImagePath?: string | null;
+    }) => {
+      if (!userId) throw new Error('Not signed in');
+      const path = `${userId}/${binderId}/${position}-${Date.now()}.jpg`;
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const { error: uploadErr } = await supabase.storage.from('binder-images').upload(path, blob, { contentType: 'image/jpeg' });
+      if (uploadErr) throw uploadErr;
+      const { error: upsertErr } = await supabase
+        .from('user_collection_items')
+        .upsert({ collection_id: binderId, image_url: path, card_id: null, position }, { onConflict: 'collection_id,position' });
+      if (upsertErr) throw upsertErr;
+      if (previousImagePath) await supabase.storage.from('binder-images').remove([previousImagePath]);
+    },
+    onSuccess: (_r, { binderId }) => {
+      qc.invalidateQueries({ queryKey: ['binders', userId] });
+      qc.invalidateQueries({ queryKey: ['binder_cards', binderId] });
+    },
+    onError: () => toast('Impossible d’importer cette photo, réessaie.'),
+  });
+}
+
+// Removes whatever occupies a slot (card or photo) by position — position is
+// the universal address, unlike card_id which is null for photo slots. Cleans
+// up the Storage object too when the slot held a photo.
+export function useRemoveBinderSlot() {
+  const qc = useQueryClient();
+  const { session } = useSession();
+  const userId = session?.user.id;
+  return useMutation({
+    mutationFn: async ({ binderId, position, imagePath }: { binderId: string; position: number; imagePath?: string | null }) => {
       const { error } = await supabase
         .from('user_collection_items')
         .delete()
         .eq('collection_id', binderId)
-        .eq('card_id', cardId);
+        .eq('position', position);
       if (error) throw error;
+      if (imagePath) await supabase.storage.from('binder-images').remove([imagePath]);
     },
     onSuccess: (_r, { binderId }) => {
       qc.invalidateQueries({ queryKey: ['binders', userId] });

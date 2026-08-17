@@ -24,7 +24,7 @@ import {
 } from '@/lib/teams';
 import {
   useBinders, useCreateBinder, useRenameBinder, useDeleteBinder,
-  useBinderCards, useRemoveCardFromBinder, useSetBinderLayout,
+  useBinderCards, useRemoveBinderSlot, useSetBinderLayout,
   BINDER_LAYOUTS, BINDER_LAYOUT_COLS, type BinderLayout,
 } from '@/lib/binders';
 import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
@@ -113,7 +113,7 @@ export default function FavoritesScreen() {
   const createBinder = useCreateBinder();
   const renameBinder = useRenameBinder();
   const deleteBinder = useDeleteBinder();
-  const removeCardFromBinder = useRemoveCardFromBinder();
+  const removeBinderSlot = useRemoveBinderSlot();
   const setBinderLayout = useSetBinderLayout();
 
   const { data: goals = [] } = useSetGoals(userId);
@@ -209,7 +209,7 @@ export default function FavoritesScreen() {
   const selectedTeam = teams.find(t => t.id === selectedTeamId) ?? null;
   const selectedBinder = binders.find(b => b.id === selectedBinderId) ?? null;
   const { data: binderCards = [] } = useBinderCards(selectedBinderId ?? undefined);
-  const binderCardIds = useMemo(() => new Set(binderCards.map(c => c.cardId)), [binderCards]);
+  const binderCardIds = useMemo(() => new Set(binderCards.filter(c => c.cardId).map(c => c.cardId as string)), [binderCards]);
   const binderCardsByPosition = useMemo(() => new Map(binderCards.map(c => [c.position, c])), [binderCards]);
   // Always render at least one full trailing page of empty slots past the
   // highest filled position (not just the card count — removing a card from
@@ -579,7 +579,8 @@ export default function FavoritesScreen() {
                   </View>
                 );
               }
-              const isOwned = ownedCardIds.has(item.cardId);
+              const isCard = item.kind === 'card';
+              const isOwned = isCard && ownedCardIds.has(item.cardId as string);
               return (
                 <View style={styles.binderSlotTile}>
                   <View style={styles.collectionImgWrap}>
@@ -589,22 +590,22 @@ export default function FavoritesScreen() {
                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                         style={styles.holoBorder}>
                         <View style={styles.holoInner}>
-                          <Image source={{ uri: item.imageSmall }} style={styles.collectionImg} resizeMode="contain" />
+                          <Image source={{ uri: item.imageUrl }} style={styles.collectionImg} resizeMode="contain" />
                         </View>
                       </LinearGradient>
                     ) : (
                       <View style={styles.plainInner}>
-                        <Image source={{ uri: item.imageSmall }} style={styles.collectionImg} resizeMode="contain" />
+                        <Image source={{ uri: item.imageUrl }} style={styles.collectionImg} resizeMode={isCard ? 'contain' : 'cover'} />
                       </View>
                     )}
-                    {!isOwned && (
+                    {isCard && !isOwned && (
                       <View style={styles.notOwnedBadge}>
                         <Pokeball size={16} muted />
                       </View>
                     )}
                     <Pressable
                       hitSlop={8}
-                      onPress={() => removeCardFromBinder.mutate({ binderId: selectedBinder.id, cardId: item.cardId })}
+                      onPress={() => removeBinderSlot.mutate({ binderId: selectedBinder.id, position: item.position, imagePath: item.imagePath })}
                       style={styles.removeBtn}>
                       <Ionicons name="close" size={16} color="white" />
                     </Pressable>
@@ -643,7 +644,7 @@ export default function FavoritesScreen() {
               renderItem={({ item }) => (
                 <Pressable onPress={() => setSelectedBinderId(item.id)} style={({ pressed }) => [styles.teamRow, pressed && styles.teamRowPressed]}>
                   <Text style={styles.teamRowName} numberOfLines={1}>{item.name}</Text>
-                  <Text style={styles.teamRowCount}>{item.cardIds.length} carte{item.cardIds.length > 1 ? 's' : ''}</Text>
+                  <Text style={styles.teamRowCount}>{item.itemCount} carte{item.itemCount > 1 ? 's' : ''}</Text>
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </Pressable>
               )}
