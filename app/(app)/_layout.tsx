@@ -141,6 +141,7 @@ function AppLayoutTabs() {
         <Tabs.Screen name="feedback" options={{ href: null }} />
         <Tabs.Screen name="pokemon/[num]" options={{ href: null }} />
         <Tabs.Screen name="pinned-set/[setId]" options={{ href: null }} />
+        <Tabs.Screen name="binder/[binderId]" options={{ href: null }} />
       </Tabs>
       <Animated.View style={[styles.settingsFabWrap, { transform: [{ translateY }] }]}>
         <Pressable

@@ -551,6 +551,9 @@ export default function FavoritesScreen() {
                 <Text style={styles.teamEditorTitle} numberOfLines={1}>{selectedBinder.name}</Text>
               </Pressable>
             )}
+            <Pressable onPress={() => router.push(withReturnTo(`/binder/${selectedBinder.id}`, '/favorites') as never)} hitSlop={8} style={{ marginRight: spacing.sm }}>
+              <Ionicons name="eye-outline" size={20} color={colors.primary} />
+            </Pressable>
             <Pressable onPress={() => setLayoutPickerOpen(true)} hitSlop={8} style={{ marginRight: spacing.sm }}>
               <Ionicons name="grid-outline" size={20} color={colors.primary} />
             </Pressable>
