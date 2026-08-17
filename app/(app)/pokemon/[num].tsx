@@ -16,6 +16,8 @@ import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForPokemon } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
 import { useUserCards, useLedgerCardsForDex, useUserWishlist, useToggleCard, useToggleWish, useCardAcquiredAt } from '@/lib/collection';
+import { useFavorites, useToggleFavorite, useShowcase, useToggleShowcase, VITRINE_LIMIT } from '@/lib/favorites';
+import { toast } from '@/lib/toast';
 import { useBackTo, withReturnTo } from '@/lib/navigation';
 import { useHistoryBackGuard } from '@/lib/history-back-guard';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
@@ -45,6 +47,19 @@ export default function PokemonDetail() {
   const { data: acquiredAt } = useCardAcquiredAt(userId, num);
   const toggle = useToggleCard();
   const toggleWish = useToggleWish();
+  const { data: favorites = new Set<number>() } = useFavorites(userId);
+  const toggleFavorite = useToggleFavorite();
+  const { data: showcase = new Set<number>() } = useShowcase(userId);
+  const toggleShowcase = useToggleShowcase();
+  const isFavorited = favorites.has(num);
+  const isInShowcase = showcase.has(num);
+  const handleToggleShowcase = () => {
+    if (!isInShowcase && showcase.size >= VITRINE_LIMIT) {
+      toast(`Vitrine limitée à ${VITRINE_LIMIT} cartes — retire-en une avant d’en ajouter une autre.`);
+      return;
+    }
+    toggleShowcase.mutate({ dexNum: num, currentlyFavorited: isFavorited, currentlyInShowcase: isInShowcase });
+  };
 
   const [region, setRegion] = useState<'global' | 'jp' | 'cn'>('global');
   const [selectedSetIds, setSelectedSetIds] = useState<Set<string> | null>(null);
@@ -132,6 +147,7 @@ export default function PokemonDetail() {
       backgroundColor: heroSurface,
     },
     viewBtnActive: { backgroundColor: heroSurfaceActive },
+    heroToggleDivider: { width: 1, alignSelf: 'stretch' as const, backgroundColor: heroSurface, marginHorizontal: 2 },
     heroMain: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
     heroSprite: { width: 64, height: 64 },
     heroDex: { fontSize: 12, fontFamily: fonts.mono, color: heroTextMuted },
@@ -181,6 +197,17 @@ export default function PokemonDetail() {
             <Text style={styles.backText}>Retour</Text>
           </Pressable>
           <View style={styles.heroViewToggle}>
+            <Pressable
+              onPress={() => toggleFavorite.mutate({ dexNum: num, currentlyFavorited: isFavorited })}
+              style={[styles.viewBtn, isFavorited && styles.viewBtnActive]}>
+              <Ionicons name={isFavorited ? 'star' : 'star-outline'} size={15} color={isFavorited ? heroSurfaceActiveText : heroText} />
+            </Pressable>
+            <Pressable
+              onPress={handleToggleShowcase}
+              style={[styles.viewBtn, isInShowcase && styles.viewBtnActive]}>
+              <Ionicons name={isInShowcase ? 'sparkles' : 'sparkles-outline'} size={15} color={isInShowcase ? heroSurfaceActiveText : heroText} />
+            </Pressable>
+            <View style={styles.heroToggleDivider} />
             <Pressable
               onPress={() => setViewMode('grid')}
               style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>

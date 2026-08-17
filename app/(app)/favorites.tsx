@@ -12,13 +12,11 @@ import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { useSession } from '@/lib/auth';
 import {
-  useUserDex, useOwnedCardImages, useAllOwnedCardIds, useAllOwnedCardsDetailed,
+  useUserDex, useOwnedCardImages, useAllOwnedCardIds,
   useAllOwnedCardsLedgerDetailed, useOwnedCardQuantities,
 } from '@/lib/collection';
 import { eurFormatter } from '@/lib/trades';
-import { useFavorites, useToggleFavorite, useShowcase, useToggleShowcase } from '@/lib/favorites';
-import { toast } from '@/lib/toast';
-import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
+import { withReturnTo } from '@/lib/navigation';
 import {
   useTeams, useCreateTeam, useRenameTeam, useDeleteTeam, useSetTeamSlot, useClearTeamSlot,
 } from '@/lib/teams';
@@ -29,16 +27,13 @@ import {
 } from '@/lib/binders';
 import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
 import { useTcgSets } from '@/lib/tcg-index';
-import { FavoriteTile } from '@/components/FavoriteTile';
 import { Pokeball } from '@/components/Pokeball';
 import { BubbleSheet } from '@/components/BubbleSheet';
 import { TeamSlotPicker } from '@/components/TeamSlotPicker';
 import { BinderSlotPicker } from '@/components/BinderSlotPicker';
 import { SetGoalTile } from '@/components/SetGoalTile';
-import { SetGoalPicker } from '@/components/SetGoalPicker';
 import { TrainersPanel } from '@/components/TrainersPanel';
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
-import { FavoritesFilterBar } from '@/components/FavoritesFilterBar';
 import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
 import { RefreshButton } from '@/components/RefreshButton';
@@ -51,11 +46,12 @@ import { setFlagLabel } from '@/lib/tcg-set-labels';
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
 const TEAM_SIZE = 6;
-const VITRINE_LIMIT = 6;
 const BINDER_LAYOUT_LABEL: Record<BinderLayout, string> = { 1: '1 carte / page', 4: '2 × 2', 9: '3 × 3', 12: '4 × 3', 16: '4 × 4' };
-
-export type FavStatusFilter = 'all' | 'favorites' | 'vitrine';
-export type FavSortKey = 'fav-recent' | 'num-asc' | 'num-desc' | 'name-asc' | 'name-desc';
+const REGION_ORDER: { id: string; label: string }[] = [
+  { id: 'global', label: 'Global' },
+  { id: 'jp', label: '🇯🇵 Japon' },
+  { id: 'cn', label: '🇨🇳 Chine' },
+];
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -93,14 +89,8 @@ export default function FavoritesScreen() {
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
   const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
-  const { data: ownedCardsDetailed = [] } = useAllOwnedCardsDetailed(userId);
-  const artistByDex = useMemo(() => new Map(ownedCardsDetailed.map(c => [c.dexNum, c.artist])), [ownedCardsDetailed]);
   const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
   const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
-  const { data: favorites = new Set<number>() } = useFavorites(userId);
-  const toggleFavorite = useToggleFavorite();
-  const { data: showcase = new Set<number>() } = useShowcase(userId);
-  const toggleShowcase = useToggleShowcase();
 
   const { data: teams = [] } = useTeams(userId);
   const createTeam = useCreateTeam();
@@ -121,9 +111,15 @@ export default function FavoritesScreen() {
   const { data: allSets = [] } = useTcgSets();
   const setsById = useMemo(() => new Map(allSets.map(s => [s.id, s])), [allSets]);
   const pinnedSetIds = useMemo(() => new Set(goals.map(g => g.setId)), [goals]);
-  const [goalPickerOpen, setGoalPickerOpen] = useState(false);
+  // Unpinned sets, grouped by region and kept in useTcgSets()'s own release-date-desc
+  // order within each group — no stats shown here, that's what pinning unlocks.
+  const catalogGroups = useMemo(() => {
+    return REGION_ORDER
+      .map(r => ({ ...r, sets: allSets.filter(s => (s.region || 'global') === r.id && !pinnedSetIds.has(s.id)) }))
+      .filter(g => g.sets.length > 0);
+  }, [allSets, pinnedSetIds]);
 
-  const [subTab, setSubTab] = useState<'favorites' | 'teams' | 'binders' | 'goals' | 'trainers' | 'duplicates'>('favorites');
+  const [subTab, setSubTab] = useState<'teams' | 'binders' | 'goals' | 'trainers' | 'duplicates'>('goals');
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
@@ -138,55 +134,13 @@ export default function FavoritesScreen() {
   const [layoutPickerOpen, setLayoutPickerOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'team' | 'binder' | 'setGoal'; id: string; name: string } | null>(null);
 
-  const [favSearch, setFavSearch] = useState('');
-  const [favStatusFilter, setFavStatusFilter] = useState<FavStatusFilter>('all');
-  const [favSort, setFavSort] = useState<FavSortKey>('num-asc');
-
   const [dupSearch, setDupSearch] = useState('');
   const [dupSort, setDupSort] = useState<'value' | 'quantity' | 'name'>('value');
   const [dupZoom, setDupZoom] = useState<ZoomableCard | null>(null);
 
   const ownedPokemon = useMemo(() => POKEDEX.filter(p => owned.has(p.num)), [owned]);
 
-  // Set iteration order already reflects favorited_at desc (see lib/favorites.ts),
-  // so its index doubles as a "most recently favorited first" rank.
-  const favoriteRecency = useMemo(() => new Map(Array.from(favorites).map((d, i) => [d, i])), [favorites]);
-
-  // Debounced: search can shrink this FlashList (numColumns > 1) drastically
-  // on every keystroke — see lib/use-debounced-value.ts for why that's unsafe.
-  const debouncedFavSearch = useDebouncedValue(favSearch, 200);
-  const visibleFavoritePokemon = useMemo(() => {
-    const q = normalize(debouncedFavSearch.trim());
-    let list = ownedPokemon.filter(p => {
-      if (q) {
-        const artist = artistByDex.get(p.num);
-        const nameMatch = normalize(getName(p)).includes(q);
-        const numMatch = String(p.num).includes(q);
-        const artistMatch = !!artist && normalize(artist).includes(q);
-        if (!nameMatch && !numMatch && !artistMatch) return false;
-      }
-      if (favStatusFilter === 'favorites' && !favorites.has(p.num)) return false;
-      if (favStatusFilter === 'vitrine' && !showcase.has(p.num)) return false;
-      return true;
-    });
-    list = [...list].sort((a, b) => {
-      switch (favSort) {
-        case 'name-asc': return getName(a).localeCompare(getName(b));
-        case 'name-desc': return getName(b).localeCompare(getName(a));
-        case 'num-desc': return b.num - a.num;
-        case 'fav-recent': {
-          const ra = favoriteRecency.get(a.num) ?? Infinity;
-          const rb = favoriteRecency.get(b.num) ?? Infinity;
-          return ra !== rb ? ra - rb : a.num - b.num;
-        }
-        case 'num-asc':
-        default: return a.num - b.num;
-      }
-    });
-    return list;
-  }, [ownedPokemon, debouncedFavSearch, favStatusFilter, favSort, favorites, showcase, favoriteRecency, artistByDex]);
-
-  // Debounced for the same reason as favSearch above.
+  // Debounced: search can shrink this FlashList drastically on every keystroke.
   const debouncedDupSearch = useDebouncedValue(dupSearch, 200);
   const duplicateCards = useMemo(() => {
     const q = normalize(debouncedDupSearch.trim());
@@ -229,15 +183,6 @@ export default function FavoritesScreen() {
       .filter(p => !used.has(p.num))
       .map(p => ({ pokemon: p, cardImage: ownedImages.get(p.num) }));
   }, [selectedTeam, ownedPokemon, ownedImages]);
-
-  const handleToggleShowcase = (dexNum: number) => {
-    const currentlyInShowcase = showcase.has(dexNum);
-    if (!currentlyInShowcase && showcase.size >= VITRINE_LIMIT) {
-      toast(`Vitrine limitée à ${VITRINE_LIMIT} cartes — retire-en une avant d’en ajouter une autre.`);
-      return;
-    }
-    toggleShowcase.mutate({ dexNum, currentlyFavorited: favorites.has(dexNum), currentlyInShowcase });
-  };
 
   const handleCreateTeam = async () => {
     const name = newTeamName.trim();
@@ -283,8 +228,6 @@ export default function FavoritesScreen() {
     titleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
     title: { fontSize: 22, fontFamily: fonts.display, color: colors.text },
     chipRow: { flexDirection: 'row' as const, gap: spacing.xs },
-    legend: { fontSize: 12, fontFamily: fonts.body, color: colors.textDim },
-    emptyTitle: { fontSize: 18, fontFamily: fonts.display, textAlign: 'center' as const, color: colors.text },
     emptyHint: { fontSize: 14, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
 
     teamList: { flex: 1, padding: spacing.md, gap: spacing.md },
@@ -347,7 +290,20 @@ export default function FavoritesScreen() {
     layoutOptionActive: { backgroundColor: colors.primary },
     layoutOptionText: { fontSize: 15, fontFamily: fonts.bodyBold, color: colors.text, textAlign: 'center' as const },
     layoutOptionTextActive: { color: 'white' },
-    goalsGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm, paddingBottom: TAB_BAR_CLEARANCE },
+    goalsGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm },
+    catalogList: { padding: spacing.md, gap: spacing.lg, paddingBottom: TAB_BAR_CLEARANCE },
+    catalogSection: { gap: spacing.xs },
+    catalogSectionTitle: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted, textTransform: 'uppercase' as const, marginBottom: 2 },
+    catalogRow: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm,
+      backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm, ...shadow.sm,
+    },
+    catalogRowPressed: { backgroundColor: colors.surfaceAlt },
+    catalogRowIcon: { width: 26, height: 26 },
+    catalogRowLabel: { fontSize: 14, fontFamily: fonts.bodyBold, color: colors.text },
+    catalogRowCaption: { fontSize: 12, fontFamily: fonts.mono, color: colors.textDim, marginTop: 2 },
+    catalogRowPin: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.primarySoft },
+    catalogRowPinText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.primary },
 
     dupHeader: { padding: spacing.md, gap: spacing.sm },
     dupSearchInput: {
@@ -373,8 +329,7 @@ export default function FavoritesScreen() {
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>
-            {subTab === 'favorites' ? 'Favoris'
-              : subTab === 'teams' ? 'Équipes'
+            {subTab === 'teams' ? 'Équipes'
               : subTab === 'binders' ? 'Mes binders'
               : subTab === 'trainers' ? 'Dresseurs'
               : subTab === 'duplicates' ? 'Doublons'
@@ -384,63 +339,15 @@ export default function FavoritesScreen() {
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
           <Chip label="Extensions" active={subTab === 'goals'} onPress={() => setSubTab('goals')} />
-          <Chip label="Dresseurs" active={subTab === 'trainers'} onPress={() => setSubTab('trainers')} />
-          <Chip label="Favoris" active={subTab === 'favorites'} onPress={() => setSubTab('favorites')} />
           <Chip label="Mes binders" active={subTab === 'binders'} onPress={() => setSubTab('binders')} />
           <Chip label="Doublons" active={subTab === 'duplicates'} onPress={() => setSubTab('duplicates')} />
+          <Chip label="Dresseurs" active={subTab === 'trainers'} onPress={() => setSubTab('trainers')} />
           {/* "Équipes" is intentionally not surfaced for now — kept dormant (state/branch
               still below) for a possible future deckbuilding feature, not deleted. */}
         </ScrollView>
-        {subTab === 'favorites' && (
-          <Text style={styles.legend}>
-            ★ Favori · ✨ Vitrine (max {VITRINE_LIMIT}) — mise en avant sur ton Dashboard et ton profil public
-          </Text>
-        )}
       </View>
 
-      {subTab === 'favorites' ? (
-        ownedPokemon.length === 0 ? (
-          <View style={styles.center}>
-            <Text style={styles.emptyTitle}>Aucun Pokémon possédé</Text>
-            <Text style={styles.emptyHint}>Ajoute des cartes depuis le Pokédex pour pouvoir les mettre en favoris.</Text>
-          </View>
-        ) : (
-          <>
-            {visibleFavoritePokemon.length === 0 ? (
-              <View style={styles.center}>
-                <Text style={styles.emptyHint}>Aucun résultat avec ces filtres.</Text>
-              </View>
-            ) : (
-              <FlashList
-                data={visibleFavoritePokemon}
-                numColumns={numColsFor(width)}
-                estimatedItemSize={120}
-                contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
-                maintainVisibleContentPosition={{ disabled: true }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-                {...hideOnScrollProps}
-                keyExtractor={p => String(p.num)}
-                renderItem={({ item }) => !item ? null : (
-                  <FavoriteTile
-                    pokemon={item}
-                    cardImage={ownedImages.get(item.num)}
-                    favorited={favorites.has(item.num)}
-                    inShowcase={showcase.has(item.num)}
-                    onPress={() => enterPokemonDetail(router, `/pokemon/${item.num}`, '/favorites')}
-                    onToggleFavorite={() => toggleFavorite.mutate({ dexNum: item.num, currentlyFavorited: favorites.has(item.num) })}
-                    onToggleShowcase={() => handleToggleShowcase(item.num)}
-                  />
-                )}
-              />
-            )}
-            <FavoritesFilterBar
-              search={favSearch} onSearch={setFavSearch}
-              statusFilter={favStatusFilter} onStatus={setFavStatusFilter}
-              sort={favSort} onSort={setFavSort}
-            />
-          </>
-        )
-      ) : subTab === 'teams' ? (
+      {subTab === 'teams' ? (
         selectedTeam ? (
           <View style={styles.teamEditor}>
             <View style={styles.teamEditorHeader}>
@@ -715,21 +622,12 @@ export default function FavoritesScreen() {
           )}
         </>
       ) : (
-        <View style={styles.teamList}>
-          <Pressable onPress={() => setGoalPickerOpen(true)} style={styles.addCardsBtn}>
-            <Ionicons name="add" size={18} color="white" />
-            <Text style={styles.addCardsBtnText}>Épingler une extension</Text>
-          </Pressable>
-
-          {goals.length === 0 ? (
-            <View style={styles.center}>
-              <Text style={styles.emptyHint}>Aucune extension épinglée pour l’instant.</Text>
-            </View>
-          ) : (
-            <ScrollView
-              contentContainerStyle={styles.goalsGrid}
-              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-              {...hideOnScrollProps}>
+        <ScrollView
+          contentContainerStyle={styles.catalogList}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+          {...hideOnScrollProps}>
+          {goals.length > 0 && (
+            <View style={styles.goalsGrid}>
               {goals.map(g => {
                 const set = setsById.get(g.setId);
                 if (!set) return null;
@@ -747,9 +645,37 @@ export default function FavoritesScreen() {
                   />
                 );
               })}
-            </ScrollView>
+            </View>
           )}
-        </View>
+
+          {catalogGroups.map(group => (
+            <View key={group.id} style={styles.catalogSection}>
+              <Text style={styles.catalogSectionTitle}>{group.label}</Text>
+              {group.sets.map(set => {
+                const year = set.releaseDate ? new Date(set.releaseDate).getFullYear() : null;
+                return (
+                  <Pressable
+                    key={set.id}
+                    onPress={() => toggleGoal.mutate({ setId: set.id, currentlyPinned: false })}
+                    style={({ pressed }) => [styles.catalogRow, pressed && styles.catalogRowPressed]}>
+                    {set.symbol ? (
+                      <Image source={{ uri: set.symbol }} style={styles.catalogRowIcon} resizeMode="contain" />
+                    ) : (
+                      <View style={styles.catalogRowIcon} />
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.catalogRowLabel} numberOfLines={1}>{setFlagLabel(set.name, set.region)}</Text>
+                      <Text style={styles.catalogRowCaption}>{year ? `${year} · ` : ''}{set.cardCount} cartes</Text>
+                    </View>
+                    <View style={styles.catalogRowPin}>
+                      <Text style={styles.catalogRowPinText}>Commencer</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))}
+        </ScrollView>
       )}
 
       <TeamSlotPicker
@@ -789,13 +715,6 @@ export default function FavoritesScreen() {
           ))}
         </View>
       </BubbleSheet>
-
-      <SetGoalPicker
-        visible={goalPickerOpen}
-        pinnedSetIds={pinnedSetIds}
-        tint="#38bdf8"
-        onClose={() => setGoalPickerOpen(false)}
-      />
 
       <ConfirmDialog
         target={confirmTarget}

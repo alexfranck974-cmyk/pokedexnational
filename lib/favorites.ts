@@ -3,6 +3,9 @@ import { supabase } from './supabase';
 import { useSession } from './auth';
 import { toast } from './toast';
 
+// Max cards featured in the "Vitrine" showcase carousel (Dashboard + public profile).
+export const VITRINE_LIMIT = 6;
+
 export function useFavorites(userId?: string) {
   return useQuery({
     queryKey: ['favorites', userId],
