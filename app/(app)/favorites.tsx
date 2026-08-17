@@ -23,14 +23,17 @@ import {
   useTeams, useCreateTeam, useRenameTeam, useDeleteTeam, useSetTeamSlot, useClearTeamSlot,
 } from '@/lib/teams';
 import {
-  useCollections, useCreateCollection, useRenameCollection, useDeleteCollection,
-  useCollectionCards, useRemoveCardFromCollection,
-} from '@/lib/collections';
+  useBinders, useCreateBinder, useRenameBinder, useDeleteBinder,
+  useBinderCards, useRemoveCardFromBinder, useSetBinderLayout,
+  BINDER_LAYOUTS, BINDER_LAYOUT_COLS, type BinderLayout,
+} from '@/lib/binders';
 import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
 import { useTcgSets } from '@/lib/tcg-index';
 import { FavoriteTile } from '@/components/FavoriteTile';
+import { Pokeball } from '@/components/Pokeball';
+import { BubbleSheet } from '@/components/BubbleSheet';
 import { TeamSlotPicker } from '@/components/TeamSlotPicker';
-import { CollectionCardPicker } from '@/components/CollectionCardPicker';
+import { BinderSlotPicker } from '@/components/BinderSlotPicker';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
 import { TrainersPanel } from '@/components/TrainersPanel';
@@ -49,6 +52,7 @@ const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
 const TEAM_SIZE = 6;
 const VITRINE_LIMIT = 6;
+const BINDER_LAYOUT_LABEL: Record<BinderLayout, string> = { 1: '1 carte / page', 4: '2 × 2', 9: '3 × 3', 12: '4 × 3', 16: '4 × 4' };
 
 export type FavStatusFilter = 'all' | 'favorites' | 'vitrine';
 export type FavSortKey = 'fav-recent' | 'num-asc' | 'num-desc' | 'name-asc' | 'name-desc';
@@ -105,11 +109,12 @@ export default function FavoritesScreen() {
   const setSlot = useSetTeamSlot();
   const clearSlot = useClearTeamSlot();
 
-  const { data: collections = [] } = useCollections(userId);
-  const createCollection = useCreateCollection();
-  const renameCollection = useRenameCollection();
-  const deleteCollection = useDeleteCollection();
-  const removeCardFromCollection = useRemoveCardFromCollection();
+  const { data: binders = [] } = useBinders(userId);
+  const createBinder = useCreateBinder();
+  const renameBinder = useRenameBinder();
+  const deleteBinder = useDeleteBinder();
+  const removeCardFromBinder = useRemoveCardFromBinder();
+  const setBinderLayout = useSetBinderLayout();
 
   const { data: goals = [] } = useSetGoals(userId);
   const toggleGoal = useToggleSetGoal();
@@ -118,19 +123,20 @@ export default function FavoritesScreen() {
   const pinnedSetIds = useMemo(() => new Set(goals.map(g => g.setId)), [goals]);
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
 
-  const [subTab, setSubTab] = useState<'favorites' | 'teams' | 'lists' | 'goals' | 'trainers' | 'duplicates'>('favorites');
+  const [subTab, setSubTab] = useState<'favorites' | 'teams' | 'binders' | 'goals' | 'trainers' | 'duplicates'>('favorites');
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
 
-  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
-  const [newCollectionName, setNewCollectionName] = useState('');
-  const [collectionRenaming, setCollectionRenaming] = useState(false);
-  const [collectionRenameValue, setCollectionRenameValue] = useState('');
-  const [cardPickerOpen, setCardPickerOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ kind: 'team' | 'collection' | 'setGoal'; id: string; name: string } | null>(null);
+  const [selectedBinderId, setSelectedBinderId] = useState<string | null>(null);
+  const [newBinderName, setNewBinderName] = useState('');
+  const [binderRenaming, setBinderRenaming] = useState(false);
+  const [binderRenameValue, setBinderRenameValue] = useState('');
+  const [pickingPosition, setPickingPosition] = useState<number | null>(null);
+  const [layoutPickerOpen, setLayoutPickerOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ kind: 'team' | 'binder' | 'setGoal'; id: string; name: string } | null>(null);
 
   const [favSearch, setFavSearch] = useState('');
   const [favStatusFilter, setFavStatusFilter] = useState<FavStatusFilter>('all');
@@ -201,9 +207,20 @@ export default function FavoritesScreen() {
   }, [ledgerCards, quantities, debouncedDupSearch, dupSort]);
 
   const selectedTeam = teams.find(t => t.id === selectedTeamId) ?? null;
-  const selectedCollection = collections.find(c => c.id === selectedCollectionId) ?? null;
-  const { data: collectionCards = [] } = useCollectionCards(selectedCollectionId ?? undefined);
-  const collectionCardIds = useMemo(() => new Set(collectionCards.map(c => c.cardId)), [collectionCards]);
+  const selectedBinder = binders.find(b => b.id === selectedBinderId) ?? null;
+  const { data: binderCards = [] } = useBinderCards(selectedBinderId ?? undefined);
+  const binderCardIds = useMemo(() => new Set(binderCards.map(c => c.cardId)), [binderCards]);
+  const binderCardsByPosition = useMemo(() => new Map(binderCards.map(c => [c.position, c])), [binderCards]);
+  // Always render at least one full trailing page of empty slots past the
+  // highest filled position (not just the card count — removing a card from
+  // the middle leaves a gap, so count alone would under-allocate).
+  const binderSlotCount = useMemo(() => {
+    if (!selectedBinder) return 0;
+    const layout = selectedBinder.layout;
+    const maxPosition = binderCards.reduce((max, c) => Math.max(max, c.position), -1);
+    const usedPages = Math.ceil((maxPosition + 1) / layout);
+    return (usedPages + 1) * layout;
+  }, [selectedBinder, binderCards]);
 
   const pickerOptions = useMemo(() => {
     if (!selectedTeam) return [];
@@ -230,12 +247,12 @@ export default function FavoritesScreen() {
     setSelectedTeamId(id);
   };
 
-  const handleCreateCollection = async () => {
-    const name = newCollectionName.trim();
+  const handleCreateBinder = async () => {
+    const name = newBinderName.trim();
     if (!name) return;
-    const id = await createCollection.mutateAsync(name);
-    setNewCollectionName('');
-    setSelectedCollectionId(id);
+    const id = await createBinder.mutateAsync(name);
+    setNewBinderName('');
+    setSelectedBinderId(id);
   };
 
   const handleConfirmDelete = () => {
@@ -243,9 +260,9 @@ export default function FavoritesScreen() {
     if (deleteTarget.kind === 'team') {
       deleteTeam.mutate(deleteTarget.id);
       if (selectedTeamId === deleteTarget.id) setSelectedTeamId(null);
-    } else if (deleteTarget.kind === 'collection') {
-      deleteCollection.mutate(deleteTarget.id);
-      if (selectedCollectionId === deleteTarget.id) setSelectedCollectionId(null);
+    } else if (deleteTarget.kind === 'binder') {
+      deleteBinder.mutate(deleteTarget.id);
+      if (selectedBinderId === deleteTarget.id) setSelectedBinderId(null);
     } else {
       toggleGoal.mutate({ setId: deleteTarget.id, currentlyPinned: true });
     }
@@ -254,7 +271,7 @@ export default function FavoritesScreen() {
 
   const confirmTarget: ConfirmTarget | null = deleteTarget
     ? {
-        title: deleteTarget.kind === 'team' ? 'Supprimer l’équipe' : deleteTarget.kind === 'collection' ? 'Supprimer la liste' : 'Retirer cet objectif ?',
+        title: deleteTarget.kind === 'team' ? 'Supprimer l’équipe' : deleteTarget.kind === 'binder' ? 'Supprimer le binder' : 'Retirer cet objectif ?',
         message: deleteTarget.kind === 'setGoal' ? `${deleteTarget.name} ne sera plus suivie comme objectif de complétion.` : `Supprimer "${deleteTarget.name}" ?`,
       }
     : null;
@@ -315,6 +332,21 @@ export default function FavoritesScreen() {
       position: 'absolute' as const, top: 4, right: 4, width: 24, height: 24, borderRadius: 12,
       backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
+    notOwnedBadge: {
+      position: 'absolute' as const, top: 4, right: 4, width: 22, height: 22, borderRadius: 11,
+      backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
+    },
+    binderSlotTile: { flex: 1, padding: 6, aspectRatio: 0.72 },
+    binderSlotEmpty: {
+      flex: 1, borderRadius: radius.bubble, borderWidth: 2, borderStyle: 'dashed' as const,
+      borderColor: colors.border, alignItems: 'center' as const, justifyContent: 'center' as const,
+      backgroundColor: colors.surfaceAlt,
+    },
+    layoutOptions: { padding: spacing.md, gap: spacing.sm },
+    layoutOption: { padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surfaceAlt },
+    layoutOptionActive: { backgroundColor: colors.primary },
+    layoutOptionText: { fontSize: 15, fontFamily: fonts.bodyBold, color: colors.text, textAlign: 'center' as const },
+    layoutOptionTextActive: { color: 'white' },
     goalsGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm, paddingBottom: TAB_BAR_CLEARANCE },
 
     dupHeader: { padding: spacing.md, gap: spacing.sm },
@@ -343,7 +375,7 @@ export default function FavoritesScreen() {
           <Text style={styles.title}>
             {subTab === 'favorites' ? 'Favoris'
               : subTab === 'teams' ? 'Équipes'
-              : subTab === 'lists' ? 'Mes listes'
+              : subTab === 'binders' ? 'Mes binders'
               : subTab === 'trainers' ? 'Dresseurs'
               : subTab === 'duplicates' ? 'Doublons'
               : 'Extensions'}
@@ -354,7 +386,7 @@ export default function FavoritesScreen() {
           <Chip label="Extensions" active={subTab === 'goals'} onPress={() => setSubTab('goals')} />
           <Chip label="Dresseurs" active={subTab === 'trainers'} onPress={() => setSubTab('trainers')} />
           <Chip label="Favoris" active={subTab === 'favorites'} onPress={() => setSubTab('favorites')} />
-          <Chip label="Mes listes" active={subTab === 'lists'} onPress={() => setSubTab('lists')} />
+          <Chip label="Mes binders" active={subTab === 'binders'} onPress={() => setSubTab('binders')} />
           <Chip label="Doublons" active={subTab === 'duplicates'} onPress={() => setSubTab('duplicates')} />
           {/* "Équipes" is intentionally not surfaced for now — kept dormant (state/branch
               still below) for a possible future deckbuilding feature, not deleted. */}
@@ -498,112 +530,118 @@ export default function FavoritesScreen() {
             )}
           </View>
         )
-      ) : subTab === 'lists' ? (
-        selectedCollection ? (
+      ) : subTab === 'binders' ? (
+        selectedBinder ? (
         <View style={styles.teamEditor}>
           <View style={styles.teamEditorHeader}>
-            <Pressable onPress={() => { setSelectedCollectionId(null); setCollectionRenaming(false); }} hitSlop={8}>
+            <Pressable onPress={() => { setSelectedBinderId(null); setBinderRenaming(false); }} hitSlop={8}>
               <Ionicons name="chevron-back" size={22} color={colors.primary} />
             </Pressable>
-            {collectionRenaming ? (
+            {binderRenaming ? (
               <TextInput
-                value={collectionRenameValue}
-                onChangeText={setCollectionRenameValue}
+                value={binderRenameValue}
+                onChangeText={setBinderRenameValue}
                 autoFocus
                 style={styles.renameInput}
-                onSubmitEditing={() => { renameCollection.mutate({ collectionId: selectedCollection.id, name: collectionRenameValue.trim() || selectedCollection.name }); setCollectionRenaming(false); }}
-                onBlur={() => { renameCollection.mutate({ collectionId: selectedCollection.id, name: collectionRenameValue.trim() || selectedCollection.name }); setCollectionRenaming(false); }}
+                onSubmitEditing={() => { renameBinder.mutate({ binderId: selectedBinder.id, name: binderRenameValue.trim() || selectedBinder.name }); setBinderRenaming(false); }}
+                onBlur={() => { renameBinder.mutate({ binderId: selectedBinder.id, name: binderRenameValue.trim() || selectedBinder.name }); setBinderRenaming(false); }}
               />
             ) : (
-              <Pressable style={{ flex: 1 }} onPress={() => { setCollectionRenameValue(selectedCollection.name); setCollectionRenaming(true); }}>
-                <Text style={styles.teamEditorTitle} numberOfLines={1}>{selectedCollection.name}</Text>
+              <Pressable style={{ flex: 1 }} onPress={() => { setBinderRenameValue(selectedBinder.name); setBinderRenaming(true); }}>
+                <Text style={styles.teamEditorTitle} numberOfLines={1}>{selectedBinder.name}</Text>
               </Pressable>
             )}
-            <Pressable onPress={() => setDeleteTarget({ kind: 'collection', id: selectedCollection.id, name: selectedCollection.name })} hitSlop={8}>
+            <Pressable onPress={() => setLayoutPickerOpen(true)} hitSlop={8} style={{ marginRight: spacing.sm }}>
+              <Ionicons name="grid-outline" size={20} color={colors.primary} />
+            </Pressable>
+            <Pressable onPress={() => setDeleteTarget({ kind: 'binder', id: selectedBinder.id, name: selectedBinder.name })} hitSlop={8}>
               <Ionicons name="trash-outline" size={20} color={colors.danger} />
             </Pressable>
           </View>
 
-          <Pressable onPress={() => setCardPickerOpen(true)} style={styles.addCardsBtn}>
-            <Ionicons name="add" size={18} color="white" />
-            <Text style={styles.addCardsBtnText}>Ajouter des cartes</Text>
-          </Pressable>
-
-          {collectionCards.length === 0 ? (
-            <View style={styles.center}>
-              <Text style={styles.emptyHint}>Aucune carte — touche "Ajouter des cartes".</Text>
-            </View>
-          ) : (
-            <FlashList
-              data={collectionCards}
-              numColumns={numColsFor(width)}
-              estimatedItemSize={200}
-              contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
-              maintainVisibleContentPosition={{ disabled: true }}
-              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-              {...hideOnScrollProps}
-              keyExtractor={c => c.cardId}
-              renderItem={({ item }) => {
-                if (!item) return null;
-                const isOwned = ownedCardIds.has(item.cardId);
+          <FlashList
+            data={Array.from({ length: binderSlotCount }, (_, position) => binderCardsByPosition.get(position) ?? { position })}
+            numColumns={BINDER_LAYOUT_COLS[selectedBinder.layout]}
+            estimatedItemSize={200}
+            contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
+            maintainVisibleContentPosition={{ disabled: true }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+            {...hideOnScrollProps}
+            keyExtractor={(s) => String(s.position)}
+            renderItem={({ item }) => {
+              const filled = 'cardId' in item;
+              if (!filled) {
                 return (
-                  <View style={styles.collectionTile}>
-                    <View style={styles.collectionImgWrap}>
-                      {isOwned ? (
-                        <LinearGradient
-                          colors={[colors.primary, colors.warning, colors.primary]}
-                          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                          style={styles.holoBorder}>
-                          <View style={styles.holoInner}>
-                            <Image source={{ uri: item.imageSmall }} style={styles.collectionImg} resizeMode="contain" />
-                          </View>
-                        </LinearGradient>
-                      ) : (
-                        <View style={styles.plainInner}>
-                          <Image source={{ uri: item.imageSmall }} style={styles.collectionImg} resizeMode="contain" />
-                        </View>
-                      )}
-                      <Pressable
-                        hitSlop={8}
-                        onPress={() => removeCardFromCollection.mutate({ collectionId: selectedCollection.id, cardId: item.cardId })}
-                        style={styles.removeBtn}>
-                        <Ionicons name="close" size={16} color="white" />
-                      </Pressable>
-                    </View>
+                  <View style={styles.binderSlotTile}>
+                    <Pressable onPress={() => setPickingPosition(item.position)} style={styles.binderSlotEmpty}>
+                      <Ionicons name="add" size={28} color={colors.textDim} />
+                    </Pressable>
                   </View>
                 );
-              }}
-            />
-          )}
+              }
+              const isOwned = ownedCardIds.has(item.cardId);
+              return (
+                <View style={styles.binderSlotTile}>
+                  <View style={styles.collectionImgWrap}>
+                    {isOwned ? (
+                      <LinearGradient
+                        colors={[colors.primary, colors.warning, colors.primary]}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                        style={styles.holoBorder}>
+                        <View style={styles.holoInner}>
+                          <Image source={{ uri: item.imageSmall }} style={styles.collectionImg} resizeMode="contain" />
+                        </View>
+                      </LinearGradient>
+                    ) : (
+                      <View style={styles.plainInner}>
+                        <Image source={{ uri: item.imageSmall }} style={styles.collectionImg} resizeMode="contain" />
+                      </View>
+                    )}
+                    {!isOwned && (
+                      <View style={styles.notOwnedBadge}>
+                        <Pokeball size={16} muted />
+                      </View>
+                    )}
+                    <Pressable
+                      hitSlop={8}
+                      onPress={() => removeCardFromBinder.mutate({ binderId: selectedBinder.id, cardId: item.cardId })}
+                      style={styles.removeBtn}>
+                      <Ionicons name="close" size={16} color="white" />
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            }}
+          />
         </View>
       ) : (
         <View style={styles.teamList}>
           <View style={styles.newTeamRow}>
             <TextInput
-              placeholder="Nom de la nouvelle liste"
-              value={newCollectionName}
-              onChangeText={setNewCollectionName}
-              onSubmitEditing={handleCreateCollection}
+              placeholder="Nom du nouveau binder"
+              value={newBinderName}
+              onChangeText={setNewBinderName}
+              onSubmitEditing={handleCreateBinder}
               style={styles.newTeamInput}
             />
-            <Pressable onPress={handleCreateCollection} style={styles.newTeamBtn}>
+            <Pressable onPress={handleCreateBinder} style={styles.newTeamBtn}>
               <Ionicons name="add" size={20} color="white" />
             </Pressable>
           </View>
 
-          {collections.length === 0 ? (
+          {binders.length === 0 ? (
             <View style={styles.center}>
-              <Text style={styles.emptyHint}>Aucune liste pour l’instant — crée-en une ci-dessus.</Text>
+              <Text style={styles.emptyHint}>Aucun binder pour l’instant — crée-en un ci-dessus.</Text>
             </View>
           ) : (
             <FlatList
-              data={collections}
+              data={binders}
               contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
               {...hideOnScrollProps}
               keyExtractor={c => c.id}
               renderItem={({ item }) => (
-                <Pressable onPress={() => setSelectedCollectionId(item.id)} style={({ pressed }) => [styles.teamRow, pressed && styles.teamRowPressed]}>
+                <Pressable onPress={() => setSelectedBinderId(item.id)} style={({ pressed }) => [styles.teamRow, pressed && styles.teamRowPressed]}>
                   <Text style={styles.teamRowName} numberOfLines={1}>{item.name}</Text>
                   <Text style={styles.teamRowCount}>{item.cardIds.length} carte{item.cardIds.length > 1 ? 's' : ''}</Text>
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -722,12 +760,31 @@ export default function FavoritesScreen() {
         onClose={() => setPickerSlot(null)}
       />
 
-      <CollectionCardPicker
-        visible={cardPickerOpen}
-        collectionId={selectedCollectionId}
-        cardIdsInCollection={collectionCardIds}
-        onClose={() => setCardPickerOpen(false)}
+      <BinderSlotPicker
+        visible={pickingPosition !== null}
+        binderId={selectedBinderId}
+        position={pickingPosition}
+        cardIdsInBinder={binderCardIds}
+        onClose={() => setPickingPosition(null)}
       />
+
+      <BubbleSheet visible={layoutPickerOpen} onClose={() => setLayoutPickerOpen(false)} tint={colors.primary} title="Mise en page" sizing="auto">
+        <View style={styles.layoutOptions}>
+          {BINDER_LAYOUTS.map((l) => (
+            <Pressable
+              key={l}
+              onPress={() => {
+                if (selectedBinder) setBinderLayout.mutate({ binderId: selectedBinder.id, layout: l });
+                setLayoutPickerOpen(false);
+              }}
+              style={[styles.layoutOption, selectedBinder?.layout === l && styles.layoutOptionActive]}>
+              <Text style={[styles.layoutOptionText, selectedBinder?.layout === l && styles.layoutOptionTextActive]}>
+                {BINDER_LAYOUT_LABEL[l]}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </BubbleSheet>
 
       <SetGoalPicker
         visible={goalPickerOpen}
