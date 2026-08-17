@@ -117,7 +117,7 @@ export default function PokemonDetail() {
     return [...wished, ...rest];
   }, [wishFiltered, wishedSet]);
 
-  const { colors } = useTheme();
+  const { colors, heroGradient, heroText, heroTextMuted, heroSurface, heroSurfaceActive, heroSurfaceActiveText } = useTheme();
   const styles = useThemedStyles((colors, shadow) => ({
     // userSelect:none stops a swipe from turning into a native text-drag-select
     // on web, which would otherwise eat the gesture before our PanResponder sees it.
@@ -125,19 +125,19 @@ export default function PokemonDetail() {
     hero: { padding: spacing.md, gap: spacing.sm, ...shadow.sm },
     heroTopRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
     back: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 2, padding: 4 },
-    backText: { color: 'white', fontSize: 14, fontFamily: fonts.body },
+    backText: { color: heroText, fontSize: 14, fontFamily: fonts.body },
     heroViewToggle: { flexDirection: 'row' as const, gap: 6 },
     viewBtn: {
       width: 30, height: 30, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const,
-      backgroundColor: 'rgba(255,255,255,0.18)',
+      backgroundColor: heroSurface,
     },
-    viewBtnActive: { backgroundColor: 'white' },
+    viewBtnActive: { backgroundColor: heroSurfaceActive },
     heroMain: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
     heroSprite: { width: 64, height: 64 },
-    heroDex: { fontSize: 12, fontFamily: fonts.mono, color: 'rgba(255,255,255,0.75)' },
-    heroName: { fontSize: 20, fontFamily: fonts.display, color: 'white' },
-    heroCount: { fontSize: 16, fontFamily: fonts.monoBold, color: 'white' },
-    heroAcquired: { fontSize: 10, fontFamily: fonts.body, color: 'rgba(255,255,255,0.7)' },
+    heroDex: { fontSize: 12, fontFamily: fonts.mono, color: heroTextMuted },
+    heroName: { fontSize: 20, fontFamily: fonts.display, color: heroText },
+    heroCount: { fontSize: 16, fontFamily: fonts.monoBold, color: heroText },
+    heroAcquired: { fontSize: 10, fontFamily: fonts.body, color: heroTextMuted },
     empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: 24, fontStyle: 'italic' as const },
     regionRow: { flexDirection: 'row' as const, gap: spacing.xs, padding: spacing.sm, paddingBottom: 0 },
     regionChip: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, alignItems: 'center' as const },
@@ -154,7 +154,7 @@ export default function PokemonDetail() {
     infoBanner: {
       flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: 8,
       marginHorizontal: spacing.md, marginBottom: spacing.sm, padding: spacing.sm,
-      backgroundColor: colors.primaryBg, borderRadius: radius.md,
+      backgroundColor: colors.primarySoft, borderRadius: radius.md,
     },
     infoBannerText: { flex: 1, fontSize: 11, fontFamily: fonts.body, color: colors.text, lineHeight: 15 },
 
@@ -172,24 +172,24 @@ export default function PokemonDetail() {
   return (
     <SafeAreaView style={styles.screen} {...swipeNav.panHandlers}>
       <LinearGradient
-        colors={[colors.primaryBg, colors.primaryDark, colors.primary]}
+        colors={heroGradient}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={styles.hero}>
         <View style={styles.heroTopRow}>
           <Pressable onPress={goBack} style={styles.back} hitSlop={8}>
-            <Ionicons name="chevron-back" size={18} color="white" />
+            <Ionicons name="chevron-back" size={18} color={heroText} />
             <Text style={styles.backText}>Retour</Text>
           </Pressable>
           <View style={styles.heroViewToggle}>
             <Pressable
               onPress={() => setViewMode('grid')}
               style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>
-              <Ionicons name="grid" size={15} color={viewMode === 'grid' ? colors.primary : 'white'} />
+              <Ionicons name="grid" size={15} color={viewMode === 'grid' ? heroSurfaceActiveText : heroText} />
             </Pressable>
             <Pressable
               onPress={() => setViewMode('list')}
               style={[styles.viewBtn, viewMode === 'list' && styles.viewBtnActive]}>
-              <Ionicons name="list" size={15} color={viewMode === 'list' ? colors.primary : 'white'} />
+              <Ionicons name="list" size={15} color={viewMode === 'list' ? heroSurfaceActiveText : heroText} />
             </Pressable>
           </View>
         </View>

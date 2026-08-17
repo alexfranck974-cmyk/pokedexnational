@@ -33,7 +33,7 @@ export default function FeedbackScreen() {
   const goBack = useBackTo('/settings');
   const { session } = useSession();
   const userId = session?.user.id;
-  const { colors } = useTheme();
+  const { colors, heroGradient, heroText } = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
   const hideOnScrollProps = useHideOnScrollProps();
 
@@ -68,8 +68,8 @@ export default function FeedbackScreen() {
       padding: spacing.md, gap: spacing.sm, ...shadow.sm,
     },
     back: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 2, padding: 4 },
-    backText: { color: 'white', fontSize: 14, fontFamily: fonts.body },
-    heroTitle: { fontSize: 17, fontFamily: fonts.display, color: 'white' },
+    backText: { color: heroText, fontSize: 14, fontFamily: fonts.body },
+    heroTitle: { fontSize: 17, fontFamily: fonts.display, color: heroText },
     body: { padding: spacing.md, paddingBottom: spacing.md + TAB_BAR_CLEARANCE, gap: spacing.md },
     segmentRow: { flexDirection: 'row' as const, gap: spacing.xs },
     segmentChip: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, alignItems: 'center' as const },
@@ -109,15 +109,15 @@ export default function FeedbackScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <LinearGradient
-        colors={[colors.primaryBg, colors.primaryDark, colors.primary]}
+        colors={heroGradient}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={styles.hero}>
         <Pressable onPress={goBack} style={styles.back} hitSlop={8}>
-          <Ionicons name="chevron-back" size={18} color="white" />
+          <Ionicons name="chevron-back" size={18} color={heroText} />
           <Text style={styles.backText}>Retour</Text>
         </Pressable>
         <Text style={styles.heroTitle}>Suggestions & Support</Text>
-        <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={heroText} />
       </LinearGradient>
 
       <ScrollView

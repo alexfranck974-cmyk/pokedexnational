@@ -263,6 +263,21 @@ interface ThemeContextValue {
   palette: PaletteId;
   colors: ColorTokens;
   shadow: ShadowTokens;
+  /** Screen hero band gradient (3 stops) — bold/dark in dark mode, soft/light
+   *  in light mode. Use instead of hand-rolling [colors.primaryBg, ...]. */
+  heroGradient: [string, string, string];
+  /** Hero title/icon color — white in dark mode, colors.text in light mode. */
+  heroText: string;
+  /** Hero subtitle/caption color — translucent white in dark mode, colors.textMuted in light mode. */
+  heroTextMuted: string;
+  /** Translucent pill/avatar background sitting on the hero (inactive toggle state). */
+  heroSurface: string;
+  /** Solid pill background for the active/selected state of a hero toggle. */
+  heroSurfaceActive: string;
+  /** Icon/text color drawn on top of heroSurfaceActive — contrasts with it. */
+  heroSurfaceActiveText: string;
+  /** Translucent progress-ring track color drawn on the hero. */
+  heroTrack: string;
   setMode: (mode: ThemeMode) => void;
   toggleMode: () => void;
   setPalette: (id: PaletteId) => void;
@@ -294,15 +309,28 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setStoredPalette(id);
   };
 
-  const value = useMemo<ThemeContextValue>(() => ({
-    mode,
-    palette,
-    colors: buildTokens(palette, mode),
-    shadow: mode === 'dark' ? darkShadow : lightShadow,
-    setMode,
-    toggleMode,
-    setPalette,
-  }), [mode, palette]);
+  const value = useMemo<ThemeContextValue>(() => {
+    const colors = buildTokens(palette, mode);
+    const heroGradient: [string, string, string] = mode === 'dark'
+      ? [colors.primaryBg, colors.primaryDark, colors.primary]
+      : [colors.surface, colors.primarySoft, colors.primarySoft];
+    return {
+      mode,
+      palette,
+      colors,
+      shadow: mode === 'dark' ? darkShadow : lightShadow,
+      heroGradient,
+      heroText: mode === 'dark' ? '#ffffff' : colors.text,
+      heroTextMuted: mode === 'dark' ? 'rgba(255,255,255,0.75)' : colors.textMuted,
+      heroSurface: mode === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.08)',
+      heroSurfaceActive: mode === 'dark' ? '#ffffff' : colors.primary,
+      heroSurfaceActiveText: mode === 'dark' ? colors.primary : '#ffffff',
+      heroTrack: mode === 'dark' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.12)',
+      setMode,
+      toggleMode,
+      setPalette,
+    };
+  }, [mode, palette]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

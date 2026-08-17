@@ -79,28 +79,28 @@ export default function PinnedSetDetail() {
   const tier = currentSetTier(pct);
   const year = set?.releaseDate ? new Date(set.releaseDate).getFullYear() : null;
 
-  const { colors } = useTheme();
+  const { colors, heroGradient, heroText, heroTextMuted, heroSurface, heroSurfaceActive, heroSurfaceActiveText, heroTrack } = useTheme();
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
     hero: { padding: spacing.md, gap: spacing.sm, ...shadow.sm },
     heroTopRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
     back: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 2, padding: 4 },
-    backText: { color: 'white', fontSize: 14, fontFamily: fonts.body },
+    backText: { color: heroText, fontSize: 14, fontFamily: fonts.body },
     heroViewToggle: { flexDirection: 'row' as const, gap: 6 },
     viewBtn: {
       width: 30, height: 30, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const,
-      backgroundColor: 'rgba(255,255,255,0.18)',
+      backgroundColor: heroSurface,
     },
-    viewBtnActive: { backgroundColor: 'white' },
-    columnsLabel: { fontSize: 12, fontFamily: fonts.monoBold, color: 'white' },
+    viewBtnActive: { backgroundColor: heroSurfaceActive },
+    columnsLabel: { fontSize: 12, fontFamily: fonts.monoBold, color: heroText },
     heroMain: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md },
-    heroName: { fontSize: 20, fontFamily: fonts.display, color: 'white' },
-    heroCaption: { fontSize: 12, fontFamily: fonts.mono, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+    heroName: { fontSize: 20, fontFamily: fonts.display, color: heroText },
+    heroCaption: { fontSize: 12, fontFamily: fonts.mono, color: heroTextMuted, marginTop: 2 },
     empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: 24, fontStyle: 'italic' as const },
     banner: {
       flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: 8,
       margin: spacing.sm, marginBottom: 0, padding: spacing.sm,
-      backgroundColor: colors.primaryBg, borderRadius: radius.md,
+      backgroundColor: colors.primarySoft, borderRadius: radius.md,
     },
     bannerText: { flex: 1, fontSize: 11, fontFamily: fonts.body, color: colors.text, lineHeight: 15 },
   }));
@@ -108,24 +108,24 @@ export default function PinnedSetDetail() {
   return (
     <SafeAreaView style={styles.screen}>
       <LinearGradient
-        colors={[colors.primaryBg, colors.primaryDark, colors.primary]}
+        colors={heroGradient}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={styles.hero}>
         <View style={styles.heroTopRow}>
           <Pressable onPress={goBack} style={styles.back} hitSlop={8}>
-            <Ionicons name="chevron-back" size={18} color="white" />
+            <Ionicons name="chevron-back" size={18} color={heroText} />
             <Text style={styles.backText}>Retour</Text>
           </Pressable>
           <View style={styles.heroViewToggle}>
             <Pressable
               onPress={() => setViewMode('grid')}
               style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>
-              <Ionicons name="grid" size={15} color={viewMode === 'grid' ? colors.primary : 'white'} />
+              <Ionicons name="grid" size={15} color={viewMode === 'grid' ? heroSurfaceActiveText : heroText} />
             </Pressable>
             <Pressable
               onPress={() => setViewMode('list')}
               style={[styles.viewBtn, viewMode === 'list' && styles.viewBtnActive]}>
-              <Ionicons name="list" size={15} color={viewMode === 'list' ? colors.primary : 'white'} />
+              <Ionicons name="list" size={15} color={viewMode === 'list' ? heroSurfaceActiveText : heroText} />
             </Pressable>
             {viewMode === 'grid' && (
               <Pressable
@@ -134,7 +134,7 @@ export default function PinnedSetDetail() {
                 {columns ? (
                   <Text style={styles.columnsLabel}>×{columns}</Text>
                 ) : (
-                  <Ionicons name="grid-outline" size={15} color="white" />
+                  <Ionicons name="grid-outline" size={15} color={heroText} />
                 )}
               </Pressable>
             )}
@@ -142,8 +142,8 @@ export default function PinnedSetDetail() {
         </View>
         <View style={styles.heroMain}>
           <ProgressRing
-            pct={pct} size={64} color={tier?.color ?? 'white'}
-            trackColor="rgba(255,255,255,0.25)" centerLabel={`${pct}%`}
+            pct={pct} size={64} color={tier?.color ?? heroSurfaceActive}
+            trackColor={heroTrack} centerLabel={`${pct}%`}
           />
           <View style={{ flex: 1 }}>
             <Text style={styles.heroName} numberOfLines={2}>

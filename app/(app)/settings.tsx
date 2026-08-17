@@ -18,7 +18,7 @@ export default function Settings() {
   const { session } = useSession();
   const [qrOpen, setQrOpen] = useState(false);
   const userId = session?.user.id;
-  const { colors, mode, toggleMode, palette, setPalette } = useTheme();
+  const { colors, mode, toggleMode, palette, setPalette, heroGradient, heroText, heroTextMuted, heroSurface } = useTheme();
   const { animationsEnabled, setAnimationsEnabled } = useMotion();
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
@@ -28,12 +28,12 @@ export default function Settings() {
       padding: spacing.lg, borderRadius: radius.lg, ...shadow.sm,
     },
     heroAvatar: {
-      width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.2)',
+      width: 56, height: 56, borderRadius: 28, backgroundColor: heroSurface,
       alignItems: 'center' as const, justifyContent: 'center' as const,
     },
-    heroAvatarText: { fontSize: 24, fontFamily: fonts.display, color: 'white' },
-    heroName: { fontSize: 19, fontFamily: fonts.display, color: 'white' },
-    heroUsername: { fontSize: 12, fontFamily: fonts.mono, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+    heroAvatarText: { fontSize: 24, fontFamily: fonts.display, color: heroText },
+    heroName: { fontSize: 19, fontFamily: fonts.display, color: heroText },
+    heroUsername: { fontSize: 12, fontFamily: fonts.mono, color: heroTextMuted, marginTop: 2 },
     row: { gap: 8, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, ...shadow.sm },
     rowInline: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, ...shadow.sm },
     rowHead: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
@@ -98,7 +98,7 @@ export default function Settings() {
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <LinearGradient
-          colors={[colors.primaryBg, colors.primaryDark, colors.primary]}
+          colors={heroGradient}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={styles.hero}>
           <View style={styles.heroAvatar}>

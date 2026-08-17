@@ -34,7 +34,7 @@ export default function PokedexScreen() {
   const { newCard } = useLocalSearchParams<{ newCard?: string }>();
   const { session } = useSession();
   const userId = session?.user.id;
-  const { colors } = useTheme();
+  const { colors, heroGradient, heroText: heroTextColor, heroTextMuted, heroSurfaceActive, heroTrack } = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
@@ -43,10 +43,10 @@ export default function PokedexScreen() {
       padding: spacing.md, borderRadius: radius.lg, margin: spacing.md, marginBottom: spacing.sm, ...shadow.sm,
     },
     heroText: { flex: 1, gap: 2 },
-    heroTitle: { fontSize: 13, fontFamily: fonts.display, color: 'white' },
-    heroCount: { fontSize: 20, fontFamily: fonts.monoBold, color: 'white' },
-    heroFilter: { fontSize: 11, fontFamily: fonts.body, color: 'rgba(255,255,255,0.8)' },
-    heroValue: { fontSize: 12, fontFamily: fonts.monoBold, color: 'rgba(255,255,255,0.85)' },
+    heroTitle: { fontSize: 13, fontFamily: fonts.display, color: heroTextColor },
+    heroCount: { fontSize: 20, fontFamily: fonts.monoBold, color: heroTextColor },
+    heroFilter: { fontSize: 11, fontFamily: fonts.body, color: heroTextMuted },
+    heroValue: { fontSize: 12, fontFamily: fonts.monoBold, color: heroTextMuted },
   }));
   const { data: owned = new Set<number>(), refetch: refetchOwned } = useUserDex(userId);
   const { data: collectedDex = new Set<number>() } = useOwnedDexNums(userId);
@@ -147,17 +147,17 @@ export default function PokedexScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <LinearGradient
-        colors={[colors.primaryBg, colors.primaryDark, colors.primary]}
+        colors={heroGradient}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={styles.hero}>
-        <ProgressRing pct={pct} size={56} strokeWidth={7} color="white" trackColor="rgba(255,255,255,0.25)" centerLabel={`${pct}%`} />
+        <ProgressRing pct={pct} size={56} strokeWidth={7} color={heroSurfaceActive} trackColor={heroTrack} centerLabel={`${pct}%`} />
         <View style={styles.heroText}>
           <Text style={styles.heroTitle}>Pokédex National</Text>
           <Text style={styles.heroCount}>{ownedCount} / {items.length}</Text>
           <Text style={styles.heroValue}>≈ {eurFormatter.format(nationalDexValue)}</Text>
           {filterHint && <Text style={styles.heroFilter}>Filtre : {filterHint}</Text>}
         </View>
-        <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={heroTextColor} />
       </LinearGradient>
       <PokedexSectionTabs active="pokedex" />
       <PokedexGrid

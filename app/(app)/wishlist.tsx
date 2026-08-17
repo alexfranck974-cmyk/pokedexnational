@@ -43,7 +43,7 @@ export default function WishlistScreen() {
   const { data: ownedIds = new Set<string>() } = useAllOwnedCardIds(userId);
   const toggleWish = useToggleWish();
   const { width } = useWindowDimensions();
-  const { colors } = useTheme();
+  const { colors, heroGradient, heroText, heroSurface, heroSurfaceActive, heroSurfaceActiveText } = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
   const hideOnScrollProps = useHideOnScrollProps();
   const [gallery, setGallery] = useState<FriendSetGalleryTarget | null>(null);
@@ -90,12 +90,12 @@ export default function WishlistScreen() {
       flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
       padding: spacing.md, gap: spacing.sm, ...shadow.sm,
     },
-    heroTitle: { fontSize: 20, fontFamily: fonts.display, color: 'white' },
+    heroTitle: { fontSize: 20, fontFamily: fonts.display, color: heroText },
     heroRight: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
-    heroCount: { fontSize: 14, fontFamily: fonts.monoBold, color: 'white' },
+    heroCount: { fontSize: 14, fontFamily: fonts.monoBold, color: heroText },
     heroToggle: { flexDirection: 'row' as const, gap: 6 },
-    viewBtn: { width: 30, height: 30, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: 'rgba(255,255,255,0.18)' },
-    viewBtnActive: { backgroundColor: 'white' },
+    viewBtn: { width: 30, height: 30, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: heroSurface },
+    viewBtnActive: { backgroundColor: heroSurfaceActive },
     emptyTitle: { fontSize: 20, fontFamily: fonts.display, textAlign: 'center' as const, color: colors.text },
     emptyHint: { fontSize: 14, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
     tile: { flex: 1, padding: spacing.sm, borderRadius: radius.bubble, ...shadow.sm, backgroundColor: colors.surface, margin: 4 },
@@ -159,7 +159,7 @@ export default function WishlistScreen() {
     <SafeAreaView style={styles.screen}>
       <PokedexSectionTabs active="wishlist" />
       <LinearGradient
-        colors={[colors.primaryBg, colors.primaryDark, colors.primary]}
+        colors={heroGradient}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={styles.hero}>
         <Text style={styles.heroTitle}>Wishlist</Text>
@@ -169,12 +169,12 @@ export default function WishlistScreen() {
             <Pressable
               onPress={() => setViewMode('cards')}
               style={[styles.viewBtn, viewMode === 'cards' && styles.viewBtnActive]}>
-              <Ionicons name="albums" size={15} color={viewMode === 'cards' ? colors.primary : 'white'} />
+              <Ionicons name="albums" size={15} color={viewMode === 'cards' ? heroSurfaceActiveText : heroText} />
             </Pressable>
             <Pressable
               onPress={() => setViewMode('pokemon')}
               style={[styles.viewBtn, viewMode === 'pokemon' && styles.viewBtnActive]}>
-              <Ionicons name="list" size={15} color={viewMode === 'pokemon' ? colors.primary : 'white'} />
+              <Ionicons name="list" size={15} color={viewMode === 'pokemon' ? heroSurfaceActiveText : heroText} />
             </Pressable>
           </View>
           <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
