@@ -65,6 +65,23 @@ export function useTrainerCards() {
   });
 }
 
+export function useCardsForArtist(artist: string | undefined) {
+  return useQuery({
+    queryKey: ['tcg_cards_by_artist', artist],
+    enabled: !!artist,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tcg_cards')
+        .select('id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region')
+        .eq('artist', artist!)
+        .order('release_date', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as TcgCardRow[];
+    },
+  });
+}
+
 export function useCardsForSet(setId: string | undefined) {
   return useQuery({
     queryKey: ['tcg_cards_by_set', setId],

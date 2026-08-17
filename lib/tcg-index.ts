@@ -89,6 +89,26 @@ export function useVariantCards() {
   });
 }
 
+export interface TcgArtistInfo {
+  artist: string;
+  cardCount: number;
+}
+
+export function useTcgArtists() {
+  return useQuery({
+    queryKey: ['tcg_artists'],
+    staleTime: Infinity,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('tcg_artists').select('artist, card_count').order('artist');
+      if (error) throw error;
+      return (data ?? []).map(row => ({
+        artist: row.artist as string,
+        cardCount: row.card_count as number,
+      })) as TcgArtistInfo[];
+    },
+  });
+}
+
 export function useTcgRarities() {
   return useQuery({
     queryKey: ['tcg_rarities'],

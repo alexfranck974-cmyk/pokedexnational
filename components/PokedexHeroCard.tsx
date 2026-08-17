@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, Pressable, Animated, StyleSheet } from 'react-native';
+import { View, Text, Image, Pressable, Animated, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
@@ -15,7 +15,7 @@ import {
 } from '@/lib/dashboard-stats';
 import { computeDexProgress, dexStateFor, type DexState } from '@/lib/dex-progress';
 import { eurFormatter } from '@/lib/trades';
-import { getGeneration, GEN_EMOJI, GEN_COLORS } from '@/lib/generations';
+import { getGeneration, GEN_STARTERS, GEN_COLORS } from '@/lib/generations';
 import { ProgressRing } from './ProgressRing';
 import { StatRingTile } from './StatRingTile';
 import { StatBreakdownModal, type BreakdownTarget, type BreakdownItem } from './StatBreakdownModal';
@@ -29,6 +29,7 @@ import { usePressSpring } from '@/lib/use-press-spring';
 import { withAlpha } from '@/lib/color-utils';
 
 const POKEDEX = pokedexData as Pokemon[];
+const SPRITE_BY_DEX = new Map<number, string>(POKEDEX.map(p => [p.num, p.sprite_url]));
 
 const VARIANT_LABELS = {
   mega: '✨',
@@ -110,7 +111,10 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
     () => computeVariantProgress(variantBuckets, ownedCardIds),
     [variantBuckets, ownedCardIds],
   );
-  const favoriteArtists = useMemo(() => topArtists(ownedCards, 5), [ownedCards]);
+  // No cap — artist stats are already computed client-side from owned cards
+  // already in memory (unlike per-set progress), so showing every artist the
+  // user owns something from costs nothing extra.
+  const favoriteArtists = useMemo(() => topArtists(ownedCards, Infinity), [ownedCards]);
   const ownedCardsByDex = useMemo(() => new Map(ownedCards.map(c => [c.dexNum, c])), [ownedCards]);
 
   const pokemonItems = (mons: Pokemon[]): BreakdownItem[] => mons.map(mon => {
@@ -158,6 +162,9 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
 
     grid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, justifyContent: 'center' as const, gap: spacing.xs },
     bubbleEmoji: { fontSize: 22 },
+    starterTrio: { flexDirection: 'row' as const, alignItems: 'center' as const },
+    starterTrioSprite: { width: 17, height: 17 },
+    starterTrioSpriteOverlap: { marginLeft: -6 },
 
     valueRow: {
       flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
@@ -273,7 +280,16 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
                 size={76}
                 icon={(
                   <IconBubble size={44} color={GEN_COLORS[g.gen] ?? colors.primary}>
-                    <Text style={styles.bubbleEmoji}>{GEN_EMOJI[g.gen] ?? '❔'}</Text>
+                    <View style={styles.starterTrio}>
+                      {(GEN_STARTERS[g.gen] ?? []).map((dexNum, i) => (
+                        <Image
+                          key={dexNum}
+                          source={{ uri: SPRITE_BY_DEX.get(dexNum) }}
+                          style={[styles.starterTrioSprite, i > 0 && styles.starterTrioSpriteOverlap]}
+                          resizeMode="contain"
+                        />
+                      ))}
+                    </View>
                   </IconBubble>
                 )}
                 hideCaption

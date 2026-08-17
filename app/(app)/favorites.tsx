@@ -12,7 +12,7 @@ import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { useSession } from '@/lib/auth';
 import {
-  useUserDex, useOwnedCardImages, useAllOwnedCardIds,
+  useUserDex, useOwnedCardImages, useAllOwnedCardIds, useAllOwnedCardsDetailed,
   useAllOwnedCardsLedgerDetailed, useOwnedCardQuantities,
 } from '@/lib/collection';
 import { eurFormatter } from '@/lib/trades';
@@ -26,7 +26,7 @@ import {
   BINDER_LAYOUTS, BINDER_LAYOUT_COLS, type BinderLayout,
 } from '@/lib/binders';
 import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
-import { useTcgSets } from '@/lib/tcg-index';
+import { useTcgSets, useTcgArtists } from '@/lib/tcg-index';
 import { Pokeball } from '@/components/Pokeball';
 import { BubbleSheet } from '@/components/BubbleSheet';
 import { TeamSlotPicker } from '@/components/TeamSlotPicker';
@@ -89,6 +89,7 @@ export default function FavoritesScreen() {
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
   const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
+  const { data: ownedCardsDetailed = [] } = useAllOwnedCardsDetailed(userId);
   const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
   const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
 
@@ -119,7 +120,19 @@ export default function FavoritesScreen() {
       .filter(g => g.sets.length > 0);
   }, [allSets, pinnedSetIds]);
 
-  const [subTab, setSubTab] = useState<'teams' | 'binders' | 'goals' | 'trainers' | 'duplicates'>('goals');
+  const { data: allArtists = [] } = useTcgArtists();
+  // Owned count per artist — computed client-side from cards already fetched
+  // (no per-artist query needed, unlike per-set progress).
+  const ownedCountByArtist = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of ownedCardsDetailed) {
+      if (!c.artist) continue;
+      map.set(c.artist, (map.get(c.artist) ?? 0) + 1);
+    }
+    return map;
+  }, [ownedCardsDetailed]);
+
+  const [subTab, setSubTab] = useState<'teams' | 'binders' | 'goals' | 'artists' | 'trainers' | 'duplicates'>('goals');
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
@@ -134,11 +147,18 @@ export default function FavoritesScreen() {
   const [layoutPickerOpen, setLayoutPickerOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'team' | 'binder' | 'setGoal'; id: string; name: string } | null>(null);
 
+  const [artistSearch, setArtistSearch] = useState('');
   const [dupSearch, setDupSearch] = useState('');
   const [dupSort, setDupSort] = useState<'value' | 'quantity' | 'name'>('value');
   const [dupZoom, setDupZoom] = useState<ZoomableCard | null>(null);
 
   const ownedPokemon = useMemo(() => POKEDEX.filter(p => owned.has(p.num)), [owned]);
+
+  const debouncedArtistSearch = useDebouncedValue(artistSearch, 200);
+  const filteredArtists = useMemo(() => {
+    const q = normalize(debouncedArtistSearch.trim());
+    return q ? allArtists.filter(a => normalize(a.artist).includes(q)) : allArtists;
+  }, [allArtists, debouncedArtistSearch]);
 
   // Debounced: search can shrink this FlashList drastically on every keystroke.
   const debouncedDupSearch = useDebouncedValue(dupSearch, 200);
@@ -300,6 +320,10 @@ export default function FavoritesScreen() {
     },
     catalogRowPressed: { backgroundColor: colors.surfaceAlt },
     catalogRowIcon: { width: 26, height: 26 },
+    artistRowIcon: {
+      width: 26, height: 26, borderRadius: 13, backgroundColor: colors.surfaceAlt,
+      alignItems: 'center' as const, justifyContent: 'center' as const,
+    },
     catalogRowLabel: { fontSize: 14, fontFamily: fonts.bodyBold, color: colors.text },
     catalogRowCaption: { fontSize: 12, fontFamily: fonts.mono, color: colors.textDim, marginTop: 2 },
     catalogRowPin: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.primarySoft },
@@ -331,6 +355,7 @@ export default function FavoritesScreen() {
           <Text style={styles.title}>
             {subTab === 'teams' ? 'Équipes'
               : subTab === 'binders' ? 'Mes binders'
+              : subTab === 'artists' ? 'Artistes'
               : subTab === 'trainers' ? 'Dresseurs'
               : subTab === 'duplicates' ? 'Doublons'
               : 'Extensions'}
@@ -340,6 +365,7 @@ export default function FavoritesScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
           <Chip label="Extensions" active={subTab === 'goals'} onPress={() => setSubTab('goals')} />
           <Chip label="Mes binders" active={subTab === 'binders'} onPress={() => setSubTab('binders')} />
+          <Chip label="Artistes" active={subTab === 'artists'} onPress={() => setSubTab('artists')} />
           <Chip label="Doublons" active={subTab === 'duplicates'} onPress={() => setSubTab('duplicates')} />
           <Chip label="Dresseurs" active={subTab === 'trainers'} onPress={() => setSubTab('trainers')} />
           {/* "Équipes" is intentionally not surfaced for now — kept dormant (state/branch
@@ -562,6 +588,42 @@ export default function FavoritesScreen() {
           )}
         </View>
         )
+      ) : subTab === 'artists' ? (
+        <View style={styles.teamList}>
+          <TextInput
+            placeholder="Chercher un artiste"
+            value={artistSearch}
+            onChangeText={setArtistSearch}
+            style={styles.dupSearchInput}
+          />
+          {filteredArtists.length === 0 ? (
+            <View style={styles.center}>
+              <Text style={styles.emptyHint}>Aucun artiste trouvé.</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filteredArtists}
+              contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE, gap: spacing.xs }}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+              {...hideOnScrollProps}
+              keyExtractor={a => a.artist}
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => router.push(withReturnTo(`/artist/${encodeURIComponent(item.artist)}`, '/favorites') as never)}
+                  style={({ pressed }) => [styles.catalogRow, pressed && styles.catalogRowPressed]}>
+                  <View style={styles.artistRowIcon}>
+                    <Ionicons name="brush-outline" size={14} color={colors.textMuted} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.catalogRowLabel} numberOfLines={1}>{item.artist}</Text>
+                    <Text style={styles.catalogRowCaption}>{ownedCountByArtist.get(item.artist) ?? 0}/{item.cardCount} cartes</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                </Pressable>
+              )}
+            />
+          )}
+        </View>
       ) : subTab === 'trainers' ? (
         <TrainersPanel
           userId={userId}
