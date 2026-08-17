@@ -71,13 +71,23 @@ export function useCardsForArtist(artist: string | undefined) {
     enabled: !!artist,
     staleTime: Infinity,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('tcg_cards')
-        .select('id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region')
-        .eq('artist', artist!)
-        .order('release_date', { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as TcgCardRow[];
+      // Paginated like useTrainerCards above — prolific studio credits (e.g.
+      // "5ban Graphics") comfortably exceed PostgREST's 1000-row response cap.
+      const rows: TcgCardRow[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('tcg_cards')
+          .select('id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region')
+          .eq('artist', artist!)
+          .order('release_date', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw error;
+        rows.push(...((data ?? []) as TcgCardRow[]));
+        if (!data || data.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
+      return rows;
     },
   });
 }
