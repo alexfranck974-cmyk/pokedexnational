@@ -26,6 +26,21 @@ export const GEN_EMOJI: Record<number, string> = {
   1: '🌾', 2: '🌸', 3: '🌋', 4: '🏔️', 5: '⚡', 6: '🍇', 7: '🌺', 8: '❄️', 9: '🫒',
 };
 
+// The three starter dex numbers per generation (grass/fire/water order),
+// shown as a mini sprite cluster in the Pokedex grid's generation headers
+// instead of a single emoji.
+export const GEN_STARTERS: Record<number, [number, number, number]> = {
+  1: [1, 4, 7],       // Bulbasaur, Charmander, Squirtle
+  2: [152, 155, 158], // Chikorita, Cyndaquil, Totodile
+  3: [252, 255, 258], // Treecko, Torchic, Mudkip
+  4: [387, 390, 393], // Turtwig, Chimchar, Piplup
+  5: [495, 498, 501], // Snivy, Tepig, Oshawott
+  6: [650, 653, 656], // Chespin, Fennekin, Froakie
+  7: [722, 725, 728], // Rowlet, Litten, Popplio
+  8: [810, 813, 816], // Grookey, Scorbunny, Sobble
+  9: [906, 909, 912], // Sprigatito, Fuecoco, Quaxly
+};
+
 // One accent color per region, themed to its emoji (wheat field, cherry blossom, volcano...).
 export const GEN_COLORS: Record<number, string> = {
   1: '#84cc16', 2: '#f472b6', 3: '#f97316', 4: '#38bdf8', 5: '#facc15',

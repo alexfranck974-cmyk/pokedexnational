@@ -1,12 +1,17 @@
 import { useMemo, type ReactElement } from 'react';
-import { View, Text, useWindowDimensions, type RefreshControlProps } from 'react-native';
+import { View, Text, Image, useWindowDimensions, type RefreshControlProps } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { PokemonTile } from './PokemonTile';
+import pokedexData from '@/data/pokedex.json';
+import type { Pokemon } from '@/lib/types';
 import type { PokemonWithState } from '@/lib/pokedex-list';
-import { GENERATIONS, GEN_COLORS, GEN_EMOJI } from '@/lib/generations';
+import { GENERATIONS, GEN_COLORS, GEN_STARTERS } from '@/lib/generations';
 import { withAlpha } from '@/lib/color-utils';
 import { useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
+
+const POKEDEX = pokedexData as Pokemon[];
+const SPRITE_BY_DEX = new Map<number, string>(POKEDEX.map(p => [p.num, p.sprite_url]));
 
 interface Props {
   items: PokemonWithState[];
@@ -48,7 +53,13 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, co
       paddingHorizontal: spacing.md, paddingVertical: 5,
       borderRadius: radius.pill, borderWidth: 1.5,
     },
-    headerEmoji: { fontSize: 12 },
+    starterCluster: { flexDirection: 'row' as const },
+    starterBubble: {
+      width: 18, height: 18, borderRadius: 9, backgroundColor: colors.surfaceAlt,
+      borderWidth: 1.5, borderColor: colors.bg, overflow: 'hidden' as const,
+    },
+    starterBubbleOverlap: { marginLeft: -7 },
+    starterImg: { width: '100%' as const, height: '100%' as const },
     headerLabel: { fontSize: 12, fontFamily: fonts.display, color: colors.text },
     headerCount: { fontSize: 11, fontFamily: fonts.mono, color: colors.textMuted },
   }));
@@ -94,7 +105,13 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, co
               styles.headerPill,
               { backgroundColor: withAlpha(GEN_COLORS[row.gen] ?? '#888888', 0.16), borderColor: GEN_COLORS[row.gen] ?? '#888888' },
             ]}>
-              <Text style={styles.headerEmoji}>{GEN_EMOJI[row.gen] ?? ''}</Text>
+              <View style={styles.starterCluster}>
+                {(GEN_STARTERS[row.gen] ?? []).map((dexNum, i) => (
+                  <View key={dexNum} style={[styles.starterBubble, i > 0 && styles.starterBubbleOverlap]}>
+                    <Image source={{ uri: SPRITE_BY_DEX.get(dexNum) }} style={styles.starterImg} resizeMode="contain" />
+                  </View>
+                ))}
+              </View>
               <Text style={styles.headerLabel}>{row.label}</Text>
               <Text style={styles.headerCount}>{row.owned}/{row.total}</Text>
             </View>
