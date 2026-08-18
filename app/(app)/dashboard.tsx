@@ -14,6 +14,7 @@ import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
 import { totalCollectionValue, computeSetGoalsProgress, averageProgress } from '@/lib/dashboard-stats';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { PokedexHeroCard } from '@/components/PokedexHeroCard';
+import { NewSetBanner } from '@/components/NewSetBanner';
 import { BadgesSection } from '@/components/BadgesSection';
 import { VitrineCarousel } from '@/components/VitrineCarousel';
 import { CardZoomModal } from '@/components/CardZoomModal';
@@ -44,6 +45,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { session } = useSession();
   const userId = session?.user.id;
+  const joinedAt = session?.user.created_at;
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedCards = [] } = useAllOwnedCardsDetailed(userId);
   const { data: showcase = new Set<number>() } = useShowcase(userId);
@@ -148,6 +150,8 @@ export default function DashboardScreen() {
           <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
         </View>
         <Text style={styles.collectionValue}>Valeur estimée de ta collection : {eurFormatter.format(collectionValue)}</Text>
+
+        <NewSetBanner userId={userId} joinedAt={joinedAt} />
 
         <VitrineCarousel items={vitrineItems} />
 
