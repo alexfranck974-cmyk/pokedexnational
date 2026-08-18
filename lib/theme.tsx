@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform, StyleSheet, useColorScheme } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
@@ -289,17 +289,40 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemScheme = useColorScheme();
   const [mode, setModeState] = useState<ThemeMode>(systemScheme === 'light' ? 'light' : 'dark');
   const [palette, setPaletteState] = useState<PaletteId>('pokeball');
+  // Whether the user has an explicit stored preference (Settings toggle) —
+  // until we know, the OS scheme should keep winning; once we know, it should
+  // never be silently overridden by a later OS-scheme read.
+  const hasExplicitMode = useRef(false);
 
   // Apply persisted overrides once storage resolves; a same-render flash if they differ
   // from the defaults is an acceptable trade-off over blocking the whole app on it.
+  // Both reads are allowed to fail silently (e.g. Android Keystore invalidation) —
+  // falling back to the OS scheme below is better than leaving `mode` on whatever
+  // note it was left at only because of a rejected promise.
   useEffect(() => {
     let alive = true;
-    getStoredMode().then(stored => { if (alive && stored) setModeState(stored); });
-    getStoredPalette().then(stored => { if (alive && stored) setPaletteState(stored); });
+    getStoredMode().then(stored => {
+      if (!alive) return;
+      if (stored) { hasExplicitMode.current = true; setModeState(stored); }
+    }).catch(() => {});
+    getStoredPalette().then(stored => { if (alive && stored) setPaletteState(stored); }).catch(() => {});
     return () => { alive = false; };
   }, []);
 
+  // useColorScheme() commonly reports `undefined` on the very first render
+  // (native Appearance value not bridged over yet — more pronounced on
+  // Android/Expo Go) before resolving to the real OS scheme on a later
+  // render. The initial useState above only runs once and would otherwise
+  // permanently lock a first-time user into 'dark' if that first read missed.
+  // Re-sync whenever the OS scheme changes, but only while no explicit
+  // Settings-toggle preference has been loaded/set.
+  useEffect(() => {
+    if (hasExplicitMode.current) return;
+    if (systemScheme === 'light' || systemScheme === 'dark') setModeState(systemScheme);
+  }, [systemScheme]);
+
   const setMode = (next: ThemeMode) => {
+    hasExplicitMode.current = true;
     setModeState(next);
     setStoredMode(next);
   };

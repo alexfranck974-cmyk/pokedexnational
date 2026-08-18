@@ -22,7 +22,7 @@ import {
 } from '@/lib/collection';
 import { useFavorites, useToggleFavorite, useShowcase, useToggleShowcase, VITRINE_LIMIT } from '@/lib/favorites';
 import { toast } from '@/lib/toast';
-import { useBackTo, withReturnTo } from '@/lib/navigation';
+import { useBackTo, withReturnTo, safeDecodeURIComponent } from '@/lib/navigation';
 import { useHistoryBackGuard } from '@/lib/history-back-guard';
 import { useLocale, useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
@@ -107,15 +107,23 @@ export default function PokemonDetail() {
   const nextNum = num < POKEDEX.length ? num + 1 : 1;
   // Carry the origin (`from`) forward across swipes so "Retour" still returns
   // to wherever the user originally entered this screen from, not the default.
-  const goTo = (n: number) => router.replace((from ? withReturnTo(`/pokemon/${n}`, decodeURIComponent(from)) : `/pokemon/${n}`) as never);
+  const goTo = (n: number) => router.replace((from ? withReturnTo(`/pokemon/${n}`, safeDecodeURIComponent(from)) : `/pokemon/${n}`) as never);
 
   // Swipe left/right anywhere on the screen to browse the National Pokédex —
   // the arrow buttons below stay as a discoverable bonus, not the only way in.
   // Only claims the gesture once a drag is clearly horizontal, so it doesn't
   // fight vertical scrolling or the type-badges' own horizontal ScrollView.
+  // A rightward drag starting right at the left edge is left alone (never
+  // claimed here) so iOS's native edge-swipe-to-go-back gesture — which starts
+  // from that exact same zone — isn't raced by this PanResponder also firing
+  // a router.replace() mid-transition (that combination crashed the app).
+  const EDGE_GESTURE_ZONE = 30;
   const swipeNav = useMemo(
     () => PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 16 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+      onMoveShouldSetPanResponder: (_, g) => {
+        if (g.dx > 0 && g.x0 < EDGE_GESTURE_ZONE) return false;
+        return Math.abs(g.dx) > 16 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5;
+      },
       onPanResponderRelease: (_, g) => {
         if (g.dx <= -60) goTo(nextNum);
         else if (g.dx >= 60) goTo(prevNum);
@@ -278,7 +286,7 @@ export default function PokemonDetail() {
               // screen lands on a bare pokemon/[num] with no `from` of its
               // own, falling through to its hardcoded default instead of
               // wherever this screen was actually entered from.
-              const pokemonUrl = from ? withReturnTo(`/pokemon/${num}`, decodeURIComponent(from)) : `/pokemon/${num}`;
+              const pokemonUrl = from ? withReturnTo(`/pokemon/${num}`, safeDecodeURIComponent(from)) : `/pokemon/${num}`;
               router.push(withReturnTo(`/pinned-set/${setId}`, pokemonUrl) as never);
             }}
           />

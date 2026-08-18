@@ -13,6 +13,14 @@ export function enterPokemonDetail(router: Router, href: string, from: string) {
   router.push(`${href}${sep}from=${encodeURIComponent(from)}` as Parameters<Router['push']>[0]);
 }
 
+// `from` params are always produced by encodeURIComponent (see above), so this
+// shouldn't throw in practice — but decoding a URL param without a guard is one
+// bad deep link away from crashing whatever reads it. Falls back to the raw
+// (still-encoded) string, which is a safe enough href fallback either way.
+export function safeDecodeURIComponent(value: string): string {
+  try { return decodeURIComponent(value); } catch { return value; }
+}
+
 export function withReturnTo(href: string, from: string): string {
   const sep = href.includes('?') ? '&' : '?';
   return `${href}${sep}from=${encodeURIComponent(from)}`;
@@ -38,7 +46,7 @@ export function useBackTo(fallback: string, extraParams?: Record<string, string>
   const router = useRouterHook();
   const { from } = useLocalSearchParams<{ from?: string }>();
   return () => {
-    const target = from ? decodeURIComponent(from) : fallback;
+    const target = from ? safeDecodeURIComponent(from) : fallback;
     const finalTarget = extraParams ? appendParams(target, extraParams) : target;
     router.replace(finalTarget as Parameters<Router['replace']>[0]);
   };
