@@ -26,6 +26,8 @@ interface Props {
   onToggle: (card: TcgCardRow) => void;
   onToggleWish?: (card: TcgCardRow) => void;
   onZoom?: (card: TcgCardRow) => void;
+  /** Opens the per-finish (normale/holo/reverse) quantity + état editor for this card. */
+  onOpenDetails?: (card: TcgCardRow) => void;
 }
 
 function numColsFor(width: number): number {
@@ -34,7 +36,7 @@ function numColsFor(width: number): number {
   return 6;
 }
 
-export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, viewMode = 'grid', columnsOverride, quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom }: Props) {
+export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, viewMode = 'grid', columnsOverride, quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails }: Props) {
   const { width } = useWindowDimensions();
   const hideOnScrollProps = useHideOnScrollProps();
   if (viewMode === 'list') {
@@ -59,6 +61,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
             onToggle={() => onToggle(item)}
             onToggleWish={onToggleWish ? () => onToggleWish(item) : undefined}
             onZoom={onZoom ? () => onZoom(item) : undefined}
+            onOpenDetails={onOpenDetails ? () => onOpenDetails(item) : undefined}
           />
         )}
       />
@@ -86,6 +89,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
           onToggle={() => onToggle(item)}
           onToggleWish={onToggleWish ? () => onToggleWish(item) : undefined}
           onZoom={onZoom ? () => onZoom(item) : undefined}
+          onOpenDetails={onOpenDetails ? () => onOpenDetails(item) : undefined}
         />
       )}
     />

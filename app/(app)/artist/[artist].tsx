@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { CardGallery } from '@/components/CardGallery';
 import { CardZoomModal } from '@/components/CardZoomModal';
+import { CardCopySheet, EditCopyFooterButton } from '@/components/CardCopySheet';
 import { ProgressRing } from '@/components/ProgressRing';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForArtist } from '@/lib/tcg';
@@ -43,6 +44,7 @@ export default function ArtistGallery() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [columns, setColumns] = useState<3 | 4 | null>(null);
   const [zoomCard, setZoomCard] = useState<TcgCardRow | null>(null);
+  const [detailsCard, setDetailsCard] = useState<TcgCardRow | null>(null);
 
   const ownedCount = useMemo(() => cards.filter(c => ownedAll.has(c.id)).length, [cards, ownedAll]);
   const sortedCards = useMemo(
@@ -153,9 +155,17 @@ export default function ArtistGallery() {
             toggleWish.mutate({ cardId: c.id, currentlyWished: wishedSet.has(c.id), dexNum: c.dex_num });
           }}
           onZoom={c => setZoomCard(c)}
+          onOpenDetails={c => setDetailsCard(c)}
         />
       )}
-      <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
+      <CardZoomModal
+        card={zoomCard}
+        onClose={() => setZoomCard(null)}
+        footer={zoomCard && ownedAll.has(zoomCard.id) ? (
+          <EditCopyFooterButton onPress={() => { setDetailsCard(zoomCard); setZoomCard(null); }} />
+        ) : undefined}
+      />
+      <CardCopySheet card={detailsCard} onClose={() => setDetailsCard(null)} />
     </SafeAreaView>
   );
 }

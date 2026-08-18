@@ -245,6 +245,7 @@ export function useFriendsAvailableCards(friendIds: string[]) {
           card:tcg_cards(${CARD_FIELDS})
         `)
         .in('user_id', friendIds)
+        .eq('finish', 'normal') // trades only move normal-finish copies (see migration 046)
         .gte('quantity', 2);
       if (error) throw error;
       return (data ?? [])

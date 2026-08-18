@@ -11,11 +11,15 @@ import { TypeBadge } from '@/components/TypeBadge';
 import { CardGallery } from '@/components/CardGallery';
 import { CardFilterTree } from '@/components/CardFilterTree';
 import { CardZoomModal } from '@/components/CardZoomModal';
+import { CardCopySheet, EditCopyFooterButton } from '@/components/CardCopySheet';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForPokemon } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
-import { useUserCards, useLedgerCardsForDex, useUserWishlist, useToggleCard, useToggleWish, useCardAcquiredAt } from '@/lib/collection';
+import {
+  useUserCards, useLedgerCardsForDex, useUserWishlist, useToggleCard, useToggleWish, useCardAcquiredAt,
+  useOwnedCardQuantities, useAdjustOwnedCardQuantity,
+} from '@/lib/collection';
 import { useFavorites, useToggleFavorite, useShowcase, useToggleShowcase, VITRINE_LIMIT } from '@/lib/favorites';
 import { toast } from '@/lib/toast';
 import { useBackTo, withReturnTo } from '@/lib/navigation';
@@ -47,6 +51,8 @@ export default function PokemonDetail() {
   const { data: acquiredAt } = useCardAcquiredAt(userId, num);
   const toggle = useToggleCard();
   const toggleWish = useToggleWish();
+  const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
+  const adjustQuantity = useAdjustOwnedCardQuantity();
   const { data: favorites = new Set<number>() } = useFavorites(userId);
   const toggleFavorite = useToggleFavorite();
   const { data: showcase = new Set<number>() } = useShowcase(userId);
@@ -67,6 +73,7 @@ export default function PokemonDetail() {
   const [onlyWishes, setOnlyWishes] = useState(wishes === '1');
   const [zoomCard, setZoomCard] = useState<TcgCardRow | null>(null);
   const [pendingCard, setPendingCard] = useState<TcgCardRow | null>(null);
+  const [detailsCard, setDetailsCard] = useState<TcgCardRow | null>(null);
   // Set only when this dex_num had no official card before this visit and just
   // got one — a genuinely new National Dex entry, not swapping an already-owned
   // Pokémon's chosen printing. Carried through the back navigation so pokedex.tsx
@@ -85,6 +92,7 @@ export default function PokemonDetail() {
     setOnlyWishes(wishes === '1');
     setZoomCard(null);
     setPendingCard(null);
+    setDetailsCard(null);
     setJustCapturedDex(null);
   }, [num]);
 
@@ -294,6 +302,9 @@ export default function PokemonDetail() {
               wishedSet={wishedSet}
               dexCardId={[...officialSet][0]}
               viewMode={viewMode}
+              quantities={quantities}
+              onIncrement={c => adjustQuantity.mutate({ cardId: c.id, delta: 1, currentQuantity: quantities.get(c.id) ?? 0, rarity: c.rarity })}
+              onDecrement={c => adjustQuantity.mutate({ cardId: c.id, delta: -1, currentQuantity: quantities.get(c.id) ?? 0 })}
               onToggle={c => {
                 if (officialSet.has(c.id)) {
                   // Un-choosing is the one unambiguous action here — stays instant.
@@ -304,11 +315,19 @@ export default function PokemonDetail() {
               }}
               onToggleWish={c => toggleWish.mutate({ cardId: c.id, currentlyWished: wishedSet.has(c.id), dexNum: num })}
               onZoom={c => setZoomCard(c)}
+              onOpenDetails={c => setDetailsCard(c)}
             />
           )}
         </>
       )}
-      <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
+      <CardZoomModal
+        card={zoomCard}
+        onClose={() => setZoomCard(null)}
+        footer={zoomCard && ledgerSet.has(zoomCard.id) ? (
+          <EditCopyFooterButton onPress={() => { setDetailsCard(zoomCard); setZoomCard(null); }} />
+        ) : undefined}
+      />
+      <CardCopySheet card={detailsCard} onClose={() => setDetailsCard(null)} />
       <ConfirmDialog
         target={pendingCard ? {
           title: 'Choisir cette carte',

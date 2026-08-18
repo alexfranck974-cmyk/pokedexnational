@@ -23,9 +23,11 @@ interface Props {
   onToggle: () => void;
   onToggleWish?: () => void;
   onZoom?: () => void;
+  /** Opens the per-finish (normale/holo/reverse) quantity + état editor. */
+  onOpenDetails?: () => void;
 }
 
-export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom }: Props) {
+export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles((colors, shadow) => ({
     tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, ...shadow.sm },
@@ -55,6 +57,11 @@ export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, o
     dexBadge: {
       position: 'absolute' as const, bottom: 4, right: 4,
       backgroundColor: CHASE_GOLD, borderRadius: radius.pill, padding: 3,
+    },
+    detailsBtn: {
+      position: 'absolute' as const, bottom: 4, left: 4, width: 24, height: 24,
+      borderRadius: radius.pill, backgroundColor: colors.overlay,
+      alignItems: 'center' as const, justifyContent: 'center' as const,
     },
     heartBtn: {
       position: 'absolute' as const, top: 4, right: 4, width: 28, height: 28,
@@ -109,6 +116,15 @@ export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, o
             <Ionicons name="star" size={12} color="#3b2a06" />
           </View>
         )}
+        {owned && onOpenDetails && (
+          <Pressable
+            hitSlop={8}
+            accessibilityLabel="Voir finition et état"
+            onPress={(e) => { e.stopPropagation(); onOpenDetails(); }}
+            style={styles.detailsBtn}>
+            <Ionicons name="information-circle-outline" size={16} color="white" />
+          </Pressable>
+        )}
         {!readOnly && onToggleWish && (
           <Pressable
             hitSlop={8}
@@ -120,8 +136,8 @@ export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, o
         {owned && onIncrement && onDecrement && (
           <View style={styles.quantityWrap} pointerEvents="box-none">
             <View style={styles.quantityPill}>
-              <Pressable hitSlop={6} onPress={(e) => { e.stopPropagation(); onDecrement(); }}>
-                <Ionicons name="remove-circle-outline" size={18} color="white" />
+              <Pressable hitSlop={6} disabled={!quantity} onPress={(e) => { e.stopPropagation(); onDecrement(); }}>
+                <Ionicons name="remove-circle-outline" size={18} color={quantity ? 'white' : 'rgba(255,255,255,0.4)'} />
               </Pressable>
               <Text style={styles.quantityText}>{quantity ?? 1}</Text>
               <Pressable hitSlop={6} onPress={(e) => { e.stopPropagation(); onIncrement(); }}>

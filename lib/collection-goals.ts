@@ -73,7 +73,9 @@ export function useSetGoalProgress(userId: string | undefined, setId: string | u
         .eq('user_id', userId!)
         .eq('tcg_cards.set_id', setId!);
       if (error) throw error;
-      return (data ?? []).length;
+      // A card owned in two finishes yields two rows here — dedupe by card_id
+      // so progress doesn't double-count it.
+      return new Set((data ?? []).map(r => r.card_id as string)).size;
     },
   });
 }

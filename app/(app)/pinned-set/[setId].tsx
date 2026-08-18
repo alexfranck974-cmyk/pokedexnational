@@ -7,6 +7,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { CardGallery } from '@/components/CardGallery';
 import { CardZoomModal } from '@/components/CardZoomModal';
+import { CardCopySheet, EditCopyFooterButton } from '@/components/CardCopySheet';
 import { ProgressRing } from '@/components/ProgressRing';
 import { CaptureEffect, type CaptureEvent } from '@/components/CaptureEffect';
 import type { TcgCardRow } from '@/lib/tcg';
@@ -61,6 +62,7 @@ export default function PinnedSetDetail() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [columns, setColumns] = useState<3 | 4 | null>(null);
   const [zoomCard, setZoomCard] = useState<TcgCardRow | null>(null);
+  const [detailsCard, setDetailsCard] = useState<TcgCardRow | null>(null);
   const [captureQueue, setCaptureQueue] = useState<CaptureEvent[]>([]);
   const currentCapture = captureQueue[0] ?? null;
   const typeGroups = useMemo(() => buildSetTypeGroups(cards), [cards]);
@@ -227,9 +229,17 @@ export default function PinnedSetDetail() {
             toggleWish.mutate({ cardId: c.id, currentlyWished: wishedSet.has(c.id), dexNum: c.dex_num });
           }}
           onZoom={c => setZoomCard(c)}
+          onOpenDetails={c => setDetailsCard(c)}
         />
       )}
-      <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
+      <CardZoomModal
+        card={zoomCard}
+        onClose={() => setZoomCard(null)}
+        footer={zoomCard && ownedAll.has(zoomCard.id) ? (
+          <EditCopyFooterButton onPress={() => { setDetailsCard(zoomCard); setZoomCard(null); }} />
+        ) : undefined}
+      />
+      <CardCopySheet card={detailsCard} onClose={() => setDetailsCard(null)} />
       <CaptureEffect event={currentCapture} onDone={() => setCaptureQueue(q => q.slice(1))} />
       <TradeMatchPopup
         match={tradeMatch}

@@ -61,7 +61,8 @@ export function useToggleCard() {
       if (!userId) throw new Error('Not signed in');
       if (currentlyOwned) {
         // Unchecking on the Pokémon page is the one place "I don't own this card
-        // anymore" is unambiguous — clear both the dex pick and the ownership ledger.
+        // anymore" is unambiguous — clear both the dex pick and every finish of
+        // this card in the ownership ledger.
         const { error } = await supabase.from('user_cards').delete().eq('user_id', userId).eq('card_id', cardId);
         if (error) throw error;
         const { error: ledgerError } = await supabase.from('user_owned_cards').delete().eq('user_id', userId).eq('card_id', cardId);
@@ -76,11 +77,13 @@ export function useToggleCard() {
           .upsert({ user_id: userId, card_id: cardId, acquired_at: acquiredAt }, { onConflict: 'user_id,dex_num' });
         if (error) throw error;
         // Picking a card as the official dex card means you own it — mirror into the
-        // ownership ledger. Swapping to a different card later does NOT remove the
-        // previous one from here: you can still own it, you just changed your pick.
+        // ownership ledger, as a normal-finish copy (the default bucket the fast tap
+        // manages; other finishes are tracked via the per-card details sheet).
+        // Swapping to a different card later does NOT remove the previous one from
+        // here: you can still own it, you just changed your pick.
         const { error: ledgerError } = await supabase
           .from('user_owned_cards')
-          .upsert({ user_id: userId, card_id: cardId, acquired_at: acquiredAt }, { onConflict: 'user_id,card_id' });
+          .upsert({ user_id: userId, card_id: cardId, finish: 'normal', acquired_at: acquiredAt }, { onConflict: 'user_id,card_id,finish' });
         if (ledgerError) throw ledgerError;
         // A card just marked owned no longer belongs on the wishlist — no-op if it wasn't there.
         const { error: wishError } = await supabase.from('user_wishlist').delete().eq('user_id', userId).eq('card_id', cardId);
@@ -335,6 +338,8 @@ export function useToggleOwnedCard() {
     mutationFn: async ({ cardId, currentlyOwned, rarity }: { cardId: string; currentlyOwned: boolean; rarity?: string | null }) => {
       if (!userId) throw new Error('Not signed in');
       if (currentlyOwned) {
+        // "I don't own this card anymore" clears every finish, not just normal —
+        // fine-grained per-finish removal happens through the details sheet instead.
         const { error } = await supabase.from('user_owned_cards').delete().eq('user_id', userId).eq('card_id', cardId);
         if (error) throw error;
         // A card no longer owned can't stay pointed to as anyone's official
@@ -342,7 +347,7 @@ export function useToggleOwnedCard() {
         const { error: officialError } = await supabase.from('user_cards').delete().eq('user_id', userId).eq('card_id', cardId);
         if (officialError) throw officialError;
       } else {
-        const { error } = await supabase.from('user_owned_cards').insert({ user_id: userId, card_id: cardId });
+        const { error } = await supabase.from('user_owned_cards').insert({ user_id: userId, card_id: cardId, finish: 'normal' });
         if (error) throw error;
         await postFriendNewsIfNotable(userId, cardId, rarity ?? null);
       }
@@ -370,9 +375,12 @@ export function useToggleOwnedCard() {
   });
 }
 
-// How many copies of each card the user owns — a foundation for future trading
-// (knowing which duplicates are spare). Separate from useAllOwnedCardIds (which
-// only answers "owned or not") so screens that don't need counts stay cheap.
+// How many normal-finish copies of each card the user owns — a foundation for
+// future trading (knowing which duplicates are spare). Separate from
+// useAllOwnedCardIds (which only answers "owned or not", finish-agnostic) so
+// screens that don't need counts stay cheap. Scoped to finish='normal' because
+// that's the only bucket the fast +/- pill (and trades) ever touch — other
+// finishes are tracked via useOwnedCardFinishRows / the card details sheet.
 export function useOwnedCardQuantities(userId?: string) {
   return useQuery({
     queryKey: ['owned_card_quantities', userId],
@@ -381,13 +389,16 @@ export function useOwnedCardQuantities(userId?: string) {
       const { data, error } = await supabase
         .from('user_owned_cards')
         .select('card_id, quantity')
-        .eq('user_id', userId!);
+        .eq('user_id', userId!)
+        .eq('finish', 'normal');
       if (error) throw error;
       return new Map<string, number>((data ?? []).map(r => [r.card_id as string, r.quantity as number]));
     },
   });
 }
 
+// finish defaults to 'normal' (the fast pill's bucket). The details sheet
+// reuses this same mutation with finish set to 'holo'/'reverse_holo'.
 export function useAdjustOwnedCardQuantity() {
   const qc = useQueryClient();
   const { session } = useSession();
@@ -401,29 +412,36 @@ export function useAdjustOwnedCardQuantity() {
     qc.invalidateQueries({ queryKey: ['user_dex', userId] });
     qc.invalidateQueries({ queryKey: ['owned_card_images', userId] });
     qc.invalidateQueries({ queryKey: ['all_owned_cards_detailed', userId] });
+    qc.invalidateQueries({ queryKey: ['owned_card_finish_rows', userId] });
   };
 
   return useMutation({
-    mutationFn: async ({ cardId, delta, currentQuantity, rarity }: { cardId: string; delta: 1 | -1; currentQuantity: number; rarity?: string | null }) => {
+    mutationFn: async ({ cardId, delta, currentQuantity, rarity, finish = 'normal' }: { cardId: string; delta: 1 | -1; currentQuantity: number; rarity?: string | null; finish?: string }) => {
       if (!userId) throw new Error('Not signed in');
       const next = currentQuantity + delta;
       if (next <= 0) {
-        const { error } = await supabase.from('user_owned_cards').delete().eq('user_id', userId).eq('card_id', cardId);
+        const { error } = await supabase.from('user_owned_cards').delete().eq('user_id', userId).eq('card_id', cardId).eq('finish', finish);
         if (error) throw error;
-        // A card no longer owned can't stay pointed to as anyone's official
-        // National Dex pick — clear it there too if it was (no-op otherwise).
-        const { error: officialError } = await supabase.from('user_cards').delete().eq('user_id', userId).eq('card_id', cardId);
-        if (officialError) throw officialError;
+        // Only un-pick the official National Dex card if no finish of it is
+        // owned anymore — a user who still has e.g. a holo copy left should
+        // keep their dex pick even after emptying out the normal-finish stack.
+        const { data: remaining, error: remErr } = await supabase
+          .from('user_owned_cards').select('finish').eq('user_id', userId).eq('card_id', cardId).limit(1);
+        if (remErr) throw remErr;
+        if (!remaining || remaining.length === 0) {
+          const { error: officialError } = await supabase.from('user_cards').delete().eq('user_id', userId).eq('card_id', cardId);
+          if (officialError) throw officialError;
+        }
       } else if (currentQuantity <= 0) {
-        const { error } = await supabase.from('user_owned_cards').insert({ user_id: userId, card_id: cardId, quantity: next });
+        const { error } = await supabase.from('user_owned_cards').insert({ user_id: userId, card_id: cardId, finish, quantity: next });
         if (error) throw error;
         await postFriendNewsIfNotable(userId, cardId, rarity ?? null);
       } else {
-        const { error } = await supabase.from('user_owned_cards').update({ quantity: next }).eq('user_id', userId).eq('card_id', cardId);
+        const { error } = await supabase.from('user_owned_cards').update({ quantity: next }).eq('user_id', userId).eq('card_id', cardId).eq('finish', finish);
         if (error) throw error;
       }
     },
-    onMutate: async ({ cardId, delta, currentQuantity }) => {
+    onMutate: async ({ cardId, delta, currentQuantity, finish = 'normal' }) => {
       await qc.cancelQueries({ queryKey: ['owned_card_quantities', userId] });
       await qc.cancelQueries({ queryKey: ['all_owned_card_ids', userId] });
       const prevQuantities = qc.getQueryData<Map<string, number>>(['owned_card_quantities', userId]);
@@ -431,8 +449,14 @@ export function useAdjustOwnedCardQuantity() {
       const nextQty = currentQuantity + delta;
       const nextQuantities = new Map(prevQuantities ?? []);
       const nextIds = new Set(prevIds ?? []);
-      if (nextQty <= 0) { nextQuantities.delete(cardId); nextIds.delete(cardId); }
-      else { nextQuantities.set(cardId, nextQty); nextIds.add(cardId); }
+      // Both caches are scoped/reasoned about in terms of the normal finish —
+      // adjusting another finish still settles correctly via onSettled's
+      // invalidation, just without an optimistic flash (acceptable: this path
+      // is the detail sheet, not the fast primary tap).
+      if (finish === 'normal') {
+        if (nextQty <= 0) { nextQuantities.delete(cardId); nextIds.delete(cardId); }
+        else { nextQuantities.set(cardId, nextQty); nextIds.add(cardId); }
+      }
       qc.setQueryData(['owned_card_quantities', userId], nextQuantities);
       qc.setQueryData(['all_owned_card_ids', userId], nextIds);
       return { prevQuantities, prevIds };
@@ -453,13 +477,15 @@ export function useAllOwnedCardsLedgerDetailed(userId?: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_owned_cards')
-        .select('card_id, acquired_at, tcg_cards(dex_num, name, image_small, image_large, set_id, set_name, card_number, rarity, cardmarket_trend_eur, artist)')
+        .select('card_id, finish, condition, acquired_at, tcg_cards(dex_num, name, image_small, image_large, set_id, set_name, card_number, rarity, cardmarket_trend_eur, artist)')
         .eq('user_id', userId!);
       if (error) throw error;
       return (data ?? []).map(r => {
         const card = r.tcg_cards as any;
         return {
           cardId: r.card_id as string,
+          finish: r.finish as OwnedCardFinish,
+          condition: (r.condition as OwnedCardCondition | null) ?? null,
           dexNum: (card?.dex_num as number | undefined) ?? 0,
           acquiredAt: r.acquired_at as string,
           rarity: (card?.rarity as string | undefined) ?? null,
@@ -477,8 +503,31 @@ export function useAllOwnedCardsLedgerDetailed(userId?: string) {
   });
 }
 
+// A physical copy's finish (print treatment) — kept distinct from the
+// "variant" terminology used elsewhere for alternate Pokémon forms
+// (mega/alolan/galarian/...), see lib/dashboard-stats.ts.
+export type OwnedCardFinish = 'normal' | 'holo' | 'reverse_holo';
+export type OwnedCardCondition = 'mint' | 'near_mint' | 'excellent' | 'good' | 'played' | 'poor';
+
+export const FINISH_LABELS: Record<OwnedCardFinish, string> = {
+  normal: 'Normale',
+  holo: 'Holo',
+  reverse_holo: 'Reverse Holo',
+};
+
+export const CONDITION_LABELS: Record<OwnedCardCondition, string> = {
+  mint: 'Mint (M)',
+  near_mint: 'Near Mint (NM)',
+  excellent: 'Excellent (EX)',
+  good: 'Good (GD)',
+  played: 'Played (PL)',
+  poor: 'Poor (PO)',
+};
+
 export interface OwnedCardDetail {
   cardId: string;
+  finish?: OwnedCardFinish;
+  condition?: OwnedCardCondition | null;
   dexNum: number;
   acquiredAt: string;
   rarity: string | null;
@@ -487,6 +536,54 @@ export interface OwnedCardDetail {
   imageLarge: string | null;
   cardmarketTrendEur: number | null;
   artist: string | null;
+}
+
+export interface OwnedCardFinishRow {
+  finish: OwnedCardFinish;
+  quantity: number;
+  condition: OwnedCardCondition | null;
+}
+
+// Per-finish breakdown (quantity + condition) for one card — feeds the card
+// details sheet. Targeted at a single card_id, so cheap to run on-demand.
+export function useOwnedCardFinishRows(userId: string | undefined, cardId: string | undefined) {
+  return useQuery({
+    queryKey: ['owned_card_finish_rows', userId, cardId],
+    enabled: !!userId && !!cardId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_owned_cards')
+        .select('finish, quantity, condition')
+        .eq('user_id', userId!)
+        .eq('card_id', cardId!);
+      if (error) throw error;
+      return (data ?? []) as OwnedCardFinishRow[];
+    },
+  });
+}
+
+export function useUpdateFinishCondition() {
+  const qc = useQueryClient();
+  const { session } = useSession();
+  const userId = session?.user.id;
+
+  return useMutation({
+    mutationFn: async ({ cardId, finish, condition }: { cardId: string; finish: OwnedCardFinish; condition: OwnedCardCondition }) => {
+      if (!userId) throw new Error('Not signed in');
+      const { error } = await supabase
+        .from('user_owned_cards')
+        .update({ condition })
+        .eq('user_id', userId)
+        .eq('card_id', cardId)
+        .eq('finish', finish);
+      if (error) throw error;
+    },
+    onError: () => toast('Impossible de sauvegarder, réessaie.'),
+    onSettled: (_r, _e, { cardId }) => {
+      qc.invalidateQueries({ queryKey: ['owned_card_finish_rows', userId, cardId] });
+      qc.invalidateQueries({ queryKey: ['all_owned_cards_ledger_detailed', userId] });
+    },
+  });
 }
 
 export function useAllOwnedCardsDetailed(userId?: string) {

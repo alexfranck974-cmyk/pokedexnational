@@ -21,9 +21,11 @@ interface Props {
   onToggle: () => void;
   onToggleWish?: () => void;
   onZoom?: () => void;
+  /** Opens the per-finish (normale/holo/reverse) quantity + état editor. */
+  onOpenDetails?: () => void;
 }
 
-export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom }: Props) {
+export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles((colors) => ({
     row: {
@@ -109,8 +111,8 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
       <View style={styles.actions}>
         {owned && onIncrement && onDecrement ? (
           <View style={styles.quantityPill}>
-            <Pressable hitSlop={6} onPress={(e) => { e.stopPropagation(); onDecrement(); }}>
-              <Ionicons name="remove-circle-outline" size={18} color={colors.textMuted} />
+            <Pressable hitSlop={6} disabled={!quantity} onPress={(e) => { e.stopPropagation(); onDecrement(); }}>
+              <Ionicons name="remove-circle-outline" size={18} color={quantity ? colors.textMuted : colors.border} />
             </Pressable>
             <Text style={styles.quantityText}>{quantity ?? 1}</Text>
             <Pressable hitSlop={6} onPress={(e) => { e.stopPropagation(); onIncrement(); }}>
@@ -119,6 +121,11 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
           </View>
         ) : (
           owned && <Pokeball size={22} />
+        )}
+        {owned && onOpenDetails && (
+          <Pressable hitSlop={8} accessibilityLabel="Voir finition et état" onPress={(e) => { e.stopPropagation(); onOpenDetails(); }}>
+            <Ionicons name="information-circle-outline" size={20} color={colors.textMuted} />
+          </Pressable>
         )}
         {!readOnly && onToggleWish && (
           <Pressable hitSlop={8} onPress={(e) => { e.stopPropagation(); onToggleWish(); }}>

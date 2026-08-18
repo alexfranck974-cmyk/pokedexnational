@@ -5,9 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { CardGallery } from './CardGallery';
 import { CardFilterTree } from './CardFilterTree';
 import { CardZoomModal } from './CardZoomModal';
+import { CardCopySheet, EditCopyFooterButton } from './CardCopySheet';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useTrainerCards } from '@/lib/tcg';
-import { useAllOwnedCardIds, useToggleOwnedCard } from '@/lib/collection';
+import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity } from '@/lib/collection';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 
@@ -57,7 +58,9 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
   const { colors } = useTheme();
   const { data: cards = [], isLoading: cardsLoading } = useTrainerCards();
   const { data: ownedAll = new Set<string>() } = useAllOwnedCardIds(userId);
+  const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
   const toggleOwned = useToggleOwnedCard();
+  const adjustQuantity = useAdjustOwnedCardQuantity();
 
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -66,6 +69,7 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
   const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [zoomCard, setZoomCard] = useState<TcgCardRow | null>(null);
+  const [detailsCard, setDetailsCard] = useState<TcgCardRow | null>(null);
 
   const setFilteredCards = useMemo(
     () => selectedSetIds === null ? cards : cards.filter(c => selectedSetIds.has(c.set_id)),
@@ -223,8 +227,12 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
           ownedSet={ownedAll}
           readOnly={false}
           viewMode={viewMode}
+          quantities={quantities}
+          onIncrement={c => adjustQuantity.mutate({ cardId: c.id, delta: 1, currentQuantity: quantities.get(c.id) ?? 0, rarity: c.rarity })}
+          onDecrement={c => adjustQuantity.mutate({ cardId: c.id, delta: -1, currentQuantity: quantities.get(c.id) ?? 0 })}
           onToggle={c => toggleOwned.mutate({ cardId: c.id, currentlyOwned: ownedAll.has(c.id), rarity: c.rarity })}
           onZoom={c => setZoomCard(c)}
+          onOpenDetails={c => setDetailsCard(c)}
         />
       ) : visibleGroups.length === 0 ? (
         <Text style={styles.empty}>Aucun dresseur trouvé.</Text>
@@ -258,7 +266,14 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
           }}
         />
       )}
-      <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
+      <CardZoomModal
+        card={zoomCard}
+        onClose={() => setZoomCard(null)}
+        footer={zoomCard && ownedAll.has(zoomCard.id) ? (
+          <EditCopyFooterButton onPress={() => { setDetailsCard(zoomCard); setZoomCard(null); }} />
+        ) : undefined}
+      />
+      <CardCopySheet card={detailsCard} onClose={() => setDetailsCard(null)} />
     </View>
   );
 }
