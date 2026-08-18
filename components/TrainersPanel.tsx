@@ -8,7 +8,7 @@ import { CardZoomModal } from './CardZoomModal';
 import { CardCopySheet, EditCopyFooterButton } from './CardCopySheet';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useTrainerCards } from '@/lib/tcg';
-import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity } from '@/lib/collection';
+import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity, useOwnedCardFinishes } from '@/lib/collection';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 
@@ -59,6 +59,7 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
   const { data: cards = [], isLoading: cardsLoading } = useTrainerCards();
   const { data: ownedAll = new Set<string>() } = useAllOwnedCardIds(userId);
   const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
+  const { data: finishesByCard } = useOwnedCardFinishes(userId);
   const toggleOwned = useToggleOwnedCard();
   const adjustQuantity = useAdjustOwnedCardQuantity();
 
@@ -233,6 +234,7 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
           onToggle={c => toggleOwned.mutate({ cardId: c.id, currentlyOwned: ownedAll.has(c.id), rarity: c.rarity })}
           onZoom={c => setZoomCard(c)}
           onOpenDetails={c => setDetailsCard(c)}
+          finishesByCard={finishesByCard}
         />
       ) : visibleGroups.length === 0 ? (
         <Text style={styles.empty}>Aucun dresseur trouvé.</Text>

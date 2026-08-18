@@ -6,6 +6,9 @@ import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
 import { hapticCardAdded } from '@/lib/haptics';
 import { CHASE_GOLD } from '@/lib/rarity-tiers';
+import { useT } from '@/lib/locale';
+import { FINISH_GRADIENT, pickPrimaryFinish } from '@/lib/finish-visuals';
+import type { OwnedCardFinish } from '@/lib/collection';
 
 interface Props {
   card: TcgCardRow;
@@ -25,10 +28,14 @@ interface Props {
   onZoom?: () => void;
   /** Opens the per-finish (normale/holo/reverse) quantity + état editor. */
   onOpenDetails?: () => void;
+  /** Finishes owned for this exact card — drives the border shimmer (holo/reverse) when set. */
+  finishes?: OwnedCardFinish[];
 }
 
-export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails }: Props) {
+export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails, finishes }: Props) {
   const { colors } = useTheme();
+  const t = useT();
+  const primaryFinish = pickPrimaryFinish(finishes);
   const styles = useThemedStyles((colors, shadow) => ({
     tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, ...shadow.sm },
     imgWrap: { position: 'relative' as const },
@@ -90,7 +97,11 @@ export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, o
         {owned ? (
           <View style={isDexCard ? styles.dexHalo : undefined}>
             <LinearGradient
-              colors={isDexCard ? [CHASE_GOLD, colors.warning, CHASE_GOLD] : [colors.primary, colors.warning, colors.primary]}
+              colors={
+                isDexCard ? [CHASE_GOLD, colors.warning, CHASE_GOLD]
+                : primaryFinish && FINISH_GRADIENT[primaryFinish] ? FINISH_GRADIENT[primaryFinish]!
+                : [colors.primary, colors.warning, colors.primary]
+              }
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={styles.holoBorder}>
               <View style={styles.holoInner}>
@@ -119,7 +130,7 @@ export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, o
         {owned && onOpenDetails && (
           <Pressable
             hitSlop={8}
-            accessibilityLabel="Voir finition et état"
+            accessibilityLabel={t('cardCopy.detailsA11yLabel')}
             onPress={(e) => { e.stopPropagation(); onOpenDetails(); }}
             style={styles.detailsBtn}>
             <Ionicons name="information-circle-outline" size={16} color="white" />

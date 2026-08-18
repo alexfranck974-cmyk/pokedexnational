@@ -3,9 +3,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { BubbleSheet } from './BubbleSheet';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useSession } from '@/lib/auth';
+import { useLocale, useT } from '@/lib/locale';
 import type { TcgCardRow } from '@/lib/tcg';
 import {
-  FINISH_LABELS, CONDITION_LABELS, useOwnedCardFinishRows, useAdjustOwnedCardQuantity, useUpdateFinishCondition,
+  CONDITION_LABELS, getFinishLabel, useOwnedCardFinishRows, useAdjustOwnedCardQuantity, useUpdateFinishCondition,
   type OwnedCardFinish, type OwnedCardCondition,
 } from '@/lib/collection';
 
@@ -23,6 +24,8 @@ interface Props {
  * this sheet is where a second/rarer finish of the same card gets tracked. */
 export function CardCopySheet({ card, onClose }: Props) {
   const { colors } = useTheme();
+  const { locale } = useLocale();
+  const t = useT();
   const { session } = useSession();
   const userId = session?.user.id;
   const { data: rows = [] } = useOwnedCardFinishRows(userId, card?.id);
@@ -46,14 +49,22 @@ export function CardCopySheet({ card, onClose }: Props) {
     chipActive: { backgroundColor: colors.primary },
     chipText: { fontSize: 11, fontFamily: fonts.body, color: colors.textMuted },
     chipTextActive: { color: 'white', fontFamily: fonts.bodyBold },
+    finishBlockDimmed: { opacity: 0.5 },
+    notListedHint: { fontSize: 10, fontFamily: fonts.body, color: colors.textDim, fontStyle: 'italic' as const },
   }));
 
   if (!card) return null;
 
   const rowFor = (finish: OwnedCardFinish) => rows.find(r => r.finish === finish);
+  // TCGplayer-derived — null/empty means "unknown" (not yet synced, or no
+  // TCGplayer listing for this print, common for JP/CN cards), never treated
+  // as "doesn't exist". Only dims when we positively know the finish isn't listed.
+  const knownFinishes = card.available_finishes;
+  const isNotListed = (finish: OwnedCardFinish) =>
+    !!knownFinishes && knownFinishes.length > 0 && !knownFinishes.includes(finish);
 
   return (
-    <BubbleSheet visible={!!card} onClose={onClose} tint={colors.primary} title="Ma copie" sizing="auto">
+    <BubbleSheet visible={!!card} onClose={onClose} tint={colors.primary} title={t('cardCopy.title')} sizing="auto">
       <View style={styles.body}>
         <View style={styles.header}>
           <Image source={{ uri: card.image_small }} style={styles.thumb} resizeMode="contain" />
@@ -66,10 +77,14 @@ export function CardCopySheet({ card, onClose }: Props) {
         {FINISHES.map(finish => {
           const row = rowFor(finish);
           const quantity = row?.quantity ?? 0;
+          const notListed = isNotListed(finish);
           return (
-            <View key={finish} style={styles.finishBlock}>
+            <View key={finish} style={[styles.finishBlock, notListed && styles.finishBlockDimmed]}>
               <View style={styles.finishRow}>
-                <Text style={styles.finishLabel}>{FINISH_LABELS[finish]}</Text>
+                <View>
+                  <Text style={styles.finishLabel}>{getFinishLabel(finish, locale)}</Text>
+                  {notListed && <Text style={styles.notListedHint}>{t('cardCopy.notListedHint')}</Text>}
+                </View>
                 <View style={styles.stepper}>
                   <Pressable
                     hitSlop={8}
@@ -120,10 +135,11 @@ const footerStyles = StyleSheet.create({
 /** Convenience "modifier finition / état" action for CardZoomModal's footer slot — shown
  * only when the zoomed card is owned (nothing to edit otherwise). */
 export function EditCopyFooterButton({ onPress }: { onPress: () => void }) {
+  const t = useT();
   return (
     <Pressable style={footerStyles.btn} onPress={onPress}>
       <Ionicons name="information-circle-outline" size={16} color="white" />
-      <Text style={footerStyles.text}>Modifier finition / état</Text>
+      <Text style={footerStyles.text}>{t('cardCopy.editButton')}</Text>
     </Pressable>
   );
 }

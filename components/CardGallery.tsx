@@ -3,6 +3,7 @@ import { useWindowDimensions } from 'react-native';
 import { CardTile } from './CardTile';
 import { CardListRow } from './CardListRow';
 import type { TcgCardRow } from '@/lib/tcg';
+import type { OwnedCardFinish } from '@/lib/collection';
 import { TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 
@@ -28,6 +29,8 @@ interface Props {
   onZoom?: (card: TcgCardRow) => void;
   /** Opens the per-finish (normale/holo/reverse) quantity + état editor for this card. */
   onOpenDetails?: (card: TcgCardRow) => void;
+  /** Owned finishes per card id — when provided, tiles show a holo/reverse shimmer border. */
+  finishesByCard?: Map<string, OwnedCardFinish[]>;
 }
 
 function numColsFor(width: number): number {
@@ -36,7 +39,7 @@ function numColsFor(width: number): number {
   return 6;
 }
 
-export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, viewMode = 'grid', columnsOverride, quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails }: Props) {
+export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, viewMode = 'grid', columnsOverride, quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails, finishesByCard }: Props) {
   const { width } = useWindowDimensions();
   const hideOnScrollProps = useHideOnScrollProps();
   if (viewMode === 'list') {
@@ -62,6 +65,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
             onToggleWish={onToggleWish ? () => onToggleWish(item) : undefined}
             onZoom={onZoom ? () => onZoom(item) : undefined}
             onOpenDetails={onOpenDetails ? () => onOpenDetails(item) : undefined}
+            finishes={finishesByCard?.get(item.id)}
           />
         )}
       />
@@ -90,6 +94,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
           onToggleWish={onToggleWish ? () => onToggleWish(item) : undefined}
           onZoom={onZoom ? () => onZoom(item) : undefined}
           onOpenDetails={onOpenDetails ? () => onOpenDetails(item) : undefined}
+          finishes={finishesByCard?.get(item.id)}
         />
       )}
     />

@@ -14,7 +14,7 @@ import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForSet } from '@/lib/tcg';
 import { useTcgSets } from '@/lib/tcg-index';
 import { useSession } from '@/lib/auth';
-import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity, useAllWishedCards, useToggleWish } from '@/lib/collection';
+import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity, useAllWishedCards, useToggleWish, useOwnedCardFinishes } from '@/lib/collection';
 import { useFriends } from '@/lib/friends';
 import { useFriendsWantedCards } from '@/lib/trades';
 import { TradeMatchPopup, type TradeMatch } from '@/components/TradeMatchPopup';
@@ -45,6 +45,7 @@ export default function PinnedSetDetail() {
   const { data: cards = [], isLoading: cardsLoading } = useCardsForSet(setId);
   const { data: ownedAll = new Set<string>() } = useAllOwnedCardIds(userId);
   const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
+  const { data: finishesByCard } = useOwnedCardFinishes(userId);
   const { data: allSets = [] } = useTcgSets();
   const toggleOwned = useToggleOwnedCard();
   const adjustQuantity = useAdjustOwnedCardQuantity();
@@ -230,6 +231,7 @@ export default function PinnedSetDetail() {
           }}
           onZoom={c => setZoomCard(c)}
           onOpenDetails={c => setDetailsCard(c)}
+          finishesByCard={finishesByCard}
         />
       )}
       <CardZoomModal

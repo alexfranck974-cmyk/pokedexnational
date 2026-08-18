@@ -18,21 +18,16 @@ import { useCardsForPokemon } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
 import {
   useUserCards, useLedgerCardsForDex, useUserWishlist, useToggleCard, useToggleWish, useCardAcquiredAt,
-  useOwnedCardQuantities, useAdjustOwnedCardQuantity,
+  useOwnedCardQuantities, useAdjustOwnedCardQuantity, useOwnedCardFinishes,
 } from '@/lib/collection';
 import { useFavorites, useToggleFavorite, useShowcase, useToggleShowcase, VITRINE_LIMIT } from '@/lib/favorites';
 import { toast } from '@/lib/toast';
 import { useBackTo, withReturnTo } from '@/lib/navigation';
 import { useHistoryBackGuard } from '@/lib/history-back-guard';
+import { useLocale, useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const POKEDEX = pokedexData as Pokemon[];
-
-const REGIONS: { id: 'global' | 'jp' | 'cn'; label: string; emoji: string }[] = [
-  { id: 'global', label: 'Global', emoji: '🌍' },
-  { id: 'cn', label: 'Chinois', emoji: '🇨🇳' },
-  { id: 'jp', label: 'Japonais', emoji: '🇯🇵' },
-];
 
 export default function PokemonDetail() {
   const { num: numStr, wishes, from } = useLocalSearchParams<{ num: string; wishes?: string; from?: string }>();
@@ -41,6 +36,13 @@ export default function PokemonDetail() {
   const p = POKEDEX.find(x => x.num === num);
   const { session } = useSession();
   const userId = session?.user.id;
+  const { locale } = useLocale();
+  const t = useT();
+  const REGIONS: { id: 'global' | 'jp' | 'cn'; label: string; emoji: string }[] = [
+    { id: 'global', label: t('pokemon.regionGlobal'), emoji: '🌍' },
+    { id: 'cn', label: t('pokemon.regionChinese'), emoji: '🇨🇳' },
+    { id: 'jp', label: t('pokemon.regionJapanese'), emoji: '🇯🇵' },
+  ];
   const { data: cards = [], isLoading: cardsLoading } = useCardsForPokemon(num);
   // officialSet drives tap semantics (choose/unchoose the National Dex card) and stays
   // exactly as before; ledgerSet drives the lock icon so every owned printing shows
@@ -52,6 +54,7 @@ export default function PokemonDetail() {
   const toggle = useToggleCard();
   const toggleWish = useToggleWish();
   const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
+  const { data: finishesByCard } = useOwnedCardFinishes(userId);
   const adjustQuantity = useAdjustOwnedCardQuantity();
   const { data: favorites = new Set<number>() } = useFavorites(userId);
   const toggleFavorite = useToggleFavorite();
@@ -61,7 +64,7 @@ export default function PokemonDetail() {
   const isInShowcase = showcase.has(num);
   const handleToggleShowcase = () => {
     if (!isInShowcase && showcase.size >= VITRINE_LIMIT) {
-      toast(`Vitrine limitée à ${VITRINE_LIMIT} cartes — retire-en une avant d’en ajouter une autre.`);
+      toast(t('pokemon.showcaseLimitToast', { n: VITRINE_LIMIT }));
       return;
     }
     toggleShowcase.mutate({ dexNum: num, currentlyFavorited: isFavorited, currentlyInShowcase: isInShowcase });
@@ -191,7 +194,7 @@ export default function PokemonDetail() {
     navBtnRight: { right: spacing.sm },
   }));
 
-  if (!p) return <SafeAreaView><Text>Pokémon inconnu</Text></SafeAreaView>;
+  if (!p) return <SafeAreaView><Text>{t('pokemon.notFound')}</Text></SafeAreaView>;
 
   return (
     <SafeAreaView style={styles.screen} {...swipeNav.panHandlers}>
@@ -202,7 +205,7 @@ export default function PokemonDetail() {
         <View style={styles.heroTopRow}>
           <Pressable onPress={goBack} style={styles.back} hitSlop={8}>
             <Ionicons name="chevron-back" size={18} color={heroText} />
-            <Text style={styles.backText}>Retour</Text>
+            <Text style={styles.backText}>{t('common.back')}</Text>
           </Pressable>
           <View style={styles.heroViewToggle}>
             <Pressable
@@ -232,7 +235,7 @@ export default function PokemonDetail() {
           <Image source={{ uri: p.sprite_url }} style={styles.heroSprite} resizeMode="contain" />
           <View style={{ flex: 1 }}>
             <Text style={styles.heroDex}>#{String(p.num).padStart(4, '0')}</Text>
-            <Text style={styles.heroName}>{getName(p)}</Text>
+            <Text style={styles.heroName}>{getName(p, locale)}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginTop: 4 }}>
               {p.types.map(t => <TypeBadge key={t} type={t} />)}
             </ScrollView>
@@ -240,7 +243,7 @@ export default function PokemonDetail() {
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={styles.heroCount}>{ledgerSet.size} / {filteredCards.length}</Text>
             {acquiredAt && (
-              <Text style={styles.heroAcquired}>Ajoutée le {new Date(acquiredAt).toLocaleDateString('fr-FR')}</Text>
+              <Text style={styles.heroAcquired}>{t('pokemon.addedOn', { date: new Date(acquiredAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'fr-FR') })}</Text>
             )}
           </View>
         </View>
@@ -260,9 +263,9 @@ export default function PokemonDetail() {
       {cardsLoading ? (
         <ActivityIndicator style={{ marginTop: 24 }} />
       ) : cards.length === 0 ? (
-        <Text style={styles.empty}>Aucune carte TCG connue pour ce Pokémon dans la base.</Text>
+        <Text style={styles.empty}>{t('pokemon.noCardsKnown')}</Text>
       ) : regionCards.length === 0 ? (
-        <Text style={styles.empty}>Aucune carte {REGIONS.find(r => r.id === region)?.label} connue pour ce Pokémon.</Text>
+        <Text style={styles.empty}>{t('pokemon.noRegionCards', { region: REGIONS.find(r => r.id === region)?.label ?? '' })}</Text>
       ) : (
         <>
           <CardFilterTree
@@ -282,19 +285,16 @@ export default function PokemonDetail() {
           {onlyWishes && (
             <View style={styles.wishBannerRow}>
               <Pressable onPress={() => setOnlyWishes(false)} style={styles.wishBanner}>
-                <Text style={styles.wishBannerText}>♥ Filtre wish actif — tap pour tout voir</Text>
+                <Text style={styles.wishBannerText}>{t('pokemon.wishFilterActive')}</Text>
               </Pressable>
             </View>
           )}
           <View style={styles.infoBanner}>
             <Ionicons name="information-circle" size={16} color={colors.primary} />
-            <Text style={styles.infoBannerText}>
-              Les cartes possédées apparaissent déverrouillées. Touche une carte pour en faire
-              ta carte choisie du Pokédex national.
-            </Text>
+            <Text style={styles.infoBannerText}>{t('pokemon.infoBanner')}</Text>
           </View>
           {sortedCards.length === 0 ? (
-            <Text style={styles.empty}>Aucune carte dans les extensions sélectionnées.</Text>
+            <Text style={styles.empty}>{t('pokemon.noCardsInSelectedSets')}</Text>
           ) : (
             <CardGallery
               cards={sortedCards}
@@ -316,6 +316,7 @@ export default function PokemonDetail() {
               onToggleWish={c => toggleWish.mutate({ cardId: c.id, currentlyWished: wishedSet.has(c.id), dexNum: num })}
               onZoom={c => setZoomCard(c)}
               onOpenDetails={c => setDetailsCard(c)}
+              finishesByCard={finishesByCard}
             />
           )}
         </>
@@ -330,10 +331,11 @@ export default function PokemonDetail() {
       <CardCopySheet card={detailsCard} onClose={() => setDetailsCard(null)} />
       <ConfirmDialog
         target={pendingCard ? {
-          title: 'Choisir cette carte',
-          message: `Faire de « ${pendingCard.name} » ta carte choisie du Pokédex national pour ${getName(p)} ?`,
+          title: t('pokemon.chooseCardTitle'),
+          message: t('pokemon.chooseCardMessage', { cardName: pendingCard.name, pokemonName: getName(p, locale) }),
         } : null}
-        confirmLabel="Choisir"
+        confirmLabel={t('common.choose')}
+        cancelLabel={t('common.cancel')}
         tone="primary"
         onConfirm={() => {
           if (pendingCard) {

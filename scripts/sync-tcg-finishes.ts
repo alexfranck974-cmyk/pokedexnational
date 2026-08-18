@@ -1,6 +1,13 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 
+// Lightweight companion to sync-tcg-cards.ts, same shape as sync-tcg-prices.ts:
+// asks pokemontcg.io for only `id` + `tcgplayer` via the `select` query param,
+// derives which finishes (normal/holo/reverse_holo) each print actually comes
+// in from the keys of tcgplayer.prices, and writes that to
+// tcg_cards.available_finishes. One-time backfill + re-run whenever new sets
+// are synced (sync-tcg-cards.ts also captures this going forward).
+
 const {
   SUPABASE_URL,
   EXPO_PUBLIC_SUPABASE_URL,
@@ -17,29 +24,14 @@ const supabase = createClient(url, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
 
-interface TcgCard {
+interface TcgFinishRow {
   id: string;
-  name: string;
-  supertype: string;
-  subtypes?: string[];
-  types?: string[];
-  nationalPokedexNumbers?: number[];
-  set: { id: string; name: string; series: string; releaseDate: string; images?: { symbol?: string; logo?: string } };
-  number: string;
-  rarity?: string;
-  artist?: string;
-  images: { small: string; large?: string };
-  cardmarket?: {
-    updatedAt?: string;
-    prices?: { trendPrice?: number; averageSellPrice?: number; lowPrice?: number };
-  };
   tcgplayer?: { prices?: Record<string, unknown> };
 }
 
 // pokemontcg.io's tcgplayer.prices keys → our finish vocabulary (lib/collection.ts's
 // OwnedCardFinish). 1st-edition variants still count as "normal"/"holo" prints for
-// this purpose — we don't track 1st-edition-ness as its own finish. Kept in sync
-// with the identical helper in sync-tcg-finishes.ts.
+// this purpose — we don't track 1st-edition-ness as its own finish.
 function finishesFromPriceKeys(keys: string[]): string[] {
   const finishes = new Set<string>();
   for (const key of keys) {
@@ -51,16 +43,15 @@ function finishesFromPriceKeys(keys: string[]): string[] {
 }
 
 const PAGE_SIZE = 250;
-
 const MAX_RETRIES = 5;
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-async function fetchPage(page: number): Promise<{ data: TcgCard[]; totalCount: number }> {
+async function fetchPage(page: number): Promise<{ data: TcgFinishRow[]; totalCount: number }> {
   let lastErr: unknown = null;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const res = await fetch(
-        `https://api.pokemontcg.io/v2/cards?pageSize=${PAGE_SIZE}&page=${page}`,
+        `https://api.pokemontcg.io/v2/cards?q=nationalPokedexNumbers:[1 TO 1025]&select=id,tcgplayer&pageSize=${PAGE_SIZE}&page=${page}`,
         { headers: { 'X-Api-Key': POKEMON_TCG_API_KEY! } },
       );
       if (res.ok) return res.json();
@@ -83,65 +74,56 @@ async function fetchPage(page: number): Promise<{ data: TcgCard[]; totalCount: n
   throw lastErr ?? new Error(`Fetch page ${page} exhausted retries`);
 }
 
-function toRow(c: TcgCard) {
-  const dex = c.nationalPokedexNumbers?.find(n => n >= 1 && n <= 1025) ?? null;
-  return {
-    id: c.id,
-    name: c.name,
-    supertype: c.supertype,
-    subtypes: c.subtypes ?? null,
-    types: c.types ?? null,
-    dex_num: dex,
-    set_id: c.set.id,
-    set_name: c.set.name,
-    card_number: c.number,
-    rarity: c.rarity ?? null,
-    artist: c.artist ?? null,
-    image_small: c.images.small,
-    image_large: c.images.large ?? null,
-    release_date: c.set.releaseDate ?? null,
-    series: c.set.series ?? null,
-    set_symbol: c.set.images?.symbol ?? null,
-    set_logo: c.set.images?.logo ?? null,
-    cardmarket_trend_eur: c.cardmarket?.prices?.trendPrice ?? null,
-    cardmarket_avg_eur: c.cardmarket?.prices?.averageSellPrice ?? null,
-    cardmarket_low_eur: c.cardmarket?.prices?.lowPrice ?? null,
-    cardmarket_updated_at: c.cardmarket?.updatedAt ? new Date(c.cardmarket.updatedAt).toISOString() : null,
-    available_finishes: (() => {
-      const keys = Object.keys(c.tcgplayer?.prices ?? {});
-      return keys.length ? finishesFromPriceKeys(keys) : null;
-    })(),
-    updated_at: new Date().toISOString(),
-  };
-}
-
 async function main() {
   let page = 1;
   let total = Infinity;
   let done = 0;
+  let updated = 0;
   const failedPages: number[] = [];
   while (done < total) {
     try {
       const { data, totalCount } = await fetchPage(page);
       total = totalCount;
-      const rows = data.map(toRow);
-      if (rows.length) {
-        const { error } = await supabase.from('tcg_cards').upsert(rows, { onConflict: 'id' });
-        if (error) throw error;
+      const finishesById = new Map<string, string[]>();
+      for (const c of data) {
+        const keys = Object.keys(c.tcgplayer?.prices ?? {});
+        if (keys.length) finishesById.set(c.id, finishesFromPriceKeys(keys));
+      }
+
+      if (finishesById.size) {
+        // Same NOT NULL gotcha as sync-tcg-prices.ts: a partial-column upsert
+        // fails Postgres' NOT NULL checks on this table's many other required
+        // columns even though we only mean to touch one column. Fetch the
+        // existing full rows and upsert them back with just this field changed.
+        const ids = Array.from(finishesById.keys());
+        const { data: existing, error: selErr } = await supabase
+          .from('tcg_cards')
+          .select('*')
+          .in('id', ids);
+        if (selErr) throw selErr;
+
+        const rows = (existing ?? []).map(row => ({
+          ...row,
+          available_finishes: finishesById.get(row.id)!,
+          updated_at: new Date().toISOString(),
+        }));
+
+        if (rows.length) {
+          const { error } = await supabase.from('tcg_cards').upsert(rows, { onConflict: 'id' });
+          if (error) throw error;
+          updated += rows.length;
+        }
       }
       done += data.length;
-      console.log(`Page ${page}: ${data.length} cards processed (${done}/${total})`);
+      console.log(`Page ${page}: ${finishesById.size}/${data.length} cards had tcgplayer price data (${done}/${total})`);
     } catch (err) {
-      // The upstream API is retried per-page already (see fetchPage); if a page still
-      // exhausts retries, skip it rather than aborting the whole sync — re-running the
-      // script is idempotent (upsert on id) and will pick up any skipped pages.
       console.error(`Page ${page} failed after all retries, skipping:`, err instanceof Error ? err.message : err);
       failedPages.push(page);
       done += PAGE_SIZE;
     }
     page++;
   }
-  console.log(`Done. Total processed: ~${done}.`);
+  console.log(`Done. available_finishes updated for ~${updated} cards (of ~${done} checked).`);
   if (failedPages.length) {
     console.log(`Skipped pages (re-run the script to retry them): ${failedPages.join(', ')}`);
   }

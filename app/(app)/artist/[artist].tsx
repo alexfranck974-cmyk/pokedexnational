@@ -11,7 +11,7 @@ import { ProgressRing } from '@/components/ProgressRing';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForArtist } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
-import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity, useAllWishedCards, useToggleWish } from '@/lib/collection';
+import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity, useAllWishedCards, useToggleWish, useOwnedCardFinishes } from '@/lib/collection';
 import { useBackTo } from '@/lib/navigation';
 import { useHistoryBackGuard } from '@/lib/history-back-guard';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
@@ -35,6 +35,7 @@ export default function ArtistGallery() {
   const { data: cards = [], isLoading: cardsLoading } = useCardsForArtist(artist);
   const { data: ownedAll = new Set<string>() } = useAllOwnedCardIds(userId);
   const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
+  const { data: finishesByCard } = useOwnedCardFinishes(userId);
   const toggleOwned = useToggleOwnedCard();
   const adjustQuantity = useAdjustOwnedCardQuantity();
   const { data: wishedCards = [] } = useAllWishedCards(userId);
@@ -156,6 +157,7 @@ export default function ArtistGallery() {
           }}
           onZoom={c => setZoomCard(c)}
           onOpenDetails={c => setDetailsCard(c)}
+          finishesByCard={finishesByCard}
         />
       )}
       <CardZoomModal

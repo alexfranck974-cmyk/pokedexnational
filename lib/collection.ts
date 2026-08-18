@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import { useSession } from './auth';
 import { toast } from './toast';
 import { postFriendNewsIfNotable } from './friend-news';
+import type { Locale } from './locale';
 
 export function useUserDex(userId?: string) {
   return useQuery({
@@ -156,6 +157,7 @@ export function useToggleCard() {
       qc.invalidateQueries({ queryKey: ['owned_dex_nums', userId] });
       qc.invalidateQueries({ queryKey: ['ledger_cards_for_dex', userId, dexNum] });
       qc.invalidateQueries({ queryKey: ['all_owned_cards_ledger_detailed', userId] });
+      qc.invalidateQueries({ queryKey: ['owned_card_finishes', userId] });
     },
   });
 }
@@ -371,6 +373,7 @@ export function useToggleOwnedCard() {
       qc.invalidateQueries({ queryKey: ['user_dex', userId] });
       qc.invalidateQueries({ queryKey: ['owned_card_images', userId] });
       qc.invalidateQueries({ queryKey: ['all_owned_cards_detailed', userId] });
+      qc.invalidateQueries({ queryKey: ['owned_card_finishes', userId] });
     },
   });
 }
@@ -413,6 +416,7 @@ export function useAdjustOwnedCardQuantity() {
     qc.invalidateQueries({ queryKey: ['owned_card_images', userId] });
     qc.invalidateQueries({ queryKey: ['all_owned_cards_detailed', userId] });
     qc.invalidateQueries({ queryKey: ['owned_card_finish_rows', userId] });
+    qc.invalidateQueries({ queryKey: ['owned_card_finishes', userId] });
   };
 
   return useMutation({
@@ -515,6 +519,16 @@ export const FINISH_LABELS: Record<OwnedCardFinish, string> = {
   reverse_holo: 'Reverse Holo',
 };
 
+const FINISH_LABELS_EN: Record<OwnedCardFinish, string> = {
+  normal: 'Normal',
+  holo: 'Holo',
+  reverse_holo: 'Reverse Holo',
+};
+
+export function getFinishLabel(finish: OwnedCardFinish, locale: Locale): string {
+  return locale === 'en' ? FINISH_LABELS_EN[finish] : FINISH_LABELS[finish];
+}
+
 export const CONDITION_LABELS: Record<OwnedCardCondition, string> = {
   mint: 'Mint (M)',
   near_mint: 'Near Mint (NM)',
@@ -558,6 +572,31 @@ export function useOwnedCardFinishRows(userId: string | undefined, cardId: strin
         .eq('card_id', cardId!);
       if (error) throw error;
       return (data ?? []) as OwnedCardFinishRow[];
+    },
+  });
+}
+
+// Every owned finish per card, for every card the user owns — feeds the shiny
+// gradient border on CardTile/CardListRow across a whole gallery (Pokémon
+// detail, a pinned set, an artist's catalog...) without one query per tile.
+export function useOwnedCardFinishes(userId?: string) {
+  return useQuery({
+    queryKey: ['owned_card_finishes', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_owned_cards')
+        .select('card_id, finish')
+        .eq('user_id', userId!);
+      if (error) throw error;
+      const map = new Map<string, OwnedCardFinish[]>();
+      for (const row of data ?? []) {
+        const cardId = row.card_id as string;
+        const finish = row.finish as OwnedCardFinish;
+        const list = map.get(cardId);
+        if (list) list.push(finish); else map.set(cardId, [finish]);
+      }
+      return map;
     },
   });
 }
