@@ -58,7 +58,9 @@ export function useTcgSets() {
 // PostgREST uses `*` as the wildcard for ilike inside .or() raw filter strings (avoids %-encoding issues).
 // Two patterns for Mega: modern "Mega X ex" cards, and older "M X-EX" cards (e.g. "M Charizard-EX").
 // bucketVariantCards() in lib/dashboard-stats.ts re-filters this superset with precise regexes client-side
-// (a plain "*Mega*" contains-match alone would false-positive on names like "Yanmega"/"Meganium").
+// (a plain "*Mega*" contains-match alone would false-positive on names like "Yanmega"/"Meganium", and a
+// plain "*Rotom*"/"*Deoxys*" contains-match would sweep in non-forme prints like "Rotom Dex"/"Rotom ex" —
+// this query is deliberately a broad superset, the precision lives client-side).
 const VARIANT_NAME_CLAUSES = [
   'name.ilike.*Mega*',
   'name.ilike.M *-EX',
@@ -66,6 +68,9 @@ const VARIANT_NAME_CLAUSES = [
   'name.ilike.*Galarian*',
   'name.ilike.*Hisuian*',
   'name.ilike.*Paldean*',
+  'name.ilike.*Rotom*',
+  'name.ilike.*Deoxys*',
+  'name.ilike.*VMAX*',
 ];
 
 export function useVariantCards() {

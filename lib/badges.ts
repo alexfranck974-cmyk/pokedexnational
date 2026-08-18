@@ -74,6 +74,9 @@ const variantBadges: Badge[] = [
   { category: 'galarian' as const, label: 'Explorateur Galar', description: 'Posséder toutes les cartes de formes de Galar' },
   { category: 'hisuian' as const, label: 'Explorateur Hisui', description: 'Posséder toutes les cartes de formes d’Hisui' },
   { category: 'paldean' as const, label: 'Explorateur Paldea', description: 'Posséder toutes les cartes de formes de Paldea' },
+  { category: 'rotom' as const, label: 'Électricien', description: 'Posséder toutes les cartes des formes appareil de Rotom' },
+  { category: 'deoxys' as const, label: 'Métamorphe', description: 'Posséder toutes les cartes des formes de combat de Deoxys' },
+  { category: 'gigamax' as const, label: 'Dynamax', description: 'Posséder toutes les cartes VMAX' },
 ].map(({ category, label, description }) => ({
   id: `variant-${category}`,
   label,

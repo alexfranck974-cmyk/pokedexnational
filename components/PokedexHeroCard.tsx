@@ -37,6 +37,9 @@ const VARIANT_LABELS = {
   galarian: '❄️',
   hisuian: '⚔️',
   paldean: '🍇',
+  rotom: '💡',
+  deoxys: '🧬',
+  gigamax: '🔴',
 } as const;
 
 const VARIANT_TITLES = {
@@ -45,10 +48,14 @@ const VARIANT_TITLES = {
   galarian: 'Formes de Galar',
   hisuian: 'Formes d’Hisui',
   paldean: 'Formes de Paldea',
+  rotom: 'Formes de Rotom',
+  deoxys: 'Formes de Deoxys',
+  gigamax: 'Dynamax / Gigamax',
 } as const;
 
 const VARIANT_COLORS = {
   mega: '#fbbf24', alolan: '#fb7185', galarian: '#60a5fa', hisuian: '#a78bfa', paldean: '#65a30d',
+  rotom: '#facc15', deoxys: '#c084fc', gigamax: '#ef4444',
 } as const;
 
 const RANK_MEDALS = ['🥇', '🥈', '🥉'];

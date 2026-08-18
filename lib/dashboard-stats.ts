@@ -43,13 +43,23 @@ export function computeByType(pokedex: Pokemon[], owned: Set<number>): TypeProgr
 
 export interface VariantCard { id: string; name: string; dex_num: number; imageSmall: string; imageLarge: string | null; }
 
-export type VariantCategory = 'mega' | 'alolan' | 'galarian' | 'hisuian' | 'paldean';
+export type VariantCategory = 'mega' | 'alolan' | 'galarian' | 'hisuian' | 'paldean' | 'rotom' | 'deoxys' | 'gigamax';
 
 const isMega = (name: string) => /^Mega\s/i.test(name) || /^M\s.+-EX$/i.test(name);
+// The 5 official appliance formes — excludes non-forme Rotom prints like "Rotom Dex",
+// "Rotom ex", "Drone Rotom" (anime/TCG-only characters, not a video-game forme).
+const isRotomForme = (name: string) => /\b(Heat|Wash|Frost|Fan|Mow)\s+Rotom\b/i.test(name);
+// The 4 official combat formes — "Deoxys" alone (no forme qualifier) is the default
+// appearance, not an "alternate" forme, so it's deliberately excluded here.
+const isDeoxysForme = (name: string) => /\bDeoxys\s+(Normal|Attack|Defense|Speed)\s+Forme\b/i.test(name);
+// VMAX is the TCG's stand-in for Gigantamax — imprecise (not every VMAX print is an
+// officially Gigantamax-capable species in the games) but there's no cleaner signal
+// in the card name to key off, and it matches this bucket's low-stakes "fun stat" role.
+const isGigamax = (name: string) => /\bVMAX\b/i.test(name);
 
 export function bucketVariantCards(cards: VariantCard[]): Record<VariantCategory, VariantCard[]> {
   const buckets: Record<VariantCategory, VariantCard[]> = {
-    mega: [], alolan: [], galarian: [], hisuian: [], paldean: [],
+    mega: [], alolan: [], galarian: [], hisuian: [], paldean: [], rotom: [], deoxys: [], gigamax: [],
   };
   for (const card of cards) {
     if (isMega(card.name)) buckets.mega.push(card);
@@ -57,6 +67,9 @@ export function bucketVariantCards(cards: VariantCard[]): Record<VariantCategory
     if (/Galarian/i.test(card.name)) buckets.galarian.push(card);
     if (/Hisuian/i.test(card.name)) buckets.hisuian.push(card);
     if (/Paldean/i.test(card.name)) buckets.paldean.push(card);
+    if (isRotomForme(card.name)) buckets.rotom.push(card);
+    if (isDeoxysForme(card.name)) buckets.deoxys.push(card);
+    if (isGigamax(card.name)) buckets.gigamax.push(card);
   }
   return buckets;
 }
