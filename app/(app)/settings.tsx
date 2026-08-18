@@ -11,6 +11,7 @@ import { IconBubble } from '@/components/IconBubble';
 import { QRCodeModal } from '@/components/QRCodeModal';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE, PALETTE_ORDER, PALETTE_META } from '@/lib/theme';
 import { useMotion } from '@/lib/motion';
+import { useLocale, useT } from '@/lib/locale';
 import { useIsAdmin } from '@/lib/feedback';
 
 export default function Settings() {
@@ -20,6 +21,8 @@ export default function Settings() {
   const userId = session?.user.id;
   const { colors, mode, toggleMode, palette, setPalette, heroGradient, heroText, heroTextMuted, heroSurface } = useTheme();
   const { animationsEnabled, setAnimationsEnabled } = useMotion();
+  const { locale, setLocale } = useLocale();
+  const t = useT();
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
     scroll: { padding: spacing.lg, paddingBottom: spacing.lg + TAB_BAR_CLEARANCE, gap: spacing.lg },
@@ -55,6 +58,10 @@ export default function Settings() {
     },
     paletteDotSelected: { borderColor: colors.text },
     paletteName: { fontSize: 12, fontFamily: fonts.body, color: colors.textDim, marginTop: 2 },
+    langPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
+    langPillSelected: { backgroundColor: colors.primary },
+    langPillText: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
+    langPillTextSelected: { color: 'white' },
   }));
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
@@ -85,13 +92,13 @@ export default function Settings() {
       .update({ display_name: displayName, is_public: isPublic })
       .eq('id', userId);
     setSaving(false);
-    if (error) Alert.alert('Erreur', error.message);
+    if (error) Alert.alert(t('common.error'), error.message);
   };
 
   const copy = async () => {
     if (!shareUrl) return;
     await Clipboard.setStringAsync(shareUrl);
-    Alert.alert('Copié', shareUrl);
+    Alert.alert(t('common.copied'), shareUrl);
   };
 
   return (
@@ -105,7 +112,7 @@ export default function Settings() {
             <Text style={styles.heroAvatarText}>{(displayName || username || '?').charAt(0).toUpperCase()}</Text>
           </View>
           <View>
-            <Text style={styles.heroName}>{displayName || 'Dresseur'}</Text>
+            <Text style={styles.heroName}>{displayName || t('settings.trainerFallback')}</Text>
             <Text style={styles.heroUsername}>@{username || '…'}</Text>
           </View>
         </LinearGradient>
@@ -115,7 +122,7 @@ export default function Settings() {
             <IconBubble size={28} color={colors.primarySoft}>
               <Ionicons name="at" size={15} color={colors.primary} />
             </IconBubble>
-            <Text style={styles.label}>Username (immuable)</Text>
+            <Text style={styles.label}>{t('settings.usernameLabel')}</Text>
           </View>
           <Text style={styles.readonly}>{username}</Text>
         </View>
@@ -125,7 +132,7 @@ export default function Settings() {
             <IconBubble size={28} color={colors.primarySoft}>
               <Ionicons name="pencil" size={14} color={colors.primary} />
             </IconBubble>
-            <Text style={styles.label}>Nom affiché</Text>
+            <Text style={styles.label}>{t('settings.displayNameLabel')}</Text>
           </View>
           <TextInput value={displayName} onChangeText={setDisplayName} style={styles.input} />
         </View>
@@ -135,7 +142,7 @@ export default function Settings() {
             <IconBubble size={28} color={colors.primarySoft}>
               <Ionicons name="globe" size={14} color={colors.primary} />
             </IconBubble>
-            <Text style={styles.label}>Profil public</Text>
+            <Text style={styles.label}>{t('settings.publicProfileLabel')}</Text>
           </View>
           <Switch value={isPublic} onValueChange={setIsPublic} />
         </View>
@@ -145,9 +152,30 @@ export default function Settings() {
             <IconBubble size={28} color={colors.primarySoft}>
               <Ionicons name={mode === 'dark' ? 'moon' : 'sunny'} size={14} color={colors.primary} />
             </IconBubble>
-            <Text style={styles.label}>Thème sombre</Text>
+            <Text style={styles.label}>{t('settings.darkThemeLabel')}</Text>
           </View>
           <Switch value={mode === 'dark'} onValueChange={toggleMode} />
+        </View>
+
+        <View style={styles.rowInline}>
+          <View style={styles.rowHead}>
+            <IconBubble size={28} color={colors.primarySoft}>
+              <Ionicons name="language" size={14} color={colors.primary} />
+            </IconBubble>
+            <Text style={styles.label}>{t('settings.languageLabel')}</Text>
+          </View>
+          <View style={styles.paletteSwatches}>
+            <Pressable
+              onPress={() => setLocale('fr')}
+              style={[styles.langPill, locale === 'fr' && styles.langPillSelected]}>
+              <Text style={[styles.langPillText, locale === 'fr' && styles.langPillTextSelected]}>FR</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setLocale('en')}
+              style={[styles.langPill, locale === 'en' && styles.langPillSelected]}>
+              <Text style={[styles.langPillText, locale === 'en' && styles.langPillTextSelected]}>EN</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.row}>
@@ -155,7 +183,7 @@ export default function Settings() {
             <IconBubble size={28} color={colors.primarySoft}>
               <Ionicons name="color-palette" size={14} color={colors.primary} />
             </IconBubble>
-            <Text style={styles.label}>Palette de couleurs</Text>
+            <Text style={styles.label}>{t('settings.paletteLabel')}</Text>
           </View>
           <View style={styles.paletteSwatches}>
             {PALETTE_ORDER.map(id => {
@@ -180,7 +208,7 @@ export default function Settings() {
             <IconBubble size={28} color={colors.primarySoft}>
               <Ionicons name="sparkles" size={14} color={colors.primary} />
             </IconBubble>
-            <Text style={styles.label}>Animations</Text>
+            <Text style={styles.label}>{t('settings.animationsLabel')}</Text>
           </View>
           <Switch value={animationsEnabled} onValueChange={setAnimationsEnabled} />
         </View>
@@ -190,13 +218,13 @@ export default function Settings() {
             <IconBubble size={28} color={colors.primarySoft}>
               <Ionicons name="link" size={14} color={colors.primary} />
             </IconBubble>
-            <Text style={styles.label}>Lien de partage</Text>
+            <Text style={styles.label}>{t('settings.shareLinkLabel')}</Text>
           </View>
           <Text style={styles.readonly}>{shareUrl}</Text>
           <View style={styles.shareBtnRow}>
             <Pressable onPress={copy} style={styles.btnSecondary}>
               <Ionicons name="copy-outline" size={14} color={colors.text} />
-              <Text style={styles.btnSecondaryText}>Copier</Text>
+              <Text style={styles.btnSecondaryText}>{t('common.copy')}</Text>
             </Pressable>
             <Pressable onPress={() => setQrOpen(true)} style={styles.btnSecondary}>
               <Ionicons name="qr-code-outline" size={14} color={colors.text} />
@@ -207,7 +235,7 @@ export default function Settings() {
 
         <Pressable onPress={save} disabled={saving} style={styles.btn}>
           {!saving && <Ionicons name="checkmark" size={18} color="white" />}
-          <Text style={styles.btnText}>{saving ? '…' : 'Enregistrer'}</Text>
+          <Text style={styles.btnText}>{saving ? '…' : t('common.save')}</Text>
         </Pressable>
 
         <Pressable onPress={() => router.push('/feedback')} style={styles.rowInline}>
@@ -215,22 +243,22 @@ export default function Settings() {
             <IconBubble size={28} color={colors.primarySoft}>
               <Ionicons name="chatbubble-ellipses-outline" size={14} color={colors.primary} />
             </IconBubble>
-            <Text style={styles.label}>{isAdmin ? 'Suggestions & tickets (admin)' : 'Suggestions & bugs'}</Text>
+            <Text style={styles.label}>{isAdmin ? t('settings.feedbackAdminLabel') : t('settings.feedbackLabel')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </Pressable>
 
         <Pressable onPress={() => signOut()} style={styles.btnDanger}>
           <Ionicons name="log-out-outline" size={18} color="white" />
-          <Text style={styles.btnText}>Se déconnecter</Text>
+          <Text style={styles.btnText}>{t('settings.logout')}</Text>
         </Pressable>
 
         <View style={styles.legalRow}>
           <Pressable onPress={() => router.push('/legal/terms')}>
-            <Text style={styles.legalLink}>Conditions d'utilisation</Text>
+            <Text style={styles.legalLink}>{t('settings.terms')}</Text>
           </Pressable>
           <Pressable onPress={() => router.push('/legal/privacy')}>
-            <Text style={styles.legalLink}>Confidentialité</Text>
+            <Text style={styles.legalLink}>{t('settings.privacy')}</Text>
           </Pressable>
         </View>
       </ScrollView>

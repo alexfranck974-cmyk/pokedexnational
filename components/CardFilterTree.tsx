@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { TcgCardRow } from '@/lib/tcg';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
+import { useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 interface Props {
@@ -17,10 +18,10 @@ interface Props {
 interface SetEntry { id: string; name: string; count: number; releaseDate: string | null; region: string; }
 interface SeriesGroup { series: string; sets: SetEntry[]; total: number; latestDate: string; }
 
-function buildGroups(cards: TcgCardRow[]): SeriesGroup[] {
+function buildGroups(cards: TcgCardRow[], otherLabel: string): SeriesGroup[] {
   const bySeries = new Map<string, Map<string, SetEntry>>();
   for (const c of cards) {
-    const series = c.series ?? 'Autres';
+    const series = c.series ?? otherLabel;
     let inner = bySeries.get(series);
     if (!inner) { inner = new Map(); bySeries.set(series, inner); }
     const existing = inner.get(c.set_id);
@@ -38,7 +39,9 @@ function buildGroups(cards: TcgCardRow[]): SeriesGroup[] {
 }
 
 export function CardFilterTree({ cards, selectedSetIds, onChange, onOpenSet }: Props) {
-  const groups = useMemo(() => buildGroups(cards), [cards]);
+  const t = useT();
+  const otherLabel = t('cardFilter.otherSeries');
+  const groups = useMemo(() => buildGroups(cards, otherLabel), [cards, otherLabel]);
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const { colors: themeColors } = useTheme();
@@ -102,13 +105,15 @@ export function CardFilterTree({ cards, selectedSetIds, onChange, onOpenSet }: P
     <View style={styles.wrap}>
       <Pressable onPress={() => setOpen(v => !v)} style={styles.headerRow}>
         <Text style={styles.chevron}>{open ? '▼' : '▶'}</Text>
-        <Text style={styles.title}>Filtrer par extension</Text>
+        <Text style={styles.title}>{t('cardFilter.title')}</Text>
         {selectedCount !== null && (
-          <Text style={styles.hint}>{selectedCount} set(s) sélectionné(s)</Text>
+          <Text style={styles.hint}>
+            {t(selectedCount === 1 ? 'cardFilter.selectedSingular' : 'cardFilter.selectedPlural', { n: selectedCount })}
+          </Text>
         )}
         {selectedSetIds !== null && (
           <Pressable onPress={(e) => { e.stopPropagation(); onChange(null); }}>
-            <Text style={styles.reset}>Effacer</Text>
+            <Text style={styles.reset}>{t('common.clear')}</Text>
           </Pressable>
         )}
       </Pressable>

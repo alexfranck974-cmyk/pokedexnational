@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { Link } from 'expo-router';
 import { signIn } from '@/lib/auth';
+import { useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 export default function Login() {
@@ -10,6 +11,7 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const { colors } = useTheme();
+  const t = useT();
   const styles = useThemedStyles((colors) => ({
     wrap: { flex: 1, padding: spacing.xl, gap: spacing.md, justifyContent: 'center' as const, backgroundColor: colors.bg },
     h1: { fontSize: 32, fontFamily: fonts.display, color: colors.text, marginBottom: spacing.lg },
@@ -27,23 +29,23 @@ export default function Login() {
     setError(null);
     setPending(true);
     try { await signIn(email.trim(), password); }
-    catch (e: any) { setError(e?.message ?? 'Login failed'); }
+    catch (e: any) { setError(e?.message ?? t('auth.login.genericErr')); }
     finally { setPending(false); }
   };
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.h1}>Connexion</Text>
-      <TextInput placeholder="Email" placeholderTextColor={colors.textMuted} value={email} onChangeText={setEmail}
+      <Text style={styles.h1}>{t('auth.login.title')}</Text>
+      <TextInput placeholder={t('common.email')} placeholderTextColor={colors.textMuted} value={email} onChangeText={setEmail}
         autoCapitalize="none" keyboardType="email-address" style={styles.input} />
-      <TextInput placeholder="Mot de passe" placeholderTextColor={colors.textMuted} value={password} onChangeText={setPassword}
+      <TextInput placeholder={t('common.password')} placeholderTextColor={colors.textMuted} value={password} onChangeText={setPassword}
         secureTextEntry style={styles.input} />
       {error && <Text style={styles.err}>{error}</Text>}
       <Pressable onPress={submit} disabled={pending} style={styles.btn}>
-        <Text style={styles.btnText}>{pending ? '…' : 'Se connecter'}</Text>
+        <Text style={styles.btnText}>{pending ? '…' : t('auth.login.submit')}</Text>
       </Pressable>
-      <Link href="/forgot-password" style={styles.link}>Mot de passe oublié ?</Link>
-      <Link href="/signup" style={styles.link}>Pas de compte ? S'inscrire</Link>
+      <Link href="/forgot-password" style={styles.link}>{t('auth.login.forgotPassword')}</Link>
+      <Link href="/signup" style={styles.link}>{t('auth.login.noAccount')}</Link>
     </View>
   );
 }

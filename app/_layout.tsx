@@ -10,6 +10,7 @@ import { Karla_400Regular, Karla_700Bold } from '@expo-google-fonts/karla';
 import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
 import { ThemeProvider } from '@/lib/theme';
 import { MotionProvider } from '@/lib/motion';
+import { LocaleProvider } from '@/lib/locale';
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
 
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
@@ -70,12 +71,14 @@ function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider>
         <MotionProvider>
-          <ThemedStatusBar />
-          <QueryClientProvider client={queryClient}>
-            <RootSiblingParent>
-              <Stack screenOptions={{ headerShown: false }} />
-            </RootSiblingParent>
-          </QueryClientProvider>
+          <LocaleProvider>
+            <ThemedStatusBar />
+            <QueryClientProvider client={queryClient}>
+              <RootSiblingParent>
+                <Stack screenOptions={{ headerShown: false }} />
+              </RootSiblingParent>
+            </QueryClientProvider>
+          </LocaleProvider>
         </MotionProvider>
       </ThemeProvider>
     </SafeAreaProvider>

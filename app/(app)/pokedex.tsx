@@ -20,10 +20,11 @@ import { CardZoomModal } from '@/components/CardZoomModal';
 import { RefreshButton } from '@/components/RefreshButton';
 import { CaptureEffect, type CaptureEvent } from '@/components/CaptureEffect';
 import { checkTypeMilestones } from '@/lib/type-milestones';
-import { TYPE_LABEL_FR } from '@/lib/types-colors';
+import { getTypeLabel } from '@/lib/types-colors';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { eurFormatter } from '@/lib/trades';
 import { getName } from '@/lib/i18n';
+import { useLocale, useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 
@@ -35,6 +36,8 @@ export default function PokedexScreen() {
   const { session } = useSession();
   const userId = session?.user.id;
   const { colors, heroGradient, heroText: heroTextColor, heroTextMuted, heroSurfaceActive, heroTrack } = useTheme();
+  const { locale } = useLocale();
+  const t = useT();
   const { refreshing, onRefresh } = usePullToRefresh();
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
@@ -99,7 +102,7 @@ export default function PokedexScreen() {
       const milestones = checkTypeMilestones(POKEDEX, dexNum, freshOwned);
       setCaptureQueue(q => [
         ...q,
-        { id: `dex-${dexNum}`, kind: 'dex', pokemonName: getName(pokemon), imageSmall: image },
+        { id: `dex-${dexNum}`, kind: 'dex', pokemonName: getName(pokemon, locale), imageSmall: image },
         ...milestones.map((m, i): CaptureEvent => ({ id: `type-milestone-${dexNum}-${m.type}-${i}`, kind: 'typeMilestone', type: m.type, count: m.count })),
       ]);
     })();
@@ -120,13 +123,13 @@ export default function PokedexScreen() {
   const items = useMemo(
     () => applyPokedexPipeline(POKEDEX, owned, tcgIndex, {
       search: debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort,
-    }, collectedDex),
-    [owned, tcgIndex, debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort, collectedDex],
+    }, collectedDex, locale),
+    [owned, tcgIndex, debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort, collectedDex, locale],
   );
 
   const filterHintParts: string[] = [];
   if (generationFilter.length) filterHintParts.push(generationFilter.map(g => `Gen ${g}`).join(' + '));
-  if (typeFilter.length) filterHintParts.push(typeFilter.map(t => TYPE_LABEL_FR[t]).join(' ou '));
+  if (typeFilter.length) filterHintParts.push(typeFilter.map(ty => getTypeLabel(ty, locale)).join(locale === 'en' ? ' or ' : ' ou '));
   if (setFilter) {
     const s = sets.find(s => s.id === setFilter);
     filterHintParts.push(s ? setFlagLabel(s.name, s.region) : setFilter);
@@ -152,10 +155,10 @@ export default function PokedexScreen() {
         style={styles.hero}>
         <ProgressRing pct={pct} size={56} strokeWidth={7} color={heroSurfaceActive} trackColor={heroTrack} centerLabel={`${pct}%`} />
         <View style={styles.heroText}>
-          <Text style={styles.heroTitle}>Pokédex National</Text>
+          <Text style={styles.heroTitle}>{t('pokedex.heroTitle')}</Text>
           <Text style={styles.heroCount}>{ownedCount} / {items.length}</Text>
           <Text style={styles.heroValue}>≈ {eurFormatter.format(nationalDexValue)}</Text>
-          {filterHint && <Text style={styles.heroFilter}>Filtre : {filterHint}</Text>}
+          {filterHint && <Text style={styles.heroFilter}>{t('pokedex.filterHint', { hint: filterHint })}</Text>}
         </View>
         <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={heroTextColor} />
       </LinearGradient>
@@ -175,7 +178,7 @@ export default function PokedexScreen() {
       />
       <CardZoomModal
         card={zoomCardImage}
-        caption={zoomPokemon ? `#${String(zoomPokemon.num).padStart(4, '0')} · ${getName(zoomPokemon)}` : undefined}
+        caption={zoomPokemon ? `#${String(zoomPokemon.num).padStart(4, '0')} · ${getName(zoomPokemon, locale)}` : undefined}
         onClose={() => setZoomIndex(null)}
         onSwipeNext={() => setZoomIndex(i => i === null || ownedItems.length === 0 ? null : (i + 1) % ownedItems.length)}
         onSwipePrev={() => setZoomIndex(i => i === null || ownedItems.length === 0 ? null : (i - 1 + ownedItems.length) % ownedItems.length)}

@@ -5,8 +5,9 @@ import { PokemonTile } from './PokemonTile';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
 import type { PokemonWithState } from '@/lib/pokedex-list';
-import { GENERATIONS, GEN_COLORS, GEN_STARTERS } from '@/lib/generations';
+import { GENERATIONS, GEN_COLORS, GEN_STARTERS, getGenerationLabel } from '@/lib/generations';
 import { withAlpha } from '@/lib/color-utils';
+import { useLocale } from '@/lib/locale';
 import { useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 
@@ -41,6 +42,7 @@ function numColsFor(width: number): number {
 
 export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, columnsOverride, ListHeaderComponent, refreshControl, onSelect, onLongSelect }: Props) {
   const { width } = useWindowDimensions();
+  const { locale } = useLocale();
   const hideOnScrollProps = useHideOnScrollProps();
   const cols = columnsOverride ?? numColsFor(width);
   const styles = useThemedStyles((colors) => ({
@@ -70,11 +72,11 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, co
       const bucket = items.filter(p => p.num >= gen.min && p.num <= gen.max);
       if (bucket.length === 0) continue;
       const owned = bucket.filter(p => p.owned).length;
-      result.push({ type: 'header', key: `header-${gen.gen}`, gen: gen.gen, label: gen.label, owned, total: bucket.length });
+      result.push({ type: 'header', key: `header-${gen.gen}`, gen: gen.gen, label: getGenerationLabel(gen, locale), owned, total: bucket.length });
       for (const item of bucket) result.push({ type: 'pokemon', key: String(item.num), item });
     }
     return result;
-  }, [items]);
+  }, [items, locale]);
 
   const stickyHeaderIndices = useMemo(
     () => rows.reduce<number[]>((acc, row, i) => { if (row.type === 'header') acc.push(i); return acc; }, []),

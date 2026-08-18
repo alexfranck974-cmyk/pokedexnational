@@ -4,6 +4,7 @@ import { Link } from 'expo-router';
 import { signUp } from '@/lib/auth';
 import { isValidUsername } from '@/lib/slug';
 import { supabase } from '@/lib/supabase';
+import { useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 export default function SignUp() {
@@ -16,6 +17,7 @@ export default function SignUp() {
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const [usernameCheck, setUsernameCheck] = useState<'idle' | 'checking' | 'ok' | 'taken' | 'invalid'>('idle');
   const { colors } = useTheme();
+  const t = useT();
   const styles = useThemedStyles((colors) => ({
     wrap: { flex: 1, padding: spacing.xl, gap: spacing.md, justifyContent: 'center' as const, backgroundColor: colors.bg },
     h1: { fontSize: 32, fontFamily: fonts.display, color: colors.text, marginBottom: spacing.lg },
@@ -45,7 +47,7 @@ export default function SignUp() {
   const submit = async () => {
     setError(null);
     const u = username.trim().toLowerCase();
-    if (!isValidUsername(u)) return setError("Username invalide (3–30 caractères, a-z 0-9 _ - uniquement, doit commencer par a-z ou 0-9)");
+    if (!isValidUsername(u)) return setError(t('auth.signup.usernameInvalidMsg'));
     setPending(true);
     try {
       const { confirmed } = await signUp(email.trim(), password, u, displayName.trim() || u);
@@ -55,49 +57,49 @@ export default function SignUp() {
       // user would otherwise have no way of knowing from a blank screen.
       if (!confirmed) setNeedsConfirmation(true);
     } catch (e: any) {
-      if (e?.message === 'USERNAME_TAKEN') setError('Ce username est déjà pris');
-      else setError(e?.message ?? 'Inscription échouée');
+      if (e?.message === 'USERNAME_TAKEN') setError(t('auth.signup.usernameTakenErr'));
+      else setError(e?.message ?? t('auth.signup.genericErr'));
     } finally { setPending(false); }
   };
 
   if (needsConfirmation) {
     return (
       <View style={styles.wrap}>
-        <Text style={styles.h1}>Vérifie ta boîte mail</Text>
+        <Text style={styles.h1}>{t('auth.signup.checkEmailTitle')}</Text>
         <Text style={styles.hint}>
-          On a envoyé un lien de confirmation à {email.trim()}. Clique dessus pour activer ton compte, puis connecte-toi.
+          {t('auth.signup.checkEmailBody', { email: email.trim() })}
         </Text>
-        <Link href="/login" style={styles.link}>Retour à la connexion</Link>
+        <Link href="/login" style={styles.link}>{t('auth.signup.backToLogin')}</Link>
       </View>
     );
   }
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.h1}>Créer un compte</Text>
-      <TextInput placeholder="Email" placeholderTextColor={colors.textMuted} value={email} onChangeText={setEmail}
+      <Text style={styles.h1}>{t('auth.signup.title')}</Text>
+      <TextInput placeholder={t('common.email')} placeholderTextColor={colors.textMuted} value={email} onChangeText={setEmail}
         autoCapitalize="none" keyboardType="email-address" style={styles.input} />
-      <TextInput placeholder="Mot de passe (min 6)" placeholderTextColor={colors.textMuted} value={password} onChangeText={setPassword}
+      <TextInput placeholder={t('auth.signup.passwordPlaceholder')} placeholderTextColor={colors.textMuted} value={password} onChangeText={setPassword}
         secureTextEntry style={styles.input} />
-      <TextInput placeholder="Username (immutable, ex: tristan-42)" placeholderTextColor={colors.textMuted} value={username}
+      <TextInput placeholder={t('auth.signup.usernamePlaceholder')} placeholderTextColor={colors.textMuted} value={username}
         onChangeText={setUsername} onBlur={onUsernameBlur}
         autoCapitalize="none" style={styles.input} />
-      {usernameCheck === 'checking' && <Text style={styles.hint}>Vérification…</Text>}
-      {usernameCheck === 'ok'       && <Text style={[styles.hint, { color: colors.success }]}>Disponible ✓</Text>}
-      {usernameCheck === 'taken'    && <Text style={styles.err}>Déjà pris</Text>}
-      {usernameCheck === 'invalid'  && <Text style={styles.err}>Format invalide</Text>}
-      <TextInput placeholder="Nom affiché (public)" placeholderTextColor={colors.textMuted} value={displayName}
+      {usernameCheck === 'checking' && <Text style={styles.hint}>{t('auth.signup.checking')}</Text>}
+      {usernameCheck === 'ok'       && <Text style={[styles.hint, { color: colors.success }]}>{t('auth.signup.available')}</Text>}
+      {usernameCheck === 'taken'    && <Text style={styles.err}>{t('auth.signup.taken')}</Text>}
+      {usernameCheck === 'invalid'  && <Text style={styles.err}>{t('auth.signup.invalidFormat')}</Text>}
+      <TextInput placeholder={t('auth.signup.displayNamePlaceholder')} placeholderTextColor={colors.textMuted} value={displayName}
         onChangeText={setDisplayName} style={styles.input} />
       {error && <Text style={styles.err}>{error}</Text>}
       <Pressable onPress={submit} disabled={pending} style={styles.btn}>
-        <Text style={styles.btnText}>{pending ? '…' : "S'inscrire"}</Text>
+        <Text style={styles.btnText}>{pending ? '…' : t('auth.signup.submit')}</Text>
       </Pressable>
-      <Link href="/login" style={styles.link}>Déjà un compte ? Se connecter</Link>
+      <Link href="/login" style={styles.link}>{t('auth.signup.haveAccount')}</Link>
       <Text style={styles.legalText}>
-        En t'inscrivant, tu acceptes les{' '}
-        <Link href="/legal/terms" style={styles.legalLink}>CGU</Link>
-        {' '}et la{' '}
-        <Link href="/legal/privacy" style={styles.legalLink}>politique de confidentialité</Link>
+        {t('auth.signup.legalPrefix')}{' '}
+        <Link href="/legal/terms" style={styles.legalLink}>{t('auth.signup.legalTerms')}</Link>
+        {' '}{t('auth.signup.legalAnd')}{' '}
+        <Link href="/legal/privacy" style={styles.legalLink}>{t('auth.signup.legalPrivacy')}</Link>
       </Text>
     </View>
   );

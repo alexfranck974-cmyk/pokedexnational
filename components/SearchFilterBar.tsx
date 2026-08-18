@@ -3,9 +3,10 @@ import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Modal, FlatLi
 import { Ionicons } from '@expo/vector-icons';
 import type { PokemonType } from '@/lib/types';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
-import { TYPE_LABEL_FR } from '@/lib/types-colors';
-import { GENERATIONS } from '@/lib/generations';
+import { TYPE_LABEL_FR, getTypeLabel } from '@/lib/types-colors';
+import { GENERATIONS, getGenerationLabel } from '@/lib/generations';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
+import { useLocale, useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts, SCREEN_FAB_CLEARANCE } from '@/lib/theme';
 
 interface Props {
@@ -88,6 +89,7 @@ function PickerModal({
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const styles = useThemedStyles(makeStyles);
+  const t = useT();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
@@ -99,7 +101,7 @@ function PickerModal({
             </Pressable>
           </View>
           <FlatList
-            data={[{ id: '__all__', label: 'Tous' }, ...options]}
+            data={[{ id: '__all__', label: t('common.all') }, ...options]}
             keyExtractor={i => i.id}
             renderItem={({ item }) => {
               const isSelected =
@@ -138,6 +140,7 @@ function MultiPickerModal({
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const styles = useThemedStyles(makeStyles);
+  const t = useT();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
@@ -155,7 +158,7 @@ function MultiPickerModal({
               <Pressable
                 onPress={onClear}
                 style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-                <Text style={styles.rowLabel}>Tous</Text>
+                <Text style={styles.rowLabel}>{t('common.all')}</Text>
                 {selectedIds.length === 0 && <Text style={styles.check}>✓</Text>}
               </Pressable>
             }
@@ -184,25 +187,27 @@ export function SearchFilterBar(p: Props) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const { colors } = useTheme();
+  const { locale } = useLocale();
+  const t = useT();
   const styles = useThemedStyles((colors, shadow) => makeStyles(colors, shadow, p.bottomInset));
   const hasFilters = p.statusFilter !== 'all' || p.typeFilter.length > 0 || p.setFilter || p.rarityFilter || p.generationFilter.length > 0;
 
   const typeOptions: PickerOption[] = (Object.keys(TYPE_LABEL_FR) as PokemonType[])
-    .map(t => ({ id: t, label: TYPE_LABEL_FR[t] }));
+    .map(ty => ({ id: ty, label: getTypeLabel(ty, locale) }));
   const setOptions: PickerOption[]  = p.sets.map(s => ({ id: s.id, label: setFlagLabel(s.name, s.region) }));
   const rarityOptions: PickerOption[] = p.rarities.map(r => ({ id: r, label: r }));
-  const genOptions: PickerOption[] = GENERATIONS.map(g => ({ id: String(g.gen), label: g.label }));
+  const genOptions: PickerOption[] = GENERATIONS.map(g => ({ id: String(g.gen), label: getGenerationLabel(g, locale) }));
 
   const typeChipLabel =
-    p.typeFilter.length === 0 ? 'Type'
-    : p.typeFilter.length === 1 ? `Type: ${TYPE_LABEL_FR[p.typeFilter[0]]}`
-    : `Type (${p.typeFilter.length})`;
-  const setChipLabel    = p.setFilter    ? `Set: ${setOptions.find(s => s.id === p.setFilter)?.label ?? p.setFilter}` : 'Set';
-  const rarityChipLabel = p.rarityFilter ? `Rareté: ${p.rarityFilter}` : 'Rareté';
+    p.typeFilter.length === 0 ? t('search.typeLabel')
+    : p.typeFilter.length === 1 ? t('search.typeChip', { value: getTypeLabel(p.typeFilter[0], locale) })
+    : t('search.typeChipCount', { n: p.typeFilter.length });
+  const setChipLabel    = p.setFilter    ? t('search.setChip', { value: setOptions.find(s => s.id === p.setFilter)?.label ?? p.setFilter }) : t('search.setLabel');
+  const rarityChipLabel = p.rarityFilter ? t('search.rarityChip', { value: p.rarityFilter }) : t('search.rarityLabel');
   const genChipLabel =
-    p.generationFilter.length === 0 ? 'Génération'
+    p.generationFilter.length === 0 ? t('search.generationLabel')
     : p.generationFilter.length === 1 ? `Gen ${p.generationFilter[0]}`
-    : `Génération (${p.generationFilter.length})`;
+    : t('search.genChipCount', { n: p.generationFilter.length });
 
   return (
     <View style={styles.overlay} pointerEvents="box-none">
@@ -210,7 +215,7 @@ export function SearchFilterBar(p: Props) {
         <View style={styles.floatingSearch}>
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
-            placeholder="Rechercher (nom ou n°)"
+            placeholder={t('search.placeholder')}
             value={p.search}
             onChangeText={p.onSearch}
             style={styles.floatingSearchInput}
@@ -255,20 +260,20 @@ export function SearchFilterBar(p: Props) {
         <Pressable style={styles.backdrop} onPress={() => setFilterSheetOpen(false)}>
           <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Filtres</Text>
+              <Text style={styles.sheetTitle}>{t('search.filtersTitle')}</Text>
               <Pressable onPress={() => setFilterSheetOpen(false)} hitSlop={8}>
                 <Text style={styles.close}>✕</Text>
               </Pressable>
             </View>
             <ScrollView contentContainerStyle={styles.filterSheetBody}>
-              <Text style={styles.sectionLabel}>Statut</Text>
+              <Text style={styles.sectionLabel}>{t('search.statusLabel')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-                <Chip label="Tous"      active={p.statusFilter === 'all'}     onPress={() => p.onStatus('all')} />
-                <Chip label="Possédés"  active={p.statusFilter === 'owned'}   onPress={() => p.onStatus('owned')} />
-                <Chip label="Manquants" active={p.statusFilter === 'missing'} onPress={() => p.onStatus('missing')} />
+                <Chip label={t('common.all')}      active={p.statusFilter === 'all'}     onPress={() => p.onStatus('all')} />
+                <Chip label={t('search.owned')}     active={p.statusFilter === 'owned'}   onPress={() => p.onStatus('owned')} />
+                <Chip label={t('search.missing')}   active={p.statusFilter === 'missing'} onPress={() => p.onStatus('missing')} />
               </ScrollView>
 
-              <Text style={styles.sectionLabel}>Génération / Type / Set / Rareté</Text>
+              <Text style={styles.sectionLabel}>{t('search.sectionLabel')}</Text>
               <View style={styles.chipRow}>
                 <Chip label={genChipLabel}    active={p.generationFilter.length > 0} onPress={() => setOpenPicker('gen')} />
                 <Chip label={typeChipLabel}   active={p.typeFilter.length > 0}   onPress={() => setOpenPicker('type')} />
@@ -276,7 +281,7 @@ export function SearchFilterBar(p: Props) {
                 <Chip label={rarityChipLabel} active={p.rarityFilter !== null} onPress={() => setOpenPicker('rarity')} />
               </View>
 
-              <Text style={styles.sectionLabel}>Tri</Text>
+              <Text style={styles.sectionLabel}>{t('search.sortLabel')}</Text>
               <View style={styles.chipRow}>
                 <Chip label="N° ↑"   active={p.sort === 'num-asc'}   onPress={() => p.onSort('num-asc')} />
                 <Chip label="N° ↓"   active={p.sort === 'num-desc'}  onPress={() => p.onSort('num-desc')} />
@@ -286,7 +291,7 @@ export function SearchFilterBar(p: Props) {
 
               {hasFilters && (
                 <Pressable onPress={p.onReset} style={styles.reset}>
-                  <Text style={styles.resetText}>Réinitialiser les filtres</Text>
+                  <Text style={styles.resetText}>{t('search.resetFilters')}</Text>
                 </Pressable>
               )}
             </ScrollView>
@@ -296,7 +301,7 @@ export function SearchFilterBar(p: Props) {
 
       <MultiPickerModal
         visible={openPicker === 'type'}
-        title="Type"
+        title={t('search.typeLabel')}
         options={typeOptions}
         selectedIds={p.typeFilter}
         onToggle={(id) => {
@@ -308,7 +313,7 @@ export function SearchFilterBar(p: Props) {
       />
       <PickerModal
         visible={openPicker === 'set'}
-        title="Set TCG"
+        title={t('search.setTcgTitle')}
         options={setOptions}
         selectedId={p.setFilter}
         onSelect={p.onSet}
@@ -316,7 +321,7 @@ export function SearchFilterBar(p: Props) {
       />
       <PickerModal
         visible={openPicker === 'rarity'}
-        title="Rareté"
+        title={t('search.rarityLabel')}
         options={rarityOptions}
         selectedId={p.rarityFilter}
         onSelect={p.onRarity}
@@ -324,7 +329,7 @@ export function SearchFilterBar(p: Props) {
       />
       <MultiPickerModal
         visible={openPicker === 'gen'}
-        title="Génération"
+        title={t('search.generationLabel')}
         options={genOptions}
         selectedIds={p.generationFilter.map(String)}
         onToggle={(id) => {

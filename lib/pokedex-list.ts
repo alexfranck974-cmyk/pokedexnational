@@ -1,6 +1,7 @@
 import type { Pokemon, PokemonType } from './types';
 import { getName } from './i18n';
 import { GENERATIONS } from './generations';
+import type { Locale } from './locale';
 
 export type StatusFilter = 'all' | 'owned' | 'missing';
 export type SortKey = 'num-asc' | 'num-desc' | 'name-asc' | 'name-desc';
@@ -29,6 +30,7 @@ export function applyPokedexPipeline(
   tcgIndex: TcgIndex,
   opts: PipelineOptions,
   collectedDex: Set<number> = owned,
+  locale: Locale = 'fr',
 ): PokemonWithState[] {
   const searchN = normalize(opts.search.trim());
   const searchDigits = /^\d+$/.test(searchN) ? String(parseInt(searchN, 10)) : null;
@@ -75,7 +77,7 @@ export function applyPokedexPipeline(
 
   const sorted = [...filtered];
   const cmpName = (a: PokemonWithState, b: PokemonWithState) =>
-    normalize(getName(a)).localeCompare(normalize(getName(b)));
+    normalize(getName(a, locale)).localeCompare(normalize(getName(b, locale)));
   switch (opts.sort) {
     case 'num-asc':  sorted.sort((a, b) => a.num - b.num); break;
     case 'num-desc': sorted.sort((a, b) => b.num - a.num); break;

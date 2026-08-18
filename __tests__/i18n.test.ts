@@ -8,4 +8,7 @@ describe('getName', () => {
   it('falls back to EN when FR is null', () => {
     expect(getName({ name_fr: null, name_en: 'Sprigatito' })).toBe('Sprigatito');
   });
+  it('uses EN when locale is en, ignoring name_fr', () => {
+    expect(getName({ name_fr: 'Bulbizarre', name_en: 'Bulbasaur' }, 'en')).toBe('Bulbasaur');
+  });
 });
