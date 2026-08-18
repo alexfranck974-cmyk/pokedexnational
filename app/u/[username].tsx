@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { View, Text, Image, ActivityIndicator, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, Text, Image, ActivityIndicator, StyleSheet, Pressable, ScrollView, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +24,7 @@ import { FriendSetGalleryModal, type FriendSetGalleryTarget } from '@/components
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
 import { TradeProposalModal, type TradeTarget, type PickedCard } from '@/components/TradeProposalModal';
 import { TradeIcon } from '@/components/TradeIcon';
+import { BubbleSheet } from '@/components/BubbleSheet';
 import { Pokeball } from '@/components/Pokeball';
 import { IconBubble } from '@/components/IconBubble';
 import { getName } from '@/lib/i18n';
@@ -97,6 +98,8 @@ function PublicProfileInner() {
   >(null);
   const [tradeTarget, setTradeTarget] = useState<TradeTarget | null>(null);
   const [tradePreset, setTradePreset] = useState<PickedCard | undefined>(undefined);
+  const [comparePromptOpen, setComparePromptOpen] = useState(false);
+  const [compareInput, setCompareInput] = useState('');
 
   const ownedCardsByDex = useMemo(() => new Map(ownedCardsDetailed.map(c => [c.dexNum, c])), [ownedCardsDetailed]);
   const vitrineCards = useMemo(() => Array.from(showcase)
@@ -151,6 +154,20 @@ function PublicProfileInner() {
     friendBtnSecondary: { backgroundColor: colors.surfaceAlt },
     friendBtnText: { fontSize: 12, fontFamily: fonts.bodyBold, color: 'white' },
     friendBtnTextSecondary: { color: colors.text },
+    compareBtn: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6,
+      paddingHorizontal: spacing.sm, paddingVertical: 8, borderRadius: radius.pill,
+      backgroundColor: colors.surfaceAlt, alignSelf: 'flex-start' as const,
+    },
+    compareBtnText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.text },
+    compareSheetBody: { padding: spacing.md, gap: spacing.md },
+    compareSheetHint: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted },
+    compareInput: {
+      borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12,
+      fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt,
+    },
+    compareSubmitBtn: { backgroundColor: colors.primary, padding: 12, borderRadius: radius.md, alignItems: 'center' as const },
+    compareSubmitText: { color: 'white', fontFamily: fonts.bodyBold },
     proposeTradeBtn: {
       flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, marginTop: spacing.md,
       paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill,
@@ -253,6 +270,10 @@ function PublicProfileInner() {
           )}
         </View>
         <ProgressCounter owned={ownedCount} total={items.length} />
+        <Pressable onPress={() => setComparePromptOpen(true)} style={styles.compareBtn}>
+          <Ionicons name="git-compare-outline" size={14} color={colors.text} />
+          <Text style={styles.compareBtnText}>Comparer avec un autre Pokédex</Text>
+        </Pressable>
       </View>
 
       <View style={styles.tabRow}>
@@ -429,6 +450,35 @@ function PublicProfileInner() {
         onClose={() => { setTradeTarget(null); setTradePreset(undefined); }}
         initialRequested={tradePreset}
       />
+      <BubbleSheet
+        visible={comparePromptOpen}
+        onClose={() => setComparePromptOpen(false)}
+        tint={colors.primary}
+        title="Comparer les Pokédex"
+        sizing="auto">
+        <View style={styles.compareSheetBody}>
+          <Text style={styles.compareSheetHint}>Entre le username de l'autre Pokédex (public) à comparer avec celui de {profile.display_name}.</Text>
+          <TextInput
+            placeholder="username"
+            placeholderTextColor={colors.textMuted}
+            value={compareInput}
+            onChangeText={setCompareInput}
+            autoCapitalize="none"
+            style={styles.compareInput}
+          />
+          <Pressable
+            disabled={!compareInput.trim()}
+            onPress={() => {
+              const other = compareInput.trim().toLowerCase();
+              setComparePromptOpen(false);
+              setCompareInput('');
+              router.push(`/compare/${profile.username}/${other}` as never);
+            }}
+            style={[styles.compareSubmitBtn, !compareInput.trim() && { opacity: 0.5 }]}>
+            <Text style={styles.compareSubmitText}>Comparer</Text>
+          </Pressable>
+        </View>
+      </BubbleSheet>
     </SafeAreaView>
   );
 }
