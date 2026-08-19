@@ -96,7 +96,7 @@ function PickerModal({
         <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{title}</Text>
-            <Pressable onPress={onClose} hitSlop={8}>
+            <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <Text style={styles.close}>✕</Text>
             </Pressable>
           </View>
@@ -147,7 +147,7 @@ function MultiPickerModal({
         <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{title}</Text>
-            <Pressable onPress={onClose} hitSlop={8}>
+            <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <Text style={styles.close}>✕</Text>
             </Pressable>
           </View>
@@ -223,17 +223,17 @@ export function SearchFilterBar(p: Props) {
             autoFocus
             onBlur={() => { if (!p.search) setSearchOpen(false); }}
           />
-          <Pressable onPress={() => { p.onSearch(''); setSearchOpen(false); }} hitSlop={8}>
+          <Pressable onPress={() => { p.onSearch(''); setSearchOpen(false); }} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('search.a11yClear')}>
             <Ionicons name="close" size={20} color={colors.textMuted} />
           </Pressable>
         </View>
       )}
 
       <View style={styles.fabStack}>
-        <Pressable onPress={() => setSearchOpen(o => !o)} style={styles.fab}>
+        <Pressable onPress={() => setSearchOpen(o => !o)} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleSearch')}>
           <Ionicons name="search" size={22} color={p.search ? colors.primary : colors.text} />
         </Pressable>
-        <Pressable onPress={() => setFilterSheetOpen(true)} style={styles.fab}>
+        <Pressable onPress={() => setFilterSheetOpen(true)} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleFilter')}>
           <Ionicons name="filter" size={22} color={hasFilters ? colors.primary : colors.text} />
           {hasFilters && <View style={styles.badgeDot} />}
         </Pressable>
@@ -242,7 +242,9 @@ export function SearchFilterBar(p: Props) {
             const idx = COLUMN_CYCLE.indexOf(p.columns);
             p.onColumns(COLUMN_CYCLE[(idx + 1) % COLUMN_CYCLE.length]);
           }}
-          style={styles.fab}>
+          style={styles.fab}
+          accessibilityRole="button"
+          accessibilityLabel={t('search.a11yCycleColumns')}>
           {p.columns === null ? (
             <Ionicons name="grid-outline" size={22} color={colors.text} />
           ) : (
@@ -250,7 +252,7 @@ export function SearchFilterBar(p: Props) {
           )}
         </Pressable>
         {p.onToggleValues && (
-          <Pressable onPress={p.onToggleValues} style={styles.fab}>
+          <Pressable onPress={p.onToggleValues} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yTogglePrice')}>
             <Ionicons name="pricetag" size={20} color={p.showValues ? colors.primary : colors.text} />
           </Pressable>
         )}
@@ -261,7 +263,7 @@ export function SearchFilterBar(p: Props) {
           <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{t('search.filtersTitle')}</Text>
-              <Pressable onPress={() => setFilterSheetOpen(false)} hitSlop={8}>
+              <Pressable onPress={() => setFilterSheetOpen(false)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('common.close')}>
                 <Text style={styles.close}>✕</Text>
               </Pressable>
             </View>

@@ -138,7 +138,7 @@ export function CardFilterTree({ cards, selectedSetIds, onChange, onOpenSet }: P
                     <Text style={styles.setName}>{setFlagLabel(s.name, s.region)}</Text>
                     <Text style={styles.count}>({s.count})</Text>
                     {onOpenSet && (
-                      <Pressable onPress={(e) => { e.stopPropagation(); onOpenSet(s.id); }} hitSlop={8}>
+                      <Pressable onPress={(e) => { e.stopPropagation(); onOpenSet(s.id); }} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('cardFilter.a11yJumpToSet')}>
                         <Ionicons name="open-outline" size={15} color={themeColors.primary} />
                       </Pressable>
                     )}

@@ -26,6 +26,7 @@ import { useBackTo, withReturnTo, safeDecodeURIComponent } from '@/lib/navigatio
 import { useHistoryBackGuard } from '@/lib/history-back-guard';
 import { useLocale, useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { BackButton } from '@/components/BackButton';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -211,30 +212,35 @@ export default function PokemonDetail() {
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={styles.hero}>
         <View style={styles.heroTopRow}>
-          <Pressable onPress={goBack} style={styles.back} hitSlop={8}>
-            <Ionicons name="chevron-back" size={18} color={heroText} />
-            <Text style={styles.backText}>{t('common.back')}</Text>
-          </Pressable>
+          <BackButton onPress={goBack} color={heroText} size={18} label style={styles.back} textStyle={styles.backText} />
           <View style={styles.heroViewToggle}>
             <Pressable
               onPress={() => toggleFavorite.mutate({ dexNum: num, currentlyFavorited: isFavorited })}
-              style={[styles.viewBtn, isFavorited && styles.viewBtnActive]}>
+              style={[styles.viewBtn, isFavorited && styles.viewBtnActive]}
+              accessibilityRole="button"
+              accessibilityLabel={t(isFavorited ? 'pokemon.a11yUnfavorite' : 'pokemon.a11yFavorite')}>
               <Ionicons name={isFavorited ? 'star' : 'star-outline'} size={15} color={isFavorited ? heroSurfaceActiveText : heroText} />
             </Pressable>
             <Pressable
               onPress={handleToggleShowcase}
-              style={[styles.viewBtn, isInShowcase && styles.viewBtnActive]}>
+              style={[styles.viewBtn, isInShowcase && styles.viewBtnActive]}
+              accessibilityRole="button"
+              accessibilityLabel={t(isInShowcase ? 'pokemon.a11yUnshowcase' : 'pokemon.a11yShowcase')}>
               <Ionicons name={isInShowcase ? 'sparkles' : 'sparkles-outline'} size={15} color={isInShowcase ? heroSurfaceActiveText : heroText} />
             </Pressable>
             <View style={styles.heroToggleDivider} />
             <Pressable
               onPress={() => setViewMode('grid')}
-              style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>
+              style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}
+              accessibilityRole="button"
+              accessibilityLabel={t('trainers.a11yGridView')}>
               <Ionicons name="grid" size={15} color={viewMode === 'grid' ? heroSurfaceActiveText : heroText} />
             </Pressable>
             <Pressable
               onPress={() => setViewMode('list')}
-              style={[styles.viewBtn, viewMode === 'list' && styles.viewBtnActive]}>
+              style={[styles.viewBtn, viewMode === 'list' && styles.viewBtnActive]}
+              accessibilityRole="button"
+              accessibilityLabel={t('trainers.a11yListView')}>
               <Ionicons name="list" size={15} color={viewMode === 'list' ? heroSurfaceActiveText : heroText} />
             </Pressable>
           </View>
@@ -359,10 +365,10 @@ export default function PokemonDetail() {
       />
 
       <View style={styles.navOverlay} pointerEvents="box-none">
-        <Pressable onPress={() => goTo(prevNum)} style={[styles.navBtn, styles.navBtnLeft]} hitSlop={8}>
+        <Pressable onPress={() => goTo(prevNum)} style={[styles.navBtn, styles.navBtnLeft]} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('pokemon.a11yPrev')}>
           <Ionicons name="chevron-back" size={22} color={colors.text} />
         </Pressable>
-        <Pressable onPress={() => goTo(nextNum)} style={[styles.navBtn, styles.navBtnRight]} hitSlop={8}>
+        <Pressable onPress={() => goTo(nextNum)} style={[styles.navBtn, styles.navBtnRight]} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('pokemon.a11yNext')}>
           <Ionicons name="chevron-forward" size={22} color={colors.text} />
         </Pressable>
       </View>

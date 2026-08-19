@@ -19,6 +19,13 @@ export const STRINGS = {
     'common.clear': 'Effacer',
     'common.delete': 'Supprimer',
     'common.unpin': 'Désépingler',
+    'common.close': 'Fermer',
+    'common.refresh': 'Actualiser',
+
+    // App layout — global FABs
+    'appLayout.a11ySettings': 'Réglages',
+    'appLayout.a11yMarket': 'Marché',
+    'appLayout.a11yInProgressTrade': 'Échange en cours',
 
     // Auth — login
     'auth.login.title': 'Connexion',
@@ -88,14 +95,26 @@ export const STRINGS = {
     'search.setChip': 'Set: {value}',
     'search.rarityChip': 'Rareté: {value}',
     'search.genChipCount': 'Génération ({n})',
+    'search.a11yClear': 'Effacer la recherche',
+    'search.a11yToggleSearch': 'Rechercher',
+    'search.a11yToggleFilter': 'Filtrer',
+    'search.a11yCycleColumns': 'Changer le nombre de colonnes',
+    'search.a11yTogglePrice': 'Afficher les prix',
 
     // Card filter tree (extension filter)
     'cardFilter.title': 'Filtrer par extension',
     'cardFilter.selectedSingular': '{n} set sélectionné',
     'cardFilter.selectedPlural': '{n} sets sélectionnés',
     'cardFilter.otherSeries': 'Autres',
+    'cardFilter.a11yJumpToSet': 'Aller à ce set',
 
     // Pokémon detail
+    'pokemon.a11yFavorite': 'Ajouter aux favoris',
+    'pokemon.a11yUnfavorite': 'Retirer des favoris',
+    'pokemon.a11yShowcase': 'Ajouter à la vitrine',
+    'pokemon.a11yUnshowcase': 'Retirer de la vitrine',
+    'pokemon.a11yPrev': 'Pokémon précédent',
+    'pokemon.a11yNext': 'Pokémon suivant',
     'pokemon.notFound': 'Pokémon inconnu',
     'pokemon.showcaseLimitToast': 'Vitrine limitée à {n} cartes — retire-en une avant d’en ajouter une autre.',
     'pokemon.noCardsKnown': 'Aucune carte TCG connue pour ce Pokémon dans la base.',
@@ -251,6 +270,9 @@ export const STRINGS = {
     'favorites.a11yAddCard': 'Ajouter une carte',
     'favorites.a11yRemoveCard': 'Retirer cette carte',
     'favorites.a11yZoomCard': 'Zoomer sur cette carte',
+    'favorites.a11yDeleteTeam': 'Supprimer cette équipe',
+    'favorites.a11yClearSlot': 'Retirer ce Pokémon de l’équipe',
+    'favorites.a11yAddToSlot': 'Ajouter un Pokémon à l’équipe',
 
     // App-wide error boundary
     'errorBoundary.title': 'Une erreur est survenue',
@@ -380,6 +402,10 @@ export const STRINGS = {
     'friends.newsEmptyFiltered': 'Rien de notable de ce côté-là pour l’instant.',
     'friends.newsSingle': '**{name}** a obtenu une carte {rarity}',
     'friends.newsGroup': '**{name}** a obtenu {count} cartes remarquables',
+    'friends.a11yShareQr': 'Partager mon QR code',
+    'friends.a11yRejectRequest': 'Refuser la demande',
+    'friends.a11yUnfriend': 'Retirer cet ami',
+    'friends.a11yTradeHistory': 'Historique des échanges',
     'friends.unfriendTitle': 'Retirer cet ami',
     'friends.unfriendMessage': 'Retirer "{name}" de tes amis ?',
     'friends.myQrCode': 'Mon QR code',
@@ -428,6 +454,8 @@ export const STRINGS = {
     'trainers.countPlural': '{n} dresseurs',
     'trainers.searchPlaceholder': 'Chercher un dresseur',
     'trainers.notFound': 'Aucun dresseur trouvé.',
+    'trainers.a11yGridView': 'Vue grille',
+    'trainers.a11yListView': 'Vue liste',
   },
   en: {
     'common.back': 'Back',
@@ -443,6 +471,13 @@ export const STRINGS = {
     'common.clear': 'Clear',
     'common.delete': 'Delete',
     'common.unpin': 'Unpin',
+    'common.close': 'Close',
+    'common.refresh': 'Refresh',
+
+    // App layout — global FABs
+    'appLayout.a11ySettings': 'Settings',
+    'appLayout.a11yMarket': 'Market',
+    'appLayout.a11yInProgressTrade': 'Trade in progress',
 
     'auth.login.title': 'Log in',
     'auth.login.submit': 'Log in',
@@ -507,12 +542,24 @@ export const STRINGS = {
     'search.setChip': 'Set: {value}',
     'search.rarityChip': 'Rarity: {value}',
     'search.genChipCount': 'Generation ({n})',
+    'search.a11yClear': 'Clear search',
+    'search.a11yToggleSearch': 'Search',
+    'search.a11yToggleFilter': 'Filter',
+    'search.a11yCycleColumns': 'Change column count',
+    'search.a11yTogglePrice': 'Show prices',
 
     'cardFilter.title': 'Filter by set',
     'cardFilter.selectedSingular': '{n} set selected',
     'cardFilter.selectedPlural': '{n} sets selected',
     'cardFilter.otherSeries': 'Other',
+    'cardFilter.a11yJumpToSet': 'Jump to this set',
 
+    'pokemon.a11yFavorite': 'Add to favorites',
+    'pokemon.a11yUnfavorite': 'Remove from favorites',
+    'pokemon.a11yShowcase': 'Add to showcase',
+    'pokemon.a11yUnshowcase': 'Remove from showcase',
+    'pokemon.a11yPrev': 'Previous Pokémon',
+    'pokemon.a11yNext': 'Next Pokémon',
     'pokemon.notFound': 'Unknown Pokémon',
     'pokemon.showcaseLimitToast': 'Showcase limited to {n} cards — remove one before adding another.',
     'pokemon.noCardsKnown': 'No known TCG card for this Pokémon in the database.',
@@ -657,6 +704,9 @@ export const STRINGS = {
     'favorites.a11yAddCard': 'Add a card',
     'favorites.a11yRemoveCard': 'Remove this card',
     'favorites.a11yZoomCard': 'Zoom on this card',
+    'favorites.a11yDeleteTeam': 'Delete this team',
+    'favorites.a11yClearSlot': 'Remove this Pokémon from the team',
+    'favorites.a11yAddToSlot': 'Add a Pokémon to the team',
 
     'errorBoundary.title': 'Something went wrong',
     'errorBoundary.message': 'Sorry about that. Try again, or come back later if it keeps happening.',
@@ -773,6 +823,10 @@ export const STRINGS = {
     'friends.newsEmptyFiltered': 'Nothing notable on that side yet.',
     'friends.newsSingle': '**{name}** got a {rarity} card',
     'friends.newsGroup': '**{name}** got {count} notable cards',
+    'friends.a11yShareQr': 'Share my QR code',
+    'friends.a11yRejectRequest': 'Reject request',
+    'friends.a11yUnfriend': 'Remove this friend',
+    'friends.a11yTradeHistory': 'Trade history',
     'friends.unfriendTitle': 'Remove this friend',
     'friends.unfriendMessage': 'Remove "{name}" from your friends?',
     'friends.myQrCode': 'My QR code',
@@ -818,6 +872,8 @@ export const STRINGS = {
     'trainers.countPlural': '{n} trainers',
     'trainers.searchPlaceholder': 'Search a trainer',
     'trainers.notFound': 'No trainer found.',
+    'trainers.a11yGridView': 'Grid view',
+    'trainers.a11yListView': 'List view',
   },
 } as const;
 

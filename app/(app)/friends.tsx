@@ -213,7 +213,7 @@ export default function FriendsScreen() {
           <Text style={styles.title}>{t('friends.title')}</Text>
           <View style={styles.headerActions}>
             <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
-            <Pressable onPress={() => setQrOpen(true)} style={styles.qrBtn} hitSlop={8}>
+            <Pressable onPress={() => setQrOpen(true)} style={styles.qrBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('friends.a11yShareQr')}>
               <Ionicons name="qr-code-outline" size={24} color={colors.primary} />
             </Pressable>
           </View>
@@ -276,7 +276,7 @@ export default function FriendsScreen() {
                     <Pressable onPress={() => acceptRequest.mutate(r.id)} style={styles.actionBtn}>
                       <Text style={styles.actionBtnText}>{t('profile.friendStatusAccept')}</Text>
                     </Pressable>
-                    <Pressable onPress={() => removeFriendship.mutate(r.id)} style={styles.secondaryBtn} hitSlop={8}>
+                    <Pressable onPress={() => removeFriendship.mutate(r.id)} style={styles.secondaryBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('friends.a11yRejectRequest')}>
                       <Ionicons name="close" size={18} color={colors.textMuted} />
                     </Pressable>
                   </View>
@@ -331,7 +331,9 @@ export default function FriendsScreen() {
                     <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                     <Pressable
                       onPress={(e) => { e.stopPropagation(); setUnfriendTarget({ id: f.id, name: f.displayName }); }}
-                      style={styles.secondaryBtn} hitSlop={8}>
+                      style={styles.secondaryBtn} hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('friends.a11yUnfriend')}>
                       <Ionicons name="person-remove-outline" size={18} color={colors.danger} />
                     </Pressable>
                   </Pressable>
@@ -347,7 +349,7 @@ export default function FriendsScreen() {
                 <Text style={styles.sectionTitle}>{t('friends.newsTitle')}</Text>
                 {friendNews.length > 0 && <Text style={styles.sectionCount}>{friendNews.length}</Text>}
                 <View style={{ flex: 1 }} />
-                <Pressable onPress={() => setHistoryOpen(true)} hitSlop={8}>
+                <Pressable onPress={() => setHistoryOpen(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('friends.a11yTradeHistory')}>
                   <Ionicons name="time-outline" size={16} color={colors.textMuted} />
                 </Pressable>
               </View>

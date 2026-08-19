@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useTheme, useThemedStyles, spacing, fonts } from '@/lib/theme';
+import { useThemedStyles, spacing, fonts } from '@/lib/theme';
 import { useLocale } from '@/lib/locale';
+import { BackButton } from '@/components/BackButton';
 
 const CONTACT_EMAIL = 'alex.franck974@gmail.com';
 
@@ -200,8 +199,6 @@ function Section({ title, blocks, styles }: { title: string; blocks: Block[]; st
 }
 
 export default function PrivacyPolicy() {
-  const router = useRouter();
-  const { colors } = useTheme();
   const { locale } = useLocale();
   const styles = useThemedStyles((colors) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
@@ -218,9 +215,7 @@ export default function PrivacyPolicy() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={22} color={colors.primary} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.headerTitle}>{TITLES[locale].header}</Text>
       </View>
       <ScrollView contentContainerStyle={styles.scroll}>

@@ -19,6 +19,7 @@ import { TabBarVisibilityProvider, useTabBarVisibility } from '@/lib/tab-bar-vis
 import { withAlpha } from '@/lib/color-utils';
 import { withReturnTo } from '@/lib/navigation';
 import { useTheme, radius, spacing, fonts } from '@/lib/theme';
+import { useT } from '@/lib/locale';
 
 const BAR_SIDE_INSET = spacing.lg;
 const BAR_BOTTOM_OFFSET = spacing.lg;
@@ -42,6 +43,7 @@ function AppLayoutTabs() {
   const pathname = usePathname();
   const { session } = useSession();
   const { colors } = useTheme();
+  const t = useT();
   const { translateY } = useTabBarVisibility();
   const userId = session?.user.id;
   const { data: incomingRequests = [] } = useIncomingRequests(userId);
@@ -147,14 +149,18 @@ function AppLayoutTabs() {
       <Animated.View style={[styles.settingsFabWrap, { transform: [{ translateY }] }]}>
         <Pressable
           onPress={() => router.push('/settings')}
-          style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}>
+          style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}
+          accessibilityRole="button"
+          accessibilityLabel={t('appLayout.a11ySettings')}>
           <Ionicons name="settings-outline" size={22} color={colors.text} />
         </Pressable>
       </Animated.View>
       <Animated.View style={[styles.tradeFabWrap, { transform: [{ translateY }] }]}>
         <Pressable
           onPress={() => router.push(withReturnTo('/market', pathname) as never)}
-          style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}>
+          style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}
+          accessibilityRole="button"
+          accessibilityLabel={t('appLayout.a11yMarket')}>
           <TradeIcon size={20} color={colors.text} />
           {marketBadgeCount > 0 && (
             <View style={[styles.tradeBadge, { borderColor: colors.surface }]}>
@@ -167,7 +173,9 @@ function AppLayoutTabs() {
         <Animated.View style={[styles.inProgressFabWrap, { transform: [{ translateY }] }]}>
           <Pressable
             onPress={() => setOpenInProgress(inProgressOffers[0])}
-            style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}>
+            style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}
+            accessibilityRole="button"
+            accessibilityLabel={t('appLayout.a11yInProgressTrade')}>
             <Animated.View style={{ transform: [{ rotate: spinDeg }] }}>
               <Pokeball size={22} />
             </Animated.View>

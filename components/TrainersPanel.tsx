@@ -12,6 +12,7 @@ import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdju
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useT } from '@/lib/locale';
+import { BackButton } from './BackButton';
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -162,15 +163,13 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
       <View style={styles.header}>
         {selectedCharacter ? (
           <>
-            <Pressable onPress={() => setSelectedCharacter(null)} style={styles.back} hitSlop={8}>
-              <Ionicons name="chevron-back" size={20} color={colors.primary} />
-            </Pressable>
+            <BackButton onPress={() => setSelectedCharacter(null)} style={styles.back} size={20} />
             <Text style={styles.headerTitle} numberOfLines={1}>{selectedCharacter}</Text>
             <View style={styles.viewToggle}>
-              <Pressable onPress={() => setViewMode('grid')} style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>
+              <Pressable onPress={() => setViewMode('grid')} style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]} accessibilityRole="button" accessibilityLabel={t('trainers.a11yGridView')}>
                 <Ionicons name="grid" size={15} color={viewMode === 'grid' ? 'white' : colors.textMuted} />
               </Pressable>
-              <Pressable onPress={() => setViewMode('list')} style={[styles.viewBtn, viewMode === 'list' && styles.viewBtnActive]}>
+              <Pressable onPress={() => setViewMode('list')} style={[styles.viewBtn, viewMode === 'list' && styles.viewBtnActive]} accessibilityRole="button" accessibilityLabel={t('trainers.a11yListView')}>
                 <Ionicons name="list" size={15} color={viewMode === 'list' ? 'white' : colors.textMuted} />
               </Pressable>
             </View>
@@ -180,7 +179,7 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
             <Text style={styles.headerTitle}>
               {t(groups.length > 1 ? 'trainers.countPlural' : 'trainers.countSingular', { n: groups.length })}
             </Text>
-            <Pressable onPress={() => setSearchOpen(o => !o)} style={styles.searchBtn}>
+            <Pressable onPress={() => setSearchOpen(o => !o)} style={styles.searchBtn} accessibilityRole="button" accessibilityLabel={t(searchOpen ? 'search.a11yClear' : 'search.a11yToggleSearch')}>
               <Ionicons name={searchOpen ? 'close' : 'search'} size={16} color={colors.text} />
             </Pressable>
           </>
@@ -200,7 +199,7 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
             onBlur={() => { if (!search) setSearchOpen(false); }}
           />
           {search.length > 0 && (
-            <Pressable onPress={() => { setSearch(''); setSearchOpen(false); }} hitSlop={8}>
+            <Pressable onPress={() => { setSearch(''); setSearchOpen(false); }} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('search.a11yClear')}>
               <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </Pressable>
           )}

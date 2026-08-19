@@ -58,7 +58,7 @@ export function NewSetBanner({ userId, joinedAt }: Props) {
         style={styles.viewBtn}>
         <Text style={styles.viewBtnText}>{t('newSetBanner.view')}</Text>
       </Pressable>
-      <Pressable onPress={() => dismiss.mutate(release.setId)} hitSlop={8} style={styles.closeBtn}>
+      <Pressable onPress={() => dismiss.mutate(release.setId)} hitSlop={8} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
         <Ionicons name="close" size={18} color={colors.textMuted} />
       </Pressable>
     </View>

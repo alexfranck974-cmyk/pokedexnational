@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Modal, View, Text, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useT } from '@/lib/locale';
 
 interface Props {
   visible: boolean;
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export function BubbleSheet({ visible, onClose, tint, title, sizing = 'standard', desktopFixedHeight, children }: Props) {
+  const t = useT();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const styles = useThemedStyles((colors) => ({
@@ -55,7 +57,7 @@ export function BubbleSheet({ visible, onClose, tint, title, sizing = 'standard'
           {title && (
             <View style={styles.header}>
               <Text style={styles.title} numberOfLines={1}>{title}</Text>
-              <Pressable onPress={onClose} hitSlop={8}>
+              <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('common.close')}>
                 <Text style={styles.close}>✕</Text>
               </Pressable>
             </View>

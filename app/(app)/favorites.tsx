@@ -35,6 +35,7 @@ import { TeamSlotPicker } from '@/components/TeamSlotPicker';
 import { BinderSlotPicker } from '@/components/BinderSlotPicker';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { TrainersPanel } from '@/components/TrainersPanel';
+import { BackButton } from '@/components/BackButton';
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
 import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
@@ -483,9 +484,7 @@ export default function FavoritesScreen() {
         selectedTeam ? (
           <View style={styles.teamEditor}>
             <View style={styles.teamEditorHeader}>
-              <Pressable onPress={() => { setSelectedTeamId(null); setRenaming(false); }} hitSlop={8}>
-                <Ionicons name="chevron-back" size={22} color={colors.primary} />
-              </Pressable>
+              <BackButton onPress={() => { setSelectedTeamId(null); setRenaming(false); }} />
               {renaming ? (
                 <TextInput
                   value={renameValue}
@@ -500,7 +499,11 @@ export default function FavoritesScreen() {
                   <Text style={styles.teamEditorTitle} numberOfLines={1}>{selectedTeam.name}</Text>
                 </Pressable>
               )}
-              <Pressable onPress={() => setDeleteTarget({ kind: 'team', id: selectedTeam.id, name: selectedTeam.name })} hitSlop={8}>
+              <Pressable
+                onPress={() => setDeleteTarget({ kind: 'team', id: selectedTeam.id, name: selectedTeam.name })}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('favorites.a11yDeleteTeam')}>
                 <Ionicons name="trash-outline" size={20} color={colors.danger} />
               </Pressable>
             </View>
@@ -510,7 +513,12 @@ export default function FavoritesScreen() {
                 const slot = selectedTeam.slots.find(s => s.slotIndex === slotIndex);
                 const mon = slot ? POKEDEX_BY_DEX.get(slot.dexNum) : undefined;
                 return (
-                  <Pressable key={slotIndex} onPress={() => setPickerSlot(slotIndex)} style={styles.slot}>
+                  <Pressable
+                    key={slotIndex}
+                    onPress={() => setPickerSlot(slotIndex)}
+                    style={styles.slot}
+                    accessibilityRole="button"
+                    accessibilityLabel={mon ? getName(mon) : t('favorites.a11yAddToSlot')}>
                     {mon ? (
                       <>
                         <Image source={{ uri: ownedImages.get(mon.num) ?? mon.sprite_url }} style={styles.slotSprite} resizeMode="contain" />
@@ -518,7 +526,9 @@ export default function FavoritesScreen() {
                         <Pressable
                           hitSlop={8}
                           onPress={(e) => { e.stopPropagation(); clearSlot.mutate({ teamId: selectedTeam.id, slotIndex }); }}
-                          style={styles.slotClear}>
+                          style={styles.slotClear}
+                          accessibilityRole="button"
+                          accessibilityLabel={t('favorites.a11yClearSlot')}>
                           <Ionicons name="close-circle" size={18} color={colors.danger} />
                         </Pressable>
                       </>

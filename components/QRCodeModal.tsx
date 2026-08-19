@@ -51,7 +51,7 @@ export function QRCodeModal({ visible, value, label, onClose }: Props) {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.card} onPress={() => {}}>
-          <Pressable onPress={onClose} style={styles.close} hitSlop={8}>
+          <Pressable onPress={onClose} style={styles.close} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('common.close')}>
             <Ionicons name="close" size={18} color={colors.text} />
           </Pressable>
           <Text style={styles.title}>{label}</Text>

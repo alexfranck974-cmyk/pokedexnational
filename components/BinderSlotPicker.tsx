@@ -11,6 +11,7 @@ import { useAssignCardToSlot, useUploadBinderImage } from '@/lib/binders';
 import { toast } from '@/lib/toast';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useLocale, useT } from '@/lib/locale';
+import { BackButton } from './BackButton';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -153,14 +154,12 @@ export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder,
         <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
             <View style={styles.header}>
               {selected ? (
-                <Pressable onPress={() => setSelectedNum(null)} hitSlop={8}>
-                  <Ionicons name="chevron-back" size={20} color="#818cf8" />
-                </Pressable>
+                <BackButton onPress={() => setSelectedNum(null)} color="#818cf8" size={20} />
               ) : null}
               <Text style={styles.headerTitle} numberOfLines={1}>
                 {selected ? getName(selected, locale) : mode === 'card' ? t('binderPicker.chooseCardTitle') : t('binderPicker.importPhotoTitle')}
               </Text>
-              <Pressable onPress={onClose} hitSlop={8}>
+              <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('common.close')}>
                 <Text style={styles.close}>✕</Text>
               </Pressable>
             </View>

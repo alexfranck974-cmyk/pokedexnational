@@ -1,5 +1,6 @@
 import { Pressable, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useT } from '@/lib/locale';
 
 interface Props {
   refreshing: boolean;
@@ -13,8 +14,9 @@ interface Props {
 // see node_modules/react-native-web/dist/exports/RefreshControl), so this is
 // the only thing that actually does anything on web.
 export function RefreshButton({ refreshing, onRefresh, color = 'white', size = 20 }: Props) {
+  const t = useT();
   return (
-    <Pressable onPress={onRefresh} disabled={refreshing} hitSlop={10}>
+    <Pressable onPress={onRefresh} disabled={refreshing} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('common.refresh')}>
       {refreshing ? <ActivityIndicator size="small" color={color} /> : <Ionicons name="refresh" size={size} color={color} />}
     </Pressable>
   );
