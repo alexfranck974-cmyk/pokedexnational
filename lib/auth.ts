@@ -8,10 +8,14 @@ export function useSession() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data }) => setSession(data.session))
+      // A corrupted stored session, an AsyncStorage read failure, or a network
+      // blip during token refresh on cold start would otherwise leave
+      // `loading` stuck true forever with no recovery path — fall back to
+      // signed-out so the login screen can render instead of a dead spinner.
+      .catch(() => setSession(null))
+      .finally(() => setLoading(false));
     const { data: sub } = supabase.auth.onAuthStateChange((_, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, []);
