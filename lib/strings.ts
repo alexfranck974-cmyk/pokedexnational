@@ -246,6 +246,10 @@ export const STRINGS = {
     'favorites.startPin': 'Commencer',
     'favorites.deleteBinderTitle': 'Supprimer le binder',
     'favorites.deleteConfirmMessage': 'Supprimer "{name}" ?',
+    'favorites.a11yViewBinder': 'Voir le binder',
+    'favorites.a11yChangeLayout': 'Changer la mise en page',
+    'favorites.a11yAddCard': 'Ajouter une carte',
+    'favorites.a11yRemoveCard': 'Retirer cette carte',
 
     // Binder slot picker (card or photo)
     'binderPicker.photoPermToast': 'Autorise l’accès à tes photos pour importer une image.',
@@ -490,6 +494,10 @@ export const STRINGS = {
     'favorites.startPin': 'Start',
     'favorites.deleteBinderTitle': 'Delete binder',
     'favorites.deleteConfirmMessage': 'Delete "{name}"?',
+    'favorites.a11yViewBinder': 'View binder',
+    'favorites.a11yChangeLayout': 'Change layout',
+    'favorites.a11yAddCard': 'Add a card',
+    'favorites.a11yRemoveCard': 'Remove this card',
 
     'binderPicker.photoPermToast': 'Allow access to your photos to import an image.',
     'binderPicker.photoImportErrToast': 'Couldn’t import this photo, try again.',

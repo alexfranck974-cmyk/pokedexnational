@@ -568,7 +568,10 @@ export default function FavoritesScreen() {
         selectedBinder ? (
         <View style={styles.teamEditor}>
           <View style={styles.teamEditorHeader}>
-            <Pressable onPress={() => { setSelectedBinderId(null); setBinderRenaming(false); }} hitSlop={8}>
+            <Pressable
+              onPress={() => { setSelectedBinderId(null); setBinderRenaming(false); }}
+              hitSlop={8}
+              accessibilityLabel={t('common.back')}>
               <Ionicons name="chevron-back" size={22} color={colors.primary} />
             </Pressable>
             {binderRenaming ? (
@@ -585,13 +588,22 @@ export default function FavoritesScreen() {
                 <Text style={styles.teamEditorTitle} numberOfLines={1}>{selectedBinder.name}</Text>
               </Pressable>
             )}
-            <Pressable onPress={() => router.push(withReturnTo(`/binder/${selectedBinder.id}`, '/favorites') as never)} hitSlop={8} style={{ marginRight: spacing.sm }}>
+            <Pressable
+              onPress={() => router.push(withReturnTo(`/binder/${selectedBinder.id}`, '/favorites') as never)}
+              hitSlop={8} style={{ marginRight: spacing.sm }}
+              accessibilityLabel={t('favorites.a11yViewBinder')}>
               <Ionicons name="eye-outline" size={20} color={colors.primary} />
             </Pressable>
-            <Pressable onPress={() => setLayoutPickerOpen(true)} hitSlop={8} style={{ marginRight: spacing.sm }}>
+            <Pressable
+              onPress={() => setLayoutPickerOpen(true)}
+              hitSlop={8} style={{ marginRight: spacing.sm }}
+              accessibilityLabel={t('favorites.a11yChangeLayout')}>
               <Ionicons name="grid-outline" size={20} color={colors.primary} />
             </Pressable>
-            <Pressable onPress={() => setDeleteTarget({ kind: 'binder', id: selectedBinder.id, name: selectedBinder.name })} hitSlop={8}>
+            <Pressable
+              onPress={() => setDeleteTarget({ kind: 'binder', id: selectedBinder.id, name: selectedBinder.name })}
+              hitSlop={8}
+              accessibilityLabel={t('favorites.deleteBinderTitle')}>
               <Ionicons name="trash-outline" size={20} color={colors.danger} />
             </Pressable>
           </View>
@@ -613,7 +625,10 @@ export default function FavoritesScreen() {
                 if (!filled) {
                   return (
                     <View style={styles.binderSlotTile}>
-                      <Pressable onPress={() => setPickingPosition(item.position)} style={styles.binderSlotEmpty}>
+                      <Pressable
+                        onPress={() => setPickingPosition(item.position)}
+                        style={styles.binderSlotEmpty}
+                        accessibilityLabel={t('favorites.a11yAddCard')}>
                         <Ionicons name="add" size={28} color={colors.textDim} />
                       </Pressable>
                     </View>
@@ -651,7 +666,8 @@ export default function FavoritesScreen() {
                         <Pressable
                           hitSlop={8}
                           onPress={() => removeBinderSlot.mutate({ binderId: selectedBinder.id, position: item.position, imagePath: item.imagePath })}
-                          style={styles.removeBtn}>
+                          style={styles.removeBtn}
+                          accessibilityLabel={t('favorites.a11yRemoveCard')}>
                           <Ionicons name="close" size={16} color="white" />
                         </Pressable>
                       </View>
