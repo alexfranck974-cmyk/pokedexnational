@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
 import { View, Text, Image, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
+import { eurFormatter } from '@/lib/trades';
 import { useTheme, useThemedStyles, radius, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
 
@@ -28,10 +28,6 @@ export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCou
   const inColor = collected ?? owned;
   const { colors } = useTheme();
   const { locale } = useLocale();
-  const eurFormatter = useMemo(
-    () => new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'fr-FR', { style: 'currency', currency: 'EUR' }),
-    [locale],
-  );
 
   const styles = useThemedStyles((colors, shadow) => ({
     // 0.85 left too little room below the (square) image for the number +
@@ -106,7 +102,7 @@ export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCou
         {getName(pokemon, locale)}
       </Text>
       {owned && priceEur !== undefined ? (
-        <Text style={styles.cardCount} numberOfLines={1}>{priceEur == null ? '—' : eurFormatter.format(priceEur)}</Text>
+        <Text style={styles.cardCount} numberOfLines={1}>{priceEur == null ? '—' : eurFormatter(locale).format(priceEur)}</Text>
       ) : (
         owned && cardCount !== undefined && cardCount > 0 && (
           <Text style={styles.cardCount}>×{cardCount}</Text>

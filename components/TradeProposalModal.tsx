@@ -264,7 +264,7 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
               <Image source={{ uri: offeredCard!.imageSmall }} style={styles.confirmImg} resizeMode="contain" />
               <Text style={styles.confirmName} numberOfLines={2}>{offeredCard!.name}</Text>
               {offeredCard!.cardmarketTrendEur != null && (
-                <Text style={styles.confirmValue}>{eurFormatter.format(offeredCard!.cardmarketTrendEur)}</Text>
+                <Text style={styles.confirmValue}>{eurFormatter().format(offeredCard!.cardmarketTrendEur)}</Text>
               )}
             </View>
             <TradeIcon size={28} color={TINT} />
@@ -273,7 +273,7 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
               <Image source={{ uri: requestedCard!.imageSmall }} style={styles.confirmImg} resizeMode="contain" />
               <Text style={styles.confirmName} numberOfLines={2}>{requestedCard!.name}</Text>
               {requestedCard!.cardmarketTrendEur != null && (
-                <Text style={styles.confirmValue}>{eurFormatter.format(requestedCard!.cardmarketTrendEur)}</Text>
+                <Text style={styles.confirmValue}>{eurFormatter().format(requestedCard!.cardmarketTrendEur)}</Text>
               )}
             </View>
           </View>
@@ -286,7 +286,7 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
                 const delta = requestedCard!.cardmarketTrendEur! - offeredCard!.cardmarketTrendEur!;
                 if (Math.abs(delta) < 0.01) return 'Échange équilibré';
                 const style = delta > 0 ? styles.deltaTextPositive : styles.deltaTextNegative;
-                return <Text style={style}>{delta > 0 ? '+' : ''}{eurFormatter.format(delta)} pour toi</Text>;
+                return <Text style={style}>{delta > 0 ? '+' : ''}{eurFormatter().format(delta)} pour toi</Text>;
               })()}
             </Text>
           )}

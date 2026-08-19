@@ -13,6 +13,7 @@ import type { Pokemon } from '@/lib/types';
 import { AllBadgesModal } from './AllBadgesModal';
 import { RingMenuItem } from './RingMenuItem';
 import { useTheme } from '@/lib/theme';
+import { useT, useLocale } from '@/lib/locale';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -31,6 +32,8 @@ export function BadgesSection({
   userId, wishedCardIds = new Set(), wishlistCount = 0, showValueBadges = true,
 }: Props) {
   const { colors } = useTheme();
+  const t = useT();
+  const { locale } = useLocale();
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
   const { data: ownedCards = [] } = useAllOwnedCardsDetailed(userId);
@@ -60,9 +63,9 @@ export function BadgesSection({
       overall, byGeneration, variants, ownedCards, ownedCardIds,
       wishedCardIds, wishlistCount, collectionValue, bySet, completedTradesCount,
     };
-    const all = computeBadges(stats);
+    const all = computeBadges(stats, locale);
     return showValueBadges ? all : all.filter(b => !b.id.startsWith('value-'));
-  }, [overall, byGeneration, variants, ownedCards, ownedCardIds, wishedCardIds, wishlistCount, collectionValue, bySet, completedTradesCount, showValueBadges]);
+  }, [overall, byGeneration, variants, ownedCards, ownedCardIds, wishedCardIds, wishlistCount, collectionValue, bySet, completedTradesCount, showValueBadges, locale]);
 
   const unlockedCount = useMemo(() => badges.filter(b => b.unlockedNow).length, [badges]);
   const pct = badges.length > 0 ? Math.round((unlockedCount / badges.length) * 100) : 0;
@@ -74,7 +77,7 @@ export function BadgesSection({
         pct={pct}
         centerLabel={String(unlockedCount)}
         centerSub={`/${badges.length}`}
-        label="Badges"
+        label={t('dashboard.badgesLabel')}
         onPress={() => setAllBadgesOpen(true)}
       />
       <AllBadgesModal

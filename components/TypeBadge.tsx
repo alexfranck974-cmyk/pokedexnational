@@ -1,12 +1,14 @@
 import { View, Text, StyleSheet } from 'react-native';
 import type { PokemonType } from '@/lib/types';
-import { TYPE_COLORS, TYPE_LABEL_FR } from '@/lib/types-colors';
+import { TYPE_COLORS, getTypeLabel } from '@/lib/types-colors';
+import { useLocale } from '@/lib/locale';
 import { radius } from '@/lib/theme';
 
 export function TypeBadge({ type }: { type: PokemonType }) {
+  const { locale } = useLocale();
   return (
     <View style={[styles.badge, { backgroundColor: TYPE_COLORS[type] }]}>
-      <Text style={styles.text}>{TYPE_LABEL_FR[type]}</Text>
+      <Text style={styles.text}>{getTypeLabel(type, locale)}</Text>
     </View>
   );
 }

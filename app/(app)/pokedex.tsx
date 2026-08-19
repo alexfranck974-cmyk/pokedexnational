@@ -157,7 +157,7 @@ export default function PokedexScreen() {
         <View style={styles.heroText}>
           <Text style={styles.heroTitle}>{t('pokedex.heroTitle')}</Text>
           <Text style={styles.heroCount}>{ownedCount} / {items.length}</Text>
-          <Text style={styles.heroValue}>≈ {eurFormatter.format(nationalDexValue)}</Text>
+          <Text style={styles.heroValue}>≈ {eurFormatter(locale).format(nationalDexValue)}</Text>
           {filterHint && <Text style={styles.heroFilter}>{t('pokedex.filterHint', { hint: filterHint })}</Text>}
         </View>
         <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={heroTextColor} />

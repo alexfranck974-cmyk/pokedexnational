@@ -4,6 +4,7 @@ import { ReadonlyCardGrid } from './ReadonlyCardGrid';
 import { CardZoomModal, type ZoomableCard } from './CardZoomModal';
 import { useModalBackClose } from '@/lib/useModalBackClose';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useT } from '@/lib/locale';
 
 export interface FriendSetGalleryTarget {
   setName: string;
@@ -21,6 +22,7 @@ export function FriendSetGalleryModal({ target, onClose }: Props) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const [zoomCard, setZoomCard] = useState<ZoomableCard | null>(null);
+  const t = useT();
   useModalBackClose(target !== null, onClose);
 
   const styles = useThemedStyles((colors) => ({
@@ -44,7 +46,7 @@ export function FriendSetGalleryModal({ target, onClose }: Props) {
               <View style={styles.header}>
                 <View style={styles.headerText}>
                   <Text style={styles.title}>{target.setName}</Text>
-                  <Text style={styles.subtitle}>{target.owned}/{target.total} cartes</Text>
+                  <Text style={styles.subtitle}>{t('wishlist.cardsOfTotal', { owned: target.owned, total: target.total })}</Text>
                 </View>
                 <Pressable onPress={onClose} hitSlop={8}>
                   <Text style={styles.close}>✕</Text>

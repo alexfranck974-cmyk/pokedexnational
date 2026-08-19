@@ -92,14 +92,14 @@ export function TradeInProgressPopup({ item, onClose }: Props) {
               <Text style={styles.label}>Tu donnes</Text>
               <Image source={{ uri: give.imageSmall }} style={styles.img} resizeMode="contain" />
               <Text style={styles.name} numberOfLines={2}>{give.name}</Text>
-              {give.cardmarketTrendEur != null && <Text style={styles.value}>{eurFormatter.format(give.cardmarketTrendEur)}</Text>}
+              {give.cardmarketTrendEur != null && <Text style={styles.value}>{eurFormatter().format(give.cardmarketTrendEur)}</Text>}
             </View>
             <TradeIcon size={28} color={TINT} />
             <View style={styles.card}>
               <Text style={styles.label}>Tu reçois</Text>
               <Image source={{ uri: receive.imageSmall }} style={styles.img} resizeMode="contain" />
               <Text style={styles.name} numberOfLines={2}>{receive.name}</Text>
-              {receive.cardmarketTrendEur != null && <Text style={styles.value}>{eurFormatter.format(receive.cardmarketTrendEur)}</Text>}
+              {receive.cardmarketTrendEur != null && <Text style={styles.value}>{eurFormatter().format(receive.cardmarketTrendEur)}</Text>}
             </View>
           </View>
           <View style={styles.statusRow}>

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { View, Text, Image, Pressable, Animated, type LayoutChangeEvent, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useMotion } from '@/lib/motion';
+import { useT } from '@/lib/locale';
 
 export interface VitrineItem {
   key: string;
@@ -41,8 +42,10 @@ const MAX_SCALE = Math.max(...SCALE_STEPS);
 // and bottom right where it should look biggest.
 const CAROUSEL_HEIGHT = Math.ceil(CARD_HEIGHT * MAX_SCALE) + 28;
 
-export function VitrineCarousel({ title = 'Vitrine', items }: Props) {
+export function VitrineCarousel({ title, items }: Props) {
   const { animationsEnabled } = useMotion();
+  const t = useT();
+  const resolvedTitle = title ?? t('dashboard.vitrineTitle');
   const [containerWidth, setContainerWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -73,7 +76,7 @@ export function VitrineCarousel({ title = 'Vitrine', items }: Props) {
 
   return (
     <View style={styles.wrap} onLayout={onLayout}>
-      <Text style={styles.eyebrow}>{title}</Text>
+      <Text style={styles.eyebrow}>{resolvedTitle}</Text>
       {containerWidth > 0 && (
         <Animated.FlatList
           data={items}

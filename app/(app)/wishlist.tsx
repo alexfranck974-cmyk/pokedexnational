@@ -20,6 +20,7 @@ import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { enterPokemonDetail } from '@/lib/navigation';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { getName } from '@/lib/i18n';
+import { useLocale, useT } from '@/lib/locale';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 import type { Pokemon, PokemonType } from '@/lib/types';
@@ -38,6 +39,8 @@ function numColsFor(width: number): number {
 export default function WishlistScreen() {
   const router = useRouter();
   const { session } = useSession();
+  const { locale } = useLocale();
+  const t = useT();
   const userId = session?.user.id;
   const { data: cards = [], isLoading } = useAllWishedCards(userId);
   const { data: ownedIds = new Set<string>() } = useAllOwnedCardIds(userId);
@@ -148,8 +151,8 @@ export default function WishlistScreen() {
       <SafeAreaView style={styles.screen}>
         <PokedexSectionTabs active="wishlist" />
         <View style={styles.center}>
-          <Text style={styles.emptyTitle}>Aucune carte dans ta wishlist</Text>
-          <Text style={styles.emptyHint}>Ajoute-en depuis la page détail d'un Pokémon (icône ♥).</Text>
+          <Text style={styles.emptyTitle}>{t('wishlist.emptyTitle')}</Text>
+          <Text style={styles.emptyHint}>{t('wishlist.emptyHint')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -162,7 +165,7 @@ export default function WishlistScreen() {
         colors={heroGradient}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={styles.hero}>
-        <Text style={styles.heroTitle}>Wishlist</Text>
+        <Text style={styles.heroTitle}>{t('tabs.wishlist')}</Text>
         <View style={styles.heroRight}>
           <Text style={styles.heroCount}>{filtered.length} / {cards.length}</Text>
           <View style={styles.heroToggle}>
@@ -183,7 +186,7 @@ export default function WishlistScreen() {
 
       {filtered.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyHint}>Aucun résultat avec ces filtres.</Text>
+          <Text style={styles.emptyHint}>{t('wishlist.noResults')}</Text>
         </View>
       ) : viewMode === 'pokemon' ? (
         <FlashList
@@ -201,7 +204,7 @@ export default function WishlistScreen() {
             return (
               <Pressable
                 onPress={() => setGallery({
-                  setName: mon ? getName(mon) : `#${String(item.dexNum).padStart(4, '0')}`,
+                  setName: mon ? getName(mon, locale) : `#${String(item.dexNum).padStart(4, '0')}`,
                   owned: ownedCount,
                   total: item.cards.length,
                   cards: item.cards.map(c => ({ key: c.id, imageSmall: c.image_small, imageLarge: c.image_large })),
@@ -213,11 +216,11 @@ export default function WishlistScreen() {
                 </View>
                 <View style={styles.pokemonInfo}>
                   <Text style={styles.pokemonName} numberOfLines={1}>
-                    #{String(item.dexNum).padStart(4, '0')} · {mon ? getName(mon) : item.dexNum}
+                    #{String(item.dexNum).padStart(4, '0')} · {mon ? getName(mon, locale) : item.dexNum}
                   </Text>
                   <Text style={styles.pokemonSub}>
-                    {item.cards.length} carte{item.cards.length > 1 ? 's' : ''} en wishlist
-                    {ownedCount > 0 ? ` · ${ownedCount} déjà possédée${ownedCount > 1 ? 's' : ''}` : ''}
+                    {t(item.cards.length > 1 ? 'wishlist.cardsInWishlistPlural' : 'wishlist.cardsInWishlistSingular', { n: item.cards.length })}
+                    {ownedCount > 0 ? t(ownedCount > 1 ? 'wishlist.alreadyOwnedPlural' : 'wishlist.alreadyOwnedSingular', { n: ownedCount }) : ''}
                   </Text>
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pokemonThumbs}>

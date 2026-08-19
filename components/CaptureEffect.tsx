@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { TYPE_COLORS, TYPE_LABEL_FR } from '@/lib/types-colors';
-import { tcgTypeLabelFr, tcgTypeAsPokemonType } from '@/lib/tcg-types';
+import { TYPE_COLORS, getTypeLabel } from '@/lib/types-colors';
+import { getTcgTypeLabel, tcgTypeAsPokemonType } from '@/lib/tcg-types';
 import type { PokemonType } from '@/lib/types';
+import { useLocale, useT } from '@/lib/locale';
 import { TypeIcon } from './TypeIcon';
 import { RarityBurstCard } from './RarityBurstCard';
 import { playChime, type ChimeKind } from '@/lib/chime';
@@ -51,6 +52,8 @@ const DEX_BLUE = '#3b82f6';
 
 export function CaptureEffect({ event, onDone }: Props) {
   const { animationsEnabled } = useMotion();
+  const { locale } = useLocale();
+  const t = useT();
   const appear = useRef(new Animated.Value(0)).current;
   const sparkle = useRef(new Animated.Value(0)).current;
   const onDoneRef = useRef(onDone);
@@ -118,7 +121,7 @@ export function CaptureEffect({ event, onDone }: Props) {
           ]}>
           <Image source={{ uri: event.imageSmall }} style={styles.bannerThumb} resizeMode="contain" />
           <Ionicons name="sparkles" size={16} color={CHASE_GOLD} />
-          <Text numberOfLines={1} style={styles.bannerText}>Carte {event.rarityLabel} capturée</Text>
+          <Text numberOfLines={1} style={styles.bannerText}>{t('capture.rarityCaptured', { rarityLabel: event.rarityLabel })}</Text>
         </Animated.View>
       </View>
     );
@@ -138,14 +141,14 @@ export function CaptureEffect({ event, onDone }: Props) {
     : isType ? (pokemonType ? TYPE_COLORS[pokemonType] : NEUTRAL)
     : isDex ? DEX_BLUE
     : CHASE_GOLD;
-  const title = isType ? `Type ${tcgTypeLabelFr(event.type)} complet !`
-    : isTypeMilestone ? `${event.count} Pokémon de type ${TYPE_LABEL_FR[event.type]} capturés !`
-    : isDex ? 'Nouvelle carte ajoutée au Pokédex !'
-    : `✨ ${event.rarityLabel} !`;
-  const subtitle = isType ? `Tous les Pokémon de type ${tcgTypeLabelFr(event.type)} sont capturés dans ce set`
-    : isTypeMilestone ? 'Continue comme ça !'
+  const title = isType ? t('capture.typeComplete', { type: getTcgTypeLabel(event.type, locale) })
+    : isTypeMilestone ? t('capture.milestoneTitle', { count: event.count, type: getTypeLabel(event.type, locale) })
+    : isDex ? t('capture.dexAdded')
+    : t('capture.rarityTitle', { rarityLabel: event.rarityLabel });
+  const subtitle = isType ? t('capture.typeSubtitle', { type: getTcgTypeLabel(event.type, locale) })
+    : isTypeMilestone ? t('capture.milestoneSubtitle')
     : isDex ? event.pokemonName
-    : 'Une pépite pour ta collection';
+    : t('capture.raritySubtitle');
   const imageUri = isDex ? event.imageSmall : event.kind === 'rarity' ? event.imageSmall : null;
   // The card-zoom treatment is bigger than the circular type badge, so
   // particles need a wider radius to clear its edges instead of overlapping it.

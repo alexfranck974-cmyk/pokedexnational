@@ -1,5 +1,6 @@
 import { View, Text, Pressable, Modal } from 'react-native';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useT } from '@/lib/locale';
 
 export interface ConfirmTarget {
   title: string;
@@ -20,7 +21,10 @@ interface Props {
 // React Native Web doesn't reliably support Alert.alert with multiple custom
 // buttons, so any destructive confirmation in this app goes through this
 // instead of Alert.alert.
-export function ConfirmDialog({ target, confirmLabel = 'Supprimer', cancelLabel = 'Annuler', tone = 'danger', onConfirm, onCancel }: Props) {
+export function ConfirmDialog({ target, confirmLabel, cancelLabel, tone = 'danger', onConfirm, onCancel }: Props) {
+  const t = useT();
+  const resolvedConfirmLabel = confirmLabel ?? t('common.delete');
+  const resolvedCancelLabel = cancelLabel ?? t('common.cancel');
   const styles = useThemedStyles((colors, shadow) => ({
     backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center' as const, justifyContent: 'center' as const, padding: spacing.xl },
     card: {
@@ -49,10 +53,10 @@ export function ConfirmDialog({ target, confirmLabel = 'Supprimer', cancelLabel 
               {target.message && <Text style={styles.message}>{target.message}</Text>}
               <View style={styles.actions}>
                 <Pressable onPress={onCancel} style={styles.cancelBtn}>
-                  <Text style={styles.cancelText}>{cancelLabel}</Text>
+                  <Text style={styles.cancelText}>{resolvedCancelLabel}</Text>
                 </Pressable>
                 <Pressable onPress={onConfirm} style={styles.confirmBtn}>
-                  <Text style={styles.confirmText}>{confirmLabel}</Text>
+                  <Text style={styles.confirmText}>{resolvedConfirmLabel}</Text>
                 </Pressable>
               </View>
             </>

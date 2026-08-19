@@ -23,8 +23,9 @@ import { StatsTabsModal, type StatsTab } from './StatsTabsModal';
 import { TypeIcon } from './TypeIcon';
 import { IconBubble } from './IconBubble';
 import { Pokeball } from './Pokeball';
-import { TYPE_COLORS, TYPE_LABEL_FR } from '@/lib/types-colors';
+import { TYPE_COLORS, getTypeLabel } from '@/lib/types-colors';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useLocale, useT } from '@/lib/locale';
 import { usePressSpring } from '@/lib/use-press-spring';
 import { withAlpha } from '@/lib/color-utils';
 
@@ -40,17 +41,6 @@ const VARIANT_LABELS = {
   rotom: '💡',
   deoxys: '🧬',
   gigamax: '🔴',
-} as const;
-
-const VARIANT_TITLES = {
-  mega: 'Méga-Évolutions',
-  alolan: 'Formes d’Alola',
-  galarian: 'Formes de Galar',
-  hisuian: 'Formes d’Hisui',
-  paldean: 'Formes de Paldea',
-  rotom: 'Formes de Rotom',
-  deoxys: 'Formes de Deoxys',
-  gigamax: 'Dynamax / Gigamax',
 } as const;
 
 const VARIANT_COLORS = {
@@ -76,6 +66,18 @@ interface Props {
 
 export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
   const { colors } = useTheme();
+  const { locale } = useLocale();
+  const t = useT();
+  const VARIANT_TITLES = {
+    mega: t('dashboard.variantMega'),
+    alolan: t('dashboard.variantAlolan'),
+    galarian: t('dashboard.variantGalarian'),
+    hisuian: t('dashboard.variantHisuian'),
+    paldean: t('dashboard.variantPaldean'),
+    rotom: t('dashboard.variantRotom'),
+    deoxys: t('dashboard.variantDeoxys'),
+    gigamax: t('dashboard.variantGigamax'),
+  } as const;
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
   const { data: ownedCards = [] } = useAllOwnedCardsDetailed(userId);
@@ -206,14 +208,14 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
           </View>
           <View style={styles.heroTitleRow}>
             <Ionicons name="trophy" size={16} color={colors.primary} />
-            <Text style={styles.heroLabel}>Pokédex National</Text>
+            <Text style={styles.heroLabel}>{t('pokedex.heroTitle')}</Text>
           </View>
           <View style={styles.heroTeaser}>
-            <Text style={styles.heroTeaserText}>{typesComplete}/18 types complets</Text>
+            <Text style={styles.heroTeaserText}>{t('dashboard.typesComplete', { n: typesComplete })}</Text>
             <Text style={styles.heroTeaserDot}>·</Text>
-            <Text style={styles.heroTeaserText}>{gensComplete}/9 générations complètes</Text>
+            <Text style={styles.heroTeaserText}>{t('dashboard.gensComplete', { n: gensComplete })}</Text>
           </View>
-          <Text style={styles.heroHint}>Touche pour voir le détail</Text>
+          <Text style={styles.heroHint}>{t('dashboard.tapForDetail')}</Text>
         </Animated.View>
       </Pressable>
 
@@ -227,50 +229,50 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
           <>
             <View style={[styles.card, styles.grid]}>
               <StatRingTile
-                label="Choisi" owned={dexProgress.chosen} total={POKEDEX.length} color={colors.primary} size={76}
+                label={t('dashboard.stateChosen')} owned={dexProgress.chosen} total={POKEDEX.length} color={colors.primary} size={76}
                 icon={<IconBubble size={44} color={colors.primary}><Pokeball size={26} /></IconBubble>}
                 onPress={() => setBreakdown({
-                  title: 'Choisi', owned: dexProgress.chosen, total: POKEDEX.length, color: colors.primary,
+                  title: t('dashboard.stateChosen'), owned: dexProgress.chosen, total: POKEDEX.length, color: colors.primary,
                   items: stateItems('chosen'),
                 })}
               />
               <StatRingTile
-                label="Capturé" owned={dexProgress.captured} total={POKEDEX.length} color={colors.success} size={76}
+                label={t('dashboard.stateCaptured')} owned={dexProgress.captured} total={POKEDEX.length} color={colors.success} size={76}
                 icon={<IconBubble size={44} color={colors.success}><Ionicons name="cube" size={22} color="white" /></IconBubble>}
                 onPress={() => setBreakdown({
-                  title: 'Capturé', owned: dexProgress.captured, total: POKEDEX.length, color: colors.success,
+                  title: t('dashboard.stateCaptured'), owned: dexProgress.captured, total: POKEDEX.length, color: colors.success,
                   items: stateItems('captured'),
                 })}
               />
               <StatRingTile
-                label="Vu" owned={dexProgress.seen} total={POKEDEX.length} color={colors.danger} size={76}
+                label={t('dashboard.stateSeen')} owned={dexProgress.seen} total={POKEDEX.length} color={colors.danger} size={76}
                 icon={<IconBubble size={44} color={colors.danger}><Ionicons name="heart" size={20} color="white" /></IconBubble>}
                 onPress={() => setBreakdown({
-                  title: 'Vu', owned: dexProgress.seen, total: POKEDEX.length, color: colors.danger,
+                  title: t('dashboard.stateSeen'), owned: dexProgress.seen, total: POKEDEX.length, color: colors.danger,
                   items: stateItems('seen'),
                 })}
               />
               <StatRingTile
-                label="Restant" owned={dexProgress.remaining} total={POKEDEX.length} color={colors.textDim} size={76}
+                label={t('dashboard.stateRemaining')} owned={dexProgress.remaining} total={POKEDEX.length} color={colors.textDim} size={76}
                 icon={<IconBubble size={44} color={colors.textDim}><Ionicons name="help" size={22} color="white" /></IconBubble>}
                 onPress={() => setBreakdown({
-                  title: 'Restant à voir', owned: dexProgress.remaining, total: POKEDEX.length, color: colors.textDim,
+                  title: t('dashboard.stateRemainingTitle'), owned: dexProgress.remaining, total: POKEDEX.length, color: colors.textDim,
                   items: stateItems('remaining'),
                 })}
               />
             </View>
             <View style={styles.card}>
               <View style={styles.valueRow}>
-                <Text style={styles.valueLabel}>Valeur des cartes choisies</Text>
-                <Text style={styles.valueAmount}>{eurFormatter.format(chosenValue)}</Text>
+                <Text style={styles.valueLabel}>{t('dashboard.valueChosen')}</Text>
+                <Text style={styles.valueAmount}>{eurFormatter(locale).format(chosenValue)}</Text>
               </View>
               <View style={[styles.valueRow, styles.valueRowBorder]}>
-                <Text style={styles.valueLabel}>Valeur totale possédée</Text>
-                <Text style={styles.valueAmount}>{eurFormatter.format(totalOwnedValue)}</Text>
+                <Text style={styles.valueLabel}>{t('dashboard.valueTotalOwned')}</Text>
+                <Text style={styles.valueAmount}>{eurFormatter(locale).format(totalOwnedValue)}</Text>
               </View>
               <View style={[styles.valueRow, styles.valueRowBorder]}>
-                <Text style={styles.valueLabel}>Valeur théorique de ta wishlist</Text>
-                <Text style={styles.valueAmount}>{eurFormatter.format(wishlistValue)}</Text>
+                <Text style={styles.valueLabel}>{t('dashboard.valueWishlist')}</Text>
+                <Text style={styles.valueAmount}>{eurFormatter(locale).format(wishlistValue)}</Text>
               </View>
             </View>
           </>
@@ -280,7 +282,7 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
             {byGeneration.map(g => (
               <StatRingTile
                 key={g.gen}
-                label={g.label}
+                label={locale === 'en' ? g.labelEn : g.label}
                 owned={g.owned}
                 total={g.total}
                 color={GEN_COLORS[g.gen] ?? colors.primary}
@@ -301,7 +303,7 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
                 )}
                 hideCaption
                 onPress={() => setBreakdown({
-                  title: g.label, owned: g.owned, total: g.total, color: GEN_COLORS[g.gen] ?? colors.primary,
+                  title: locale === 'en' ? g.labelEn : g.label, owned: g.owned, total: g.total, color: GEN_COLORS[g.gen] ?? colors.primary,
                   items: pokemonItems(POKEDEX.filter(p => getGeneration(p.num) === g.gen)),
                 })}
               />
@@ -310,19 +312,19 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
         )}
         {statsTab === 'type' && (
           <View style={[styles.card, styles.grid]}>
-            {byType.map(t => (
+            {byType.map(bt => (
               <StatRingTile
-                key={t.type}
-                label={TYPE_LABEL_FR[t.type]}
-                owned={t.owned}
-                total={t.total}
-                color={TYPE_COLORS[t.type]}
+                key={bt.type}
+                label={getTypeLabel(bt.type, locale)}
+                owned={bt.owned}
+                total={bt.total}
+                color={TYPE_COLORS[bt.type]}
                 size={76}
-                icon={<TypeIcon type={t.type} size={44} />}
+                icon={<TypeIcon type={bt.type} size={44} />}
                 hideCaption
                 onPress={() => setBreakdown({
-                  title: `Type ${TYPE_LABEL_FR[t.type]}`, owned: t.owned, total: t.total, color: TYPE_COLORS[t.type],
-                  items: pokemonItems(POKEDEX.filter(p => p.types.includes(t.type))),
+                  title: t('dashboard.typeBreakdownTitle', { type: getTypeLabel(bt.type, locale) }), owned: bt.owned, total: bt.total, color: TYPE_COLORS[bt.type],
+                  items: pokemonItems(POKEDEX.filter(p => p.types.includes(bt.type))),
                 })}
               />
             ))}
@@ -355,7 +357,7 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
         {statsTab === 'artists' && (
           <View style={styles.card}>
             {favoriteArtists.length === 0 ? (
-              <Text style={styles.empty}>Aucune carte avec un artiste connu pour l’instant.</Text>
+              <Text style={styles.empty}>{t('dashboard.noArtistsYet')}</Text>
             ) : (
               favoriteArtists.map((a, i) => (
                 <Pressable
@@ -377,7 +379,9 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
                     {RANK_MEDALS[i] && <Text style={styles.artistMedal}>{RANK_MEDALS[i]}</Text>}
                   </View>
                   <Text style={styles.artistName} numberOfLines={1}>{a.artist}</Text>
-                  <Text style={styles.artistCount}>{a.count} carte{a.count > 1 ? 's' : ''}</Text>
+                  <Text style={styles.artistCount}>
+                    {t(a.count > 1 ? 'dashboard.artistCardCountPlural' : 'dashboard.artistCardCountSingular', { n: a.count })}
+                  </Text>
                 </Pressable>
               ))
             )}

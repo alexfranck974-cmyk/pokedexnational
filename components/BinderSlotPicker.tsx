@@ -10,6 +10,7 @@ import { useCardsForPokemon } from '@/lib/tcg';
 import { useAssignCardToSlot, useUploadBinderImage } from '@/lib/binders';
 import { toast } from '@/lib/toast';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useLocale, useT } from '@/lib/locale';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -58,6 +59,8 @@ type Mode = 'card' | 'photo';
 export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder, onClose }: Props) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
+  const { locale } = useLocale();
+  const t = useT();
   const [mode, setMode] = useState<Mode>('card');
   const [search, setSearch] = useState('');
   const [selectedNum, setSelectedNum] = useState<number | null>(null);
@@ -82,7 +85,7 @@ export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder,
     if (binderId == null || position == null) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      toast('Autorise l’accès à tes photos pour importer une image.');
+      toast(t('binderPicker.photoPermToast'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -101,7 +104,7 @@ export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder,
       await uploadImage.mutateAsync({ binderId, position, uri: manipulated.uri });
       onClose();
     } catch {
-      toast('Impossible d’importer cette photo, réessaie.');
+      toast(t('binderPicker.photoImportErrToast'));
     } finally {
       setUploading(false);
     }
@@ -155,7 +158,7 @@ export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder,
                 </Pressable>
               ) : null}
               <Text style={styles.headerTitle} numberOfLines={1}>
-                {selected ? getName(selected) : mode === 'card' ? 'Choisir une carte' : 'Importer une photo'}
+                {selected ? getName(selected, locale) : mode === 'card' ? t('binderPicker.chooseCardTitle') : t('binderPicker.importPhotoTitle')}
               </Text>
               <Pressable onPress={onClose} hitSlop={8}>
                 <Text style={styles.close}>✕</Text>
@@ -165,10 +168,10 @@ export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder,
             {!selected && (
               <View style={styles.modeRow}>
                 <Pressable onPress={() => setMode('card')} style={[styles.modeChip, mode === 'card' && styles.modeChipActive]}>
-                  <Text style={[styles.modeChipText, mode === 'card' && styles.modeChipTextActive]}>Carte</Text>
+                  <Text style={[styles.modeChipText, mode === 'card' && styles.modeChipTextActive]}>{t('binderPicker.modeCard')}</Text>
                 </Pressable>
                 <Pressable onPress={() => setMode('photo')} style={[styles.modeChip, mode === 'photo' && styles.modeChipActive]}>
-                  <Text style={[styles.modeChipText, mode === 'photo' && styles.modeChipTextActive]}>Photo</Text>
+                  <Text style={[styles.modeChipText, mode === 'photo' && styles.modeChipTextActive]}>{t('binderPicker.modePhoto')}</Text>
                 </Pressable>
               </View>
             )}
@@ -176,24 +179,24 @@ export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder,
             {mode === 'photo' && !selected ? (
               <View style={styles.photoPane}>
                 <Text style={styles.photoHint}>
-                  Importe une photo perso pour cet emplacement — elle sera recadrée au format d'une carte.
+                  {t('binderPicker.photoHint')}
                 </Text>
                 <Pressable onPress={pickPhoto} disabled={uploading} style={styles.photoBtn}>
                   {uploading ? <ActivityIndicator color="white" /> : <Ionicons name="image-outline" size={18} color="white" />}
-                  <Text style={styles.photoBtnText}>{uploading ? 'Import…' : 'Choisir une photo'}</Text>
+                  <Text style={styles.photoBtnText}>{uploading ? t('binderPicker.importing') : t('binderPicker.choosePhoto')}</Text>
                 </Pressable>
               </View>
             ) : !selected ? (
               <>
                 <TextInput
-                  placeholder="Chercher un Pokémon (nom ou n°)"
+                  placeholder={t('binderPicker.searchPlaceholder')}
                   value={search}
                   onChangeText={setSearch}
                   autoCapitalize="none"
                   style={styles.search}
                 />
                 {matches.length === 0 ? (
-                  <Text style={styles.empty}>{search.trim() ? 'Aucun résultat.' : 'Tape un nom ou un numéro pour chercher.'}</Text>
+                  <Text style={styles.empty}>{search.trim() ? t('favorites.noResults') : t('binderPicker.typeToSearch')}</Text>
                 ) : (
                   <FlatList
                     data={matches}
@@ -203,7 +206,7 @@ export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder,
                         onPress={() => setSelectedNum(item.num)}
                         style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
                         <Image source={{ uri: item.sprite_url }} style={styles.thumb} resizeMode="contain" />
-                        <Text style={styles.rowLabel} numberOfLines={1}>{getName(item)}</Text>
+                        <Text style={styles.rowLabel} numberOfLines={1}>{getName(item, locale)}</Text>
                         <Text style={styles.rowDex}>#{String(item.num).padStart(4, '0')}</Text>
                       </Pressable>
                     )}
@@ -211,7 +214,7 @@ export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder,
                 )}
               </>
             ) : cards.length === 0 ? (
-              <Text style={styles.empty}>Aucune carte TCG connue pour ce Pokémon.</Text>
+              <Text style={styles.empty}>{t('binderPicker.noCardsForPokemon')}</Text>
             ) : (
               <FlatList
                 data={cards}

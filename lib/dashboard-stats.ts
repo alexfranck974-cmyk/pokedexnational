@@ -14,13 +14,13 @@ export function computeOverallProgress(pokedex: Pokemon[], owned: Set<number>): 
   return toProgress(pokedex.filter(p => owned.has(p.num)).length, pokedex.length);
 }
 
-export interface GenerationProgress extends Progress { gen: number; label: string; }
+export interface GenerationProgress extends Progress { gen: number; label: string; labelEn: string; }
 
 export function computeByGeneration(pokedex: Pokemon[], owned: Set<number>): GenerationProgress[] {
   return GENERATIONS.map(g => {
     const mons = pokedex.filter(p => getGeneration(p.num) === g.gen);
     const ownedCount = mons.filter(p => owned.has(p.num)).length;
-    return { gen: g.gen, label: g.label, ...toProgress(ownedCount, mons.length) };
+    return { gen: g.gen, label: g.label, labelEn: g.labelEn, ...toProgress(ownedCount, mons.length) };
   });
 }
 

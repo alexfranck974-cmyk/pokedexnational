@@ -6,6 +6,7 @@ import { useToggleSetGoal } from '@/lib/collection-goals';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { BubbleSheet } from './BubbleSheet';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useT } from '@/lib/locale';
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function SetGoalPicker({ visible, pinnedSetIds, tint, onClose }: Props) {
+  const t = useT();
   const [search, setSearch] = useState('');
   const { data: sets = [] } = useTcgSets();
   const toggleGoal = useToggleSetGoal();
@@ -51,16 +53,16 @@ export function SetGoalPicker({ visible, pinnedSetIds, tint, onClose }: Props) {
   }));
 
   return (
-    <BubbleSheet visible={visible} onClose={onClose} tint={tint} title="Objectifs de complétion" desktopFixedHeight={640}>
+    <BubbleSheet visible={visible} onClose={onClose} tint={tint} title={t('setGoalPicker.title')} desktopFixedHeight={640}>
           <TextInput
-            placeholder="Chercher une extension"
+            placeholder={t('setGoalPicker.searchPlaceholder')}
             value={search}
             onChangeText={setSearch}
             autoCapitalize="none"
             style={styles.search}
           />
           {filtered.length === 0 ? (
-            <Text style={styles.empty}>Aucune extension trouvée.</Text>
+            <Text style={styles.empty}>{t('setGoalPicker.empty')}</Text>
           ) : (
             <FlatList
               data={filtered}
@@ -80,7 +82,7 @@ export function SetGoalPicker({ visible, pinnedSetIds, tint, onClose }: Props) {
                     <View style={styles.rowText}>
                       <Text style={styles.rowLabel} numberOfLines={1}>{setFlagLabel(item.name, item.region)}</Text>
                       <Text style={styles.rowCaption}>
-                        {year ? `${year} · ` : ''}{item.cardCount} cartes
+                        {year ? `${year} · ` : ''}{t('setGoalPicker.cardsCount', { n: item.cardCount })}
                       </Text>
                     </View>
                     <View style={[styles.pinBadge, pinned && styles.pinBadgeActive]}>

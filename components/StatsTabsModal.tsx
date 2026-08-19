@@ -2,15 +2,17 @@ import type { ReactNode } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { BubbleSheet } from './BubbleSheet';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useT } from '@/lib/locale';
+import type { StringKey } from '@/lib/strings';
 
 export type StatsTab = 'progress' | 'generation' | 'type' | 'variants' | 'artists';
 
-const TABS: { key: StatsTab; label: string }[] = [
-  { key: 'progress', label: 'Progression' },
-  { key: 'generation', label: 'Génération' },
-  { key: 'type', label: 'Type' },
-  { key: 'variants', label: 'Formes' },
-  { key: 'artists', label: 'Artistes' },
+const TAB_KEYS: { key: StatsTab; labelKey: StringKey }[] = [
+  { key: 'progress', labelKey: 'statsTabs.progress' },
+  { key: 'generation', labelKey: 'statsTabs.generation' },
+  { key: 'type', labelKey: 'statsTabs.type' },
+  { key: 'variants', labelKey: 'statsTabs.variants' },
+  { key: 'artists', labelKey: 'statsTabs.artists' },
 ];
 
 interface Props {
@@ -23,6 +25,7 @@ interface Props {
 }
 
 export function StatsTabsModal({ visible, tab, onTabChange, onClose, tint, children }: Props) {
+  const t = useT();
   const styles = useThemedStyles((colors) => ({
     tabRow: { gap: spacing.xs, padding: spacing.md, paddingBottom: spacing.sm },
     tab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
@@ -33,14 +36,14 @@ export function StatsTabsModal({ visible, tab, onTabChange, onClose, tint, child
   }));
 
   return (
-    <BubbleSheet visible={visible} onClose={onClose} tint={tint} title="Statistiques">
+    <BubbleSheet visible={visible} onClose={onClose} tint={tint} title={t('statsTabs.title')}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
-        {TABS.map(t => (
+        {TAB_KEYS.map(tk => (
           <Pressable
-            key={t.key}
-            onPress={() => onTabChange(t.key)}
-            style={[styles.tab, tab === t.key && styles.tabActive]}>
-            <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>{t.label}</Text>
+            key={tk.key}
+            onPress={() => onTabChange(tk.key)}
+            style={[styles.tab, tab === tk.key && styles.tabActive]}>
+            <Text style={[styles.tabText, tab === tk.key && styles.tabTextActive]}>{t(tk.labelKey)}</Text>
           </Pressable>
         ))}
       </ScrollView>

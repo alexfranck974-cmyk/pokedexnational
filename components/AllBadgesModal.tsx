@@ -6,6 +6,7 @@ import { BadgeDetailModal, type BadgeDetailTarget } from './BadgeDetailModal';
 import { BubbleSheet } from './BubbleSheet';
 import { useModalBackClose } from '@/lib/useModalBackClose';
 import { useThemedStyles, spacing } from '@/lib/theme';
+import { useT } from '@/lib/locale';
 
 interface Props {
   visible: boolean;
@@ -16,6 +17,7 @@ interface Props {
 
 export function AllBadgesModal({ visible, badges, tint, onClose }: Props) {
   const [badgeDetail, setBadgeDetail] = useState<BadgeDetailTarget | null>(null);
+  const t = useT();
   useModalBackClose(visible, onClose);
 
   const styles = useThemedStyles(() => ({
@@ -24,7 +26,7 @@ export function AllBadgesModal({ visible, badges, tint, onClose }: Props) {
 
   return (
     <>
-      <BubbleSheet visible={visible} onClose={onClose} tint={tint} title={`Tous les badges (${badges.length})`}>
+      <BubbleSheet visible={visible} onClose={onClose} tint={tint} title={t('allBadges.title', { n: badges.length })}>
         <ScrollView contentContainerStyle={styles.body}>
           {badges.map(b => (
             <AchievementBadge

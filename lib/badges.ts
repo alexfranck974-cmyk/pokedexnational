@@ -4,8 +4,9 @@ import { GENERATIONS } from './generations';
 import type { GenerationProgress, Progress, VariantCategory } from './dashboard-stats';
 import { topArtists } from './dashboard-stats';
 import type { OwnedCardDetail } from './collection';
-import { SET_TIERS } from './set-tiers';
+import { SET_TIERS, getSetTierLabel } from './set-tiers';
 import { classifyRarity } from './rarity-tiers';
+import type { Locale } from './locale';
 
 export type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -30,53 +31,68 @@ export interface DashboardStats {
   completedTradesCount: number;
 }
 
+interface LocalizedText { fr: string; en: string; }
+
+// Internal shape — label/description carry both locales; computeBadges()
+// resolves them to plain strings for the public Badge/ComputedBadge types
+// below, so every consumer (AchievementBadge, BadgeDetailModal...) keeps
+// working with simple strings and doesn't need to know about locale.
+interface BadgeDef {
+  id: string;
+  label: LocalizedText;
+  description: LocalizedText;
+  icon: IoniconName;
+  iconUri?: string;
+  unlocked: (stats: DashboardStats) => boolean;
+  progress?: (stats: DashboardStats) => number;
+}
+
 export interface Badge {
   id: string;
   label: string;
   description: string;
   icon: IoniconName;
-  /** When set, rendered instead of `icon` (e.g. a set's real symbol image). */
   iconUri?: string;
-  unlocked: (stats: DashboardStats) => boolean;
-  /** 0-100 progress toward this specific badge's threshold, when meaningfully computable. */
-  progress?: (stats: DashboardStats) => number;
 }
 
-const regionName = (label: string) => label.split('·')[1]?.trim() ?? label;
 const isComplete = (p: Progress) => p.total > 0 && p.owned >= p.total;
 
-const generationBadges: Badge[] = GENERATIONS.map(g => ({
-  id: `gen-${g.gen}`,
-  label: `Maître de ${regionName(g.label)}`,
-  description: `Compléter tous les Pokémon de ${regionName(g.label)}`,
-  icon: 'ribbon',
-  unlocked: (stats) => isComplete(stats.byGeneration.find(gp => gp.gen === g.gen) ?? { owned: 0, total: 0, pct: 0 }),
-  progress: (stats) => stats.byGeneration.find(gp => gp.gen === g.gen)?.pct ?? 0,
-}));
+const generationBadges: BadgeDef[] = GENERATIONS.map(g => {
+  const regionFr = g.label.split('·')[1]?.trim() ?? g.label;
+  const regionEn = g.labelEn.split('·')[1]?.trim() ?? g.labelEn;
+  return {
+    id: `gen-${g.gen}`,
+    label: { fr: `Maître de ${regionFr}`, en: `${regionEn} Master` },
+    description: { fr: `Compléter tous les Pokémon de ${regionFr}`, en: `Complete every ${regionEn} Pokémon` },
+    icon: 'ribbon',
+    unlocked: (stats) => isComplete(stats.byGeneration.find(gp => gp.gen === g.gen) ?? { owned: 0, total: 0, pct: 0 }),
+    progress: (stats) => stats.byGeneration.find(gp => gp.gen === g.gen)?.pct ?? 0,
+  };
+});
 
-const milestoneBadges: Badge[] = [
-  { pct: 25, label: 'Explorateur', icon: 'compass' as const },
-  { pct: 50, label: 'Collectionneur', icon: 'albums' as const },
-  { pct: 75, label: 'Expert', icon: 'star' as const },
-  { pct: 100, label: 'Maître Pokédex', icon: 'trophy' as const },
+const milestoneBadges: BadgeDef[] = [
+  { pct: 25, label: { fr: 'Explorateur', en: 'Explorer' }, icon: 'compass' as const },
+  { pct: 50, label: { fr: 'Collectionneur', en: 'Collector' }, icon: 'albums' as const },
+  { pct: 75, label: { fr: 'Expert', en: 'Expert' }, icon: 'star' as const },
+  { pct: 100, label: { fr: 'Maître Pokédex', en: 'Pokédex Master' }, icon: 'trophy' as const },
 ].map(({ pct, label, icon }) => ({
   id: `national-${pct}`,
   label,
-  description: `Atteindre ${pct}% du Pokédex National`,
+  description: { fr: `Atteindre ${pct}% du Pokédex National`, en: `Reach ${pct}% of the National Pokédex` },
   icon,
   unlocked: (stats: DashboardStats) => stats.overall.pct >= pct,
   progress: (stats: DashboardStats) => Math.min(100, Math.round((stats.overall.pct / pct) * 100)),
 }));
 
-const variantBadges: Badge[] = [
-  { category: 'mega' as const, label: 'Collectionneur Méga', description: 'Posséder toutes les cartes Méga-Évolution' },
-  { category: 'alolan' as const, label: 'Explorateur Alola', description: 'Posséder toutes les cartes de formes d’Alola' },
-  { category: 'galarian' as const, label: 'Explorateur Galar', description: 'Posséder toutes les cartes de formes de Galar' },
-  { category: 'hisuian' as const, label: 'Explorateur Hisui', description: 'Posséder toutes les cartes de formes d’Hisui' },
-  { category: 'paldean' as const, label: 'Explorateur Paldea', description: 'Posséder toutes les cartes de formes de Paldea' },
-  { category: 'rotom' as const, label: 'Électricien', description: 'Posséder toutes les cartes des formes appareil de Rotom' },
-  { category: 'deoxys' as const, label: 'Métamorphe', description: 'Posséder toutes les cartes des formes de combat de Deoxys' },
-  { category: 'gigamax' as const, label: 'Dynamax', description: 'Posséder toutes les cartes VMAX' },
+const variantBadges: BadgeDef[] = [
+  { category: 'mega' as const, label: { fr: 'Collectionneur Méga', en: 'Mega Collector' }, description: { fr: 'Posséder toutes les cartes Méga-Évolution', en: 'Own every Mega Evolution card' } },
+  { category: 'alolan' as const, label: { fr: 'Explorateur Alola', en: 'Alola Explorer' }, description: { fr: 'Posséder toutes les cartes de formes d’Alola', en: 'Own every Alolan form card' } },
+  { category: 'galarian' as const, label: { fr: 'Explorateur Galar', en: 'Galar Explorer' }, description: { fr: 'Posséder toutes les cartes de formes de Galar', en: 'Own every Galarian form card' } },
+  { category: 'hisuian' as const, label: { fr: 'Explorateur Hisui', en: 'Hisui Explorer' }, description: { fr: 'Posséder toutes les cartes de formes d’Hisui', en: 'Own every Hisuian form card' } },
+  { category: 'paldean' as const, label: { fr: 'Explorateur Paldea', en: 'Paldea Explorer' }, description: { fr: 'Posséder toutes les cartes de formes de Paldea', en: 'Own every Paldean form card' } },
+  { category: 'rotom' as const, label: { fr: 'Électricien', en: 'Electrician' }, description: { fr: 'Posséder toutes les cartes des formes appareil de Rotom', en: 'Own every Rotom appliance form card' } },
+  { category: 'deoxys' as const, label: { fr: 'Métamorphe', en: 'Shapeshifter' }, description: { fr: 'Posséder toutes les cartes des formes de combat de Deoxys', en: 'Own every Deoxys combat form card' } },
+  { category: 'gigamax' as const, label: { fr: 'Dynamax', en: 'Dynamax' }, description: { fr: 'Posséder toutes les cartes VMAX', en: 'Own every VMAX card' } },
 ].map(({ category, label, description }) => ({
   id: `variant-${category}`,
   label,
@@ -89,18 +105,18 @@ const variantBadges: Badge[] = [
 const isHoloTier = (rarity: string | null) => classifyRarity(rarity) !== 'basic';
 const isChaseTier = (rarity: string | null) => classifyRarity(rarity) === 'chase';
 
-const rarityBadges: Badge[] = [
+const rarityBadges: BadgeDef[] = [
   {
     id: 'rarity-holo',
-    label: 'Chasseur de Rares',
-    description: 'Posséder au moins une carte de rareté Rare Holo ou supérieure',
+    label: { fr: 'Chasseur de Rares', en: 'Rare Hunter' },
+    description: { fr: 'Posséder au moins une carte de rareté Rare Holo ou supérieure', en: 'Own at least one Rare Holo (or higher) rarity card' },
     icon: 'diamond',
     unlocked: (stats) => stats.ownedCards.some(c => isHoloTier(c.rarity)),
   },
   {
     id: 'rarity-chase',
-    label: 'Chromatique',
-    description: 'Posséder au moins une carte Secret/Rainbow/Illustration Rare (ou équivalent)',
+    label: { fr: 'Chromatique', en: 'Chromatic' },
+    description: { fr: 'Posséder au moins une carte Secret/Rainbow/Illustration Rare (ou équivalent)', en: 'Own at least one Secret/Rainbow/Illustration Rare card (or equivalent)' },
     icon: 'color-wand',
     unlocked: (stats) => stats.ownedCards.some(c => isChaseTier(c.rarity)),
   },
@@ -129,85 +145,88 @@ function hasFourConsecutiveActiveWeeks(dates: string[]): boolean {
   return false;
 }
 
-const dateBadges: Badge[] = [
+const dateBadges: BadgeDef[] = [
   {
     id: 'date-first',
-    label: 'Premier Ajout',
-    description: 'Ajouter ta toute première carte à la collection',
+    label: { fr: 'Premier Ajout', en: 'First Add' },
+    description: { fr: 'Ajouter ta toute première carte à la collection', en: 'Add your very first card to the collection' },
     icon: 'flag',
     unlocked: (stats) => stats.ownedCards.length > 0,
   },
   {
     id: 'date-sprint',
-    label: 'Sprint',
-    description: 'Ajouter 10 cartes en l’espace de 7 jours',
+    label: { fr: 'Sprint', en: 'Sprint' },
+    description: { fr: 'Ajouter 10 cartes en l’espace de 7 jours', en: 'Add 10 cards within 7 days' },
     icon: 'flash',
     unlocked: (stats) => maxCardsInAnyWeek(stats.ownedCards.map(c => c.acquiredAt)) >= 10,
   },
   {
     id: 'date-streak',
-    label: 'Habitué',
-    description: 'Ajouter au moins une carte chaque semaine, 4 semaines de suite',
+    label: { fr: 'Habitué', en: 'Regular' },
+    description: { fr: 'Ajouter au moins une carte chaque semaine, 4 semaines de suite', en: 'Add at least one card every week, 4 weeks in a row' },
     icon: 'calendar',
     unlocked: (stats) => hasFourConsecutiveActiveWeeks(stats.ownedCards.map(c => c.acquiredAt)),
   },
 ];
 
-const wishlistBadges: Badge[] = [
+const wishlistBadges: BadgeDef[] = [
   {
     id: 'wish-fulfilled',
-    label: 'Vœu Exaucé',
-    description: 'Obtenir une carte qui était dans ta wishlist',
+    label: { fr: 'Vœu Exaucé', en: 'Wish Granted' },
+    description: { fr: 'Obtenir une carte qui était dans ta wishlist', en: 'Get a card that was on your wishlist' },
     icon: 'heart',
     unlocked: (stats) => [...stats.wishedCardIds].some(id => stats.ownedCardIds.has(id)),
   },
   {
     id: 'wish-dreamer',
-    label: 'Rêveur',
-    description: 'Avoir au moins 10 cartes dans ta wishlist',
+    label: { fr: 'Rêveur', en: 'Dreamer' },
+    description: { fr: 'Avoir au moins 10 cartes dans ta wishlist', en: 'Have at least 10 cards on your wishlist' },
     icon: 'moon',
     unlocked: (stats) => stats.wishlistCount >= 10,
   },
 ];
 
-const valueBadges: Badge[] = [
-  { threshold: 100, label: 'Petit Trésor', icon: 'cash' as const },
-  { threshold: 500, label: 'Coffre-Fort', icon: 'lock-closed' as const },
-  { threshold: 1000, label: 'Trésor de Guerre', icon: 'shield' as const },
-  { threshold: 5000, label: 'Légende Vivante', icon: 'flame' as const },
+const valueBadges: BadgeDef[] = [
+  { threshold: 100, label: { fr: 'Petit Trésor', en: 'Small Treasure' }, icon: 'cash' as const },
+  { threshold: 500, label: { fr: 'Coffre-Fort', en: 'Safe' }, icon: 'lock-closed' as const },
+  { threshold: 1000, label: { fr: 'Trésor de Guerre', en: 'War Chest' }, icon: 'shield' as const },
+  { threshold: 5000, label: { fr: 'Légende Vivante', en: 'Living Legend' }, icon: 'flame' as const },
 ].map(({ threshold, label, icon }) => ({
   id: `value-${threshold}`,
   label,
-  description: `Atteindre ${threshold}€ de valeur de collection estimée`,
+  description: { fr: `Atteindre ${threshold}€ de valeur de collection estimée`, en: `Reach €${threshold} of estimated collection value` },
   icon,
   unlocked: (stats: DashboardStats) => stats.collectionValue >= threshold,
   progress: (stats: DashboardStats) => Math.min(100, Math.round((stats.collectionValue / threshold) * 100)),
 }));
 
-const tradeBadges: Badge[] = [
-  { threshold: 1, label: 'Premier Échange', icon: 'swap-horizontal' as const },
-  { threshold: 5, label: 'Négociant', icon: 'people-circle' as const },
-  { threshold: 15, label: 'Maître Troqueur', icon: 'trophy' as const },
+const tradeBadges: BadgeDef[] = [
+  { threshold: 1, label: { fr: 'Premier Échange', en: 'First Trade' }, icon: 'swap-horizontal' as const },
+  { threshold: 5, label: { fr: 'Négociant', en: 'Trader' }, icon: 'people-circle' as const },
+  { threshold: 15, label: { fr: 'Maître Troqueur', en: 'Trade Master' }, icon: 'trophy' as const },
 ].map(({ threshold, label, icon }) => ({
   id: `trade-${threshold}`,
   label,
-  description: `Compléter ${threshold} échange${threshold > 1 ? 's' : ''} avec des amis`,
+  description: {
+    fr: `Compléter ${threshold} échange${threshold > 1 ? 's' : ''} avec des amis`,
+    en: `Complete ${threshold} trade${threshold > 1 ? 's' : ''} with friends`,
+  },
   icon,
   unlocked: (stats: DashboardStats) => stats.completedTradesCount >= threshold,
   progress: (stats: DashboardStats) => Math.min(100, Math.round((stats.completedTradesCount / threshold) * 100)),
 }));
 
-const artistBadges: Badge[] = [
+const artistBadges: BadgeDef[] = [
   {
     id: 'artist-fan',
-    label: 'Fan d’Artiste',
-    description: 'Posséder au moins 5 cartes illustrées par le même artiste',
+    label: { fr: 'Fan d’Artiste', en: 'Artist Fan' },
+    description: { fr: 'Posséder au moins 5 cartes illustrées par le même artiste', en: 'Own at least 5 cards illustrated by the same artist' },
     icon: 'color-palette',
     unlocked: (stats) => topArtists(stats.ownedCards, 1).some(a => a.count >= 5),
   },
 ];
 
-export const BADGES: Badge[] = [
+const BADGES: BadgeDef[] = [
   ...milestoneBadges, ...generationBadges, ...variantBadges,
   ...rarityBadges, ...dateBadges, ...wishlistBadges,
   ...valueBadges, ...artistBadges, ...tradeBadges,
@@ -217,15 +236,19 @@ export const BADGES: Badge[] = [
 // dynamic (depends on which sets the user pinned), so built per-call from
 // stats.bySet rather than living in the static BADGES list. Tier definitions
 // are shared with the ring/trophy treatment on SetGoalTile/pinned-set.
-function buildSetBadges(bySet: SetBadgeInfo[]): Badge[] {
-  const badges: Badge[] = [];
+function buildSetBadges(bySet: SetBadgeInfo[], locale: Locale): BadgeDef[] {
+  const badges: BadgeDef[] = [];
   for (const s of bySet) {
     const pct = s.total > 0 ? Math.round((s.owned / s.total) * 100) : 0;
     for (const tier of SET_TIERS) {
+      const tierLabel = getSetTierLabel(tier, locale);
       badges.push({
         id: `set-${s.setId}-${tier.pct}`,
-        label: `${s.setName} — ${tier.label}`,
-        description: `Atteindre ${tier.pct}% de l’extension ${s.setName}`,
+        label: { fr: `${s.setName} — ${tierLabel}`, en: `${s.setName} — ${tierLabel}` },
+        description: {
+          fr: `Atteindre ${tier.pct}% de l’extension ${s.setName}`,
+          en: `Reach ${tier.pct}% of the ${s.setName} set`,
+        },
         icon: tier.icon,
         iconUri: s.symbol ?? undefined,
         unlocked: () => pct >= tier.pct,
@@ -241,10 +264,14 @@ export interface ComputedBadge extends Badge {
   progressNow?: number;
 }
 
-export function computeBadges(stats: DashboardStats): ComputedBadge[] {
-  const all = [...BADGES, ...buildSetBadges(stats.bySet)];
+export function computeBadges(stats: DashboardStats, locale: Locale = 'fr'): ComputedBadge[] {
+  const all = [...BADGES, ...buildSetBadges(stats.bySet, locale)];
   return all.map(badge => ({
-    ...badge,
+    id: badge.id,
+    label: badge.label[locale],
+    description: badge.description[locale],
+    icon: badge.icon,
+    iconUri: badge.iconUri,
     unlockedNow: badge.unlocked(stats),
     progressNow: badge.progress?.(stats),
   }));

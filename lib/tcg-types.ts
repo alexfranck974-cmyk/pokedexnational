@@ -1,4 +1,5 @@
 import type { PokemonType } from './types';
+import type { Locale } from './locale';
 
 // The Pokémon TCG has its own energy-type vocabulary — smaller than, and named
 // differently from, the video game's 18 types (e.g. no separate line for every
@@ -18,8 +19,18 @@ const TCG_TYPE_LABEL_FR: Record<string, string> = {
   Fairy: 'Fée', Dragon: 'Dragon', Colorless: 'Incolore',
 };
 
+const TCG_TYPE_LABEL_EN: Record<string, string> = {
+  Grass: 'Grass', Fire: 'Fire', Water: 'Water', Lightning: 'Lightning',
+  Psychic: 'Psychic', Fighting: 'Fighting', Darkness: 'Darkness', Metal: 'Metal',
+  Fairy: 'Fairy', Dragon: 'Dragon', Colorless: 'Colorless',
+};
+
 export function tcgTypeLabelFr(tcgType: string): string {
   return TCG_TYPE_LABEL_FR[tcgType] ?? tcgType;
+}
+
+export function getTcgTypeLabel(tcgType: string, locale: Locale): string {
+  return (locale === 'en' ? TCG_TYPE_LABEL_EN[tcgType] : TCG_TYPE_LABEL_FR[tcgType]) ?? tcgType;
 }
 
 export function tcgTypeAsPokemonType(tcgType: string): PokemonType | undefined {

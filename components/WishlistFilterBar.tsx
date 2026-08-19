@@ -3,10 +3,11 @@ import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Modal, FlatLi
 import { Ionicons } from '@expo/vector-icons';
 import type { PokemonType } from '@/lib/types';
 import type { WishStatusFilter, WishSortKey } from '@/lib/wishlist-list';
-import { TYPE_LABEL_FR } from '@/lib/types-colors';
-import { GENERATIONS } from '@/lib/generations';
+import { TYPE_LABEL_FR, getTypeLabel } from '@/lib/types-colors';
+import { GENERATIONS, getGenerationLabel } from '@/lib/generations';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts, SCREEN_FAB_CLEARANCE } from '@/lib/theme';
+import { useLocale, useT } from '@/lib/locale';
 
 interface Props {
   search: string;                       onSearch: (v: string) => void;
@@ -79,6 +80,7 @@ function PickerModal({
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const styles = useThemedStyles(makeStyles);
+  const t = useT();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
@@ -90,7 +92,7 @@ function PickerModal({
             </Pressable>
           </View>
           <FlatList
-            data={[{ id: '__all__', label: 'Tous' }, ...options]}
+            data={[{ id: '__all__', label: t('common.all') }, ...options]}
             keyExtractor={i => i.id}
             renderItem={({ item }) => {
               const isSelected =
@@ -122,19 +124,21 @@ export function WishlistFilterBar(p: Props) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const { colors } = useTheme();
+  const { locale } = useLocale();
+  const t = useT();
   const styles = useThemedStyles(makeStyles);
   const hasFilters = p.statusFilter !== 'all' || p.typeFilter || p.setFilter || p.rarityFilter || p.generationFilter !== null;
 
   const typeOptions: PickerOption[] = (Object.keys(TYPE_LABEL_FR) as PokemonType[])
-    .map(t => ({ id: t, label: TYPE_LABEL_FR[t] }));
+    .map(pt => ({ id: pt, label: getTypeLabel(pt, locale) }));
   const setOptions: PickerOption[]  = p.sets.map(s => ({ id: s.id, label: setFlagLabel(s.name, s.region) }));
   const rarityOptions: PickerOption[] = p.rarities.map(r => ({ id: r, label: r }));
-  const genOptions: PickerOption[] = GENERATIONS.map(g => ({ id: String(g.gen), label: g.label }));
+  const genOptions: PickerOption[] = GENERATIONS.map(g => ({ id: String(g.gen), label: getGenerationLabel(g, locale) }));
 
-  const typeChipLabel   = p.typeFilter   ? `Type: ${TYPE_LABEL_FR[p.typeFilter]}` : 'Type';
-  const setChipLabel    = p.setFilter    ? `Set: ${setOptions.find(s => s.id === p.setFilter)?.label ?? p.setFilter}` : 'Set';
-  const rarityChipLabel = p.rarityFilter ? `Rareté: ${p.rarityFilter}` : 'Rareté';
-  const genChipLabel    = p.generationFilter ? `Gen ${p.generationFilter}` : 'Génération';
+  const typeChipLabel   = p.typeFilter   ? t('search.typeChip', { value: getTypeLabel(p.typeFilter, locale) }) : t('search.typeLabel');
+  const setChipLabel    = p.setFilter    ? t('search.setChip', { value: setOptions.find(s => s.id === p.setFilter)?.label ?? p.setFilter }) : t('search.setLabel');
+  const rarityChipLabel = p.rarityFilter ? t('search.rarityChip', { value: p.rarityFilter }) : t('search.rarityLabel');
+  const genChipLabel    = p.generationFilter ? t('wishlist.genChip', { n: p.generationFilter }) : t('search.generationLabel');
 
   return (
     <View style={styles.overlay} pointerEvents="box-none">
@@ -142,7 +146,7 @@ export function WishlistFilterBar(p: Props) {
         <View style={styles.floatingSearch}>
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
-            placeholder="Rechercher (nom, set, n°)"
+            placeholder={t('wishlist.searchPlaceholder')}
             value={p.search}
             onChangeText={p.onSearch}
             style={styles.floatingSearchInput}
@@ -170,20 +174,20 @@ export function WishlistFilterBar(p: Props) {
         <Pressable style={styles.backdrop} onPress={() => setFilterSheetOpen(false)}>
           <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Filtres et tri</Text>
+              <Text style={styles.sheetTitle}>{t('wishlist.filtersAndSort')}</Text>
               <Pressable onPress={() => setFilterSheetOpen(false)} hitSlop={8}>
                 <Text style={styles.close}>✕</Text>
               </Pressable>
             </View>
             <ScrollView contentContainerStyle={styles.filterSheetBody}>
-              <Text style={styles.sectionLabel}>Statut</Text>
+              <Text style={styles.sectionLabel}>{t('search.statusLabel')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-                <Chip label="Toutes"          active={p.statusFilter === 'all'}       onPress={() => p.onStatus('all')} />
-                <Chip label="À acheter"       active={p.statusFilter === 'not_owned'} onPress={() => p.onStatus('not_owned')} />
-                <Chip label="Déjà possédée"   active={p.statusFilter === 'owned'}     onPress={() => p.onStatus('owned')} />
+                <Chip label={t('wishlist.statusAll')}      active={p.statusFilter === 'all'}       onPress={() => p.onStatus('all')} />
+                <Chip label={t('wishlist.statusNotOwned')} active={p.statusFilter === 'not_owned'} onPress={() => p.onStatus('not_owned')} />
+                <Chip label={t('wishlist.statusOwned')}    active={p.statusFilter === 'owned'}     onPress={() => p.onStatus('owned')} />
               </ScrollView>
 
-              <Text style={styles.sectionLabel}>Génération / Type / Set / Rareté</Text>
+              <Text style={styles.sectionLabel}>{t('search.sectionLabel')}</Text>
               <View style={styles.chipRow}>
                 <Chip label={genChipLabel}    active={p.generationFilter !== null} onPress={() => setOpenPicker('gen')} />
                 <Chip label={typeChipLabel}   active={p.typeFilter !== null}   onPress={() => setOpenPicker('type')} />
@@ -191,19 +195,19 @@ export function WishlistFilterBar(p: Props) {
                 <Chip label={rarityChipLabel} active={p.rarityFilter !== null} onPress={() => setOpenPicker('rarity')} />
               </View>
 
-              <Text style={styles.sectionLabel}>Tri</Text>
+              <Text style={styles.sectionLabel}>{t('search.sortLabel')}</Text>
               <View style={styles.chipRow}>
-                <Chip label="N° ↑"      active={p.sort === 'num-asc'}     onPress={() => p.onSort('num-asc')} />
-                <Chip label="N° ↓"      active={p.sort === 'num-desc'}    onPress={() => p.onSort('num-desc')} />
-                <Chip label="♥ récent"  active={p.sort === 'wished-desc'} onPress={() => p.onSort('wished-desc')} />
-                <Chip label="♥ ancien"  active={p.sort === 'wished-asc'}  onPress={() => p.onSort('wished-asc')} />
-                <Chip label="A → Z"     active={p.sort === 'name-asc'}    onPress={() => p.onSort('name-asc')} />
-                <Chip label="Z → A"     active={p.sort === 'name-desc'}   onPress={() => p.onSort('name-desc')} />
+                <Chip label={t('wishlist.sortNumAsc')}     active={p.sort === 'num-asc'}     onPress={() => p.onSort('num-asc')} />
+                <Chip label={t('wishlist.sortNumDesc')}    active={p.sort === 'num-desc'}    onPress={() => p.onSort('num-desc')} />
+                <Chip label={t('wishlist.sortWishedDesc')} active={p.sort === 'wished-desc'} onPress={() => p.onSort('wished-desc')} />
+                <Chip label={t('wishlist.sortWishedAsc')}  active={p.sort === 'wished-asc'}  onPress={() => p.onSort('wished-asc')} />
+                <Chip label={t('wishlist.sortNameAsc')}    active={p.sort === 'name-asc'}    onPress={() => p.onSort('name-asc')} />
+                <Chip label={t('wishlist.sortNameDesc')}   active={p.sort === 'name-desc'}   onPress={() => p.onSort('name-desc')} />
               </View>
 
               {hasFilters && (
                 <Pressable onPress={p.onReset} style={styles.reset}>
-                  <Text style={styles.resetText}>Réinitialiser les filtres</Text>
+                  <Text style={styles.resetText}>{t('search.resetFilters')}</Text>
                 </Pressable>
               )}
             </ScrollView>
@@ -213,7 +217,7 @@ export function WishlistFilterBar(p: Props) {
 
       <PickerModal
         visible={openPicker === 'type'}
-        title="Type"
+        title={t('search.typeLabel')}
         options={typeOptions}
         selectedId={p.typeFilter}
         onSelect={(id) => p.onType(id as PokemonType | null)}
@@ -221,7 +225,7 @@ export function WishlistFilterBar(p: Props) {
       />
       <PickerModal
         visible={openPicker === 'set'}
-        title="Set TCG"
+        title={t('search.setTcgTitle')}
         options={setOptions}
         selectedId={p.setFilter}
         onSelect={p.onSet}
@@ -229,7 +233,7 @@ export function WishlistFilterBar(p: Props) {
       />
       <PickerModal
         visible={openPicker === 'rarity'}
-        title="Rareté"
+        title={t('search.rarityLabel')}
         options={rarityOptions}
         selectedId={p.rarityFilter}
         onSelect={p.onRarity}
@@ -237,7 +241,7 @@ export function WishlistFilterBar(p: Props) {
       />
       <PickerModal
         visible={openPicker === 'gen'}
-        title="Génération"
+        title={t('search.generationLabel')}
         options={genOptions}
         selectedId={p.generationFilter !== null ? String(p.generationFilter) : null}
         onSelect={(id) => p.onGeneration(id === null ? null : parseInt(id, 10))}

@@ -13,6 +13,8 @@ import { useTcgSets } from '@/lib/tcg-index';
 import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
 import { totalCollectionValue, computeSetGoalsProgress, averageProgress } from '@/lib/dashboard-stats';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
+import { eurFormatter } from '@/lib/trades';
+import { useLocale, useT } from '@/lib/locale';
 import { PokedexHeroCard } from '@/components/PokedexHeroCard';
 import { NewSetBanner } from '@/components/NewSetBanner';
 import { BadgesSection } from '@/components/BadgesSection';
@@ -36,13 +38,14 @@ import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 const COLLECTION_ROW_HEIGHT = 130;
 
 const POKEDEX = pokedexData as Pokemon[];
-const eurFormatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 const OBJECTIVES_TINT = '#38bdf8';
 const TRADE_TINT = '#2dd4bf';
 const CARDS_TINT = '#a78bfa';
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const { locale } = useLocale();
+  const t = useT();
   const { session } = useSession();
   const userId = session?.user.id;
   const joinedAt = session?.user.created_at;
@@ -146,10 +149,12 @@ export default function DashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         {...hideOnScrollProps}>
         <View style={styles.titleRow}>
-          <Text style={styles.h1}>Dashboard</Text>
+          <Text style={styles.h1}>{t('dashboard.title')}</Text>
           <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
         </View>
-        <Text style={styles.collectionValue}>Valeur estimée de ta collection : {eurFormatter.format(collectionValue)}</Text>
+        <Text style={styles.collectionValue}>
+          {t('dashboard.collectionValueLabel', { value: eurFormatter(locale).format(collectionValue) })}
+        </Text>
 
         <NewSetBanner userId={userId} joinedAt={joinedAt} />
 
@@ -165,7 +170,7 @@ export default function DashboardScreen() {
             tint={OBJECTIVES_TINT}
             pct={goals.length > 0 ? collectionAvgPct : undefined}
             centerLabel={goals.length > 0 ? `${collectionAvgPct}%` : '+'}
-            label="Collection"
+            label={t('dashboard.collectionLabel')}
             onPress={() => goals.length === 0 ? setGoalPickerOpen(true) : toggleCollectionExpanded()}
             badge={
               <Pressable onPress={() => setGoalPickerOpen(true)} hitSlop={6} style={styles.addBadge}>
@@ -184,8 +189,8 @@ export default function DashboardScreen() {
             <RingMenuItem
               tint={TRADE_TINT}
               centerLabel={String(completedTradesCount)}
-              centerSub="échanges"
-              label="Échanges"
+              centerSub={t('dashboard.tradesSub')}
+              label={t('dashboard.tradesLabel')}
               onPress={() => setTradeHistoryOpen(true)}
             />
           </View>
@@ -193,8 +198,8 @@ export default function DashboardScreen() {
             <RingMenuItem
               tint={CARDS_TINT}
               centerLabel={String(totalCardsOwned)}
-              centerSub="cartes"
-              label="Possédées"
+              centerSub={t('dashboard.cardsSub')}
+              label={t('dashboard.ownedLabel')}
               onPress={() => router.push('/favorites' as never)}
             />
           </View>
@@ -232,8 +237,8 @@ export default function DashboardScreen() {
       />
       <SetGoalPicker visible={goalPickerOpen} pinnedSetIds={pinnedSetIds} tint={OBJECTIVES_TINT} onClose={() => setGoalPickerOpen(false)} />
       <ConfirmDialog
-        target={unpinTarget ? { title: 'Retirer cet objectif ?', message: `${unpinTarget.setName} ne sera plus suivie comme objectif de complétion.` } : null}
-        confirmLabel="Désépingler"
+        target={unpinTarget ? { title: t('dashboard.unpinTitle'), message: t('dashboard.unpinMessage', { name: unpinTarget.setName }) } : null}
+        confirmLabel={t('common.unpin')}
         onConfirm={() => {
           if (unpinTarget) toggleGoal.mutate({ setId: unpinTarget.setId, currentlyPinned: true });
           setUnpinTarget(null);

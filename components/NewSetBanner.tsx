@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useUndismissedSetReleases, useDismissSetRelease } from '@/lib/set-releases';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useT } from '@/lib/locale';
 
 interface Props {
   userId?: string;
@@ -20,6 +21,7 @@ interface Props {
 export function NewSetBanner({ userId, joinedAt }: Props) {
   const router = useRouter();
   const { colors } = useTheme();
+  const t = useT();
   const { data: releases = [] } = useUndismissedSetReleases(userId, joinedAt);
   const dismiss = useDismissSetRelease();
   const styles = useThemedStyles((colors) => ({
@@ -44,15 +46,17 @@ export function NewSetBanner({ userId, joinedAt }: Props) {
     <View style={styles.banner}>
       <Ionicons name="sparkles" size={18} color={colors.primary} />
       <View style={styles.text}>
-        <Text style={styles.title} numberOfLines={1}>Nouvelle extension : {label}</Text>
+        <Text style={styles.title} numberOfLines={1}>{t('newSetBanner.newSet', { label })}</Text>
         {releases.length > 1 && (
-          <Text style={styles.subtitle}>+{releases.length - 1} autre{releases.length - 1 > 1 ? 's' : ''} extension{releases.length - 1 > 1 ? 's' : ''} récente{releases.length - 1 > 1 ? 's' : ''}</Text>
+          <Text style={styles.subtitle}>
+            {t(releases.length - 1 > 1 ? 'newSetBanner.morePlural' : 'newSetBanner.moreSingular', { n: releases.length - 1 })}
+          </Text>
         )}
       </View>
       <Pressable
         onPress={() => { dismiss.mutate(release.setId); router.push(`/pinned-set/${release.setId}` as never); }}
         style={styles.viewBtn}>
-        <Text style={styles.viewBtnText}>Voir</Text>
+        <Text style={styles.viewBtnText}>{t('newSetBanner.view')}</Text>
       </Pressable>
       <Pressable onPress={() => dismiss.mutate(release.setId)} hitSlop={8} style={styles.closeBtn}>
         <Ionicons name="close" size={18} color={colors.textMuted} />

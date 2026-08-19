@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { useSession } from './auth';
 import { toast } from './toast';
+import type { Locale } from './locale';
 
 export interface TradeCard {
   id: string;
@@ -11,7 +12,13 @@ export interface TradeCard {
   cardmarketTrendEur: number | null;
 }
 
-export const eurFormatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
+const EUR_FORMATTERS: Record<Locale, Intl.NumberFormat> = {
+  fr: new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }),
+  en: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }),
+};
+export function eurFormatter(locale: Locale = 'fr'): Intl.NumberFormat {
+  return EUR_FORMATTERS[locale];
+}
 
 export interface TradeOfferItem {
   id: string;

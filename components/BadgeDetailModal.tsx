@@ -4,6 +4,7 @@ import type { IoniconName } from '@/lib/badges';
 import { BubbleSheet } from './BubbleSheet';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useModalBackClose } from '@/lib/useModalBackClose';
+import { useT } from '@/lib/locale';
 
 export interface BadgeDetailTarget {
   icon: IoniconName;
@@ -21,6 +22,7 @@ interface Props {
 
 export function BadgeDetailModal({ target, tint, onClose }: Props) {
   const { colors } = useTheme();
+  const t = useT();
   useModalBackClose(target !== null, onClose);
   const styles = useThemedStyles((colors) => ({
     body: { padding: spacing.xl, alignItems: 'center' as const, gap: spacing.sm },
@@ -56,12 +58,12 @@ export function BadgeDetailModal({ target, tint, onClose }: Props) {
           <Text style={styles.label}>{target.label}</Text>
           <View style={[styles.statusPill, target.unlocked ? styles.statusUnlocked : styles.statusLocked]}>
             <Text style={[styles.statusText, target.unlocked ? styles.statusTextUnlocked : styles.statusTextLocked]}>
-              {target.unlocked ? 'Débloqué' : 'Verrouillé'}
+              {target.unlocked ? t('badgeDetail.unlocked') : t('badgeDetail.locked')}
             </Text>
           </View>
           <Text style={styles.description}>{target.description}</Text>
           <Pressable onPress={onClose} style={styles.closeBtn}>
-            <Text style={styles.closeBtnText}>Fermer</Text>
+            <Text style={styles.closeBtnText}>{t('badgeDetail.close')}</Text>
           </Pressable>
         </View>
       )}

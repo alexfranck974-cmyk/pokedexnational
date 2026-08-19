@@ -11,6 +11,7 @@ import { useTrainerCards } from '@/lib/tcg';
 import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity, useOwnedCardFinishes } from '@/lib/collection';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
+import { useT } from '@/lib/locale';
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -56,6 +57,7 @@ interface Props {
 export function TrainersPanel({ userId, refreshControl }: Props) {
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
+  const t = useT();
   const { data: cards = [], isLoading: cardsLoading } = useTrainerCards();
   const { data: ownedAll = new Set<string>() } = useAllOwnedCardIds(userId);
   const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
@@ -175,7 +177,9 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
           </>
         ) : (
           <>
-            <Text style={styles.headerTitle}>{groups.length} dresseur{groups.length > 1 ? 's' : ''}</Text>
+            <Text style={styles.headerTitle}>
+              {t(groups.length > 1 ? 'trainers.countPlural' : 'trainers.countSingular', { n: groups.length })}
+            </Text>
             <Pressable onPress={() => setSearchOpen(o => !o)} style={styles.searchBtn}>
               <Ionicons name={searchOpen ? 'close' : 'search'} size={16} color={colors.text} />
             </Pressable>
@@ -187,7 +191,7 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
         <View style={styles.searchRow}>
           <Ionicons name="search" size={16} color={colors.textMuted} />
           <TextInput
-            placeholder="Chercher un dresseur"
+            placeholder={t('trainers.searchPlaceholder')}
             value={search}
             onChangeText={setSearch}
             autoCapitalize="none"
@@ -207,13 +211,13 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
         <>
           <View style={styles.statusRow}>
             <Pressable onPress={() => setStatusFilter('all')} style={[styles.chip, statusFilter === 'all' && styles.chipActive]}>
-              <Text style={[styles.chipText, statusFilter === 'all' && styles.chipTextActive]}>Tous</Text>
+              <Text style={[styles.chipText, statusFilter === 'all' && styles.chipTextActive]}>{t('common.all')}</Text>
             </Pressable>
             <Pressable onPress={() => setStatusFilter('owned')} style={[styles.chip, statusFilter === 'owned' && styles.chipActive]}>
-              <Text style={[styles.chipText, statusFilter === 'owned' && styles.chipTextActive]}>Possédés</Text>
+              <Text style={[styles.chipText, statusFilter === 'owned' && styles.chipTextActive]}>{t('statBreakdown.owned')}</Text>
             </Pressable>
             <Pressable onPress={() => setStatusFilter('missing')} style={[styles.chip, statusFilter === 'missing' && styles.chipActive]}>
-              <Text style={[styles.chipText, statusFilter === 'missing' && styles.chipTextActive]}>Manquants</Text>
+              <Text style={[styles.chipText, statusFilter === 'missing' && styles.chipTextActive]}>{t('statBreakdown.missing')}</Text>
             </Pressable>
           </View>
           <CardFilterTree cards={cards} selectedSetIds={selectedSetIds} onChange={setSelectedSetIds} />
@@ -237,7 +241,7 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
           finishesByCard={finishesByCard}
         />
       ) : visibleGroups.length === 0 ? (
-        <Text style={styles.empty}>Aucun dresseur trouvé.</Text>
+        <Text style={styles.empty}>{t('trainers.notFound')}</Text>
       ) : (
         <FlashList
           data={visibleGroups}

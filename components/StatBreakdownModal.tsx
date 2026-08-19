@@ -5,6 +5,7 @@ import { ProgressRing } from './ProgressRing';
 import { BubbleSheet } from './BubbleSheet';
 import { CardZoomModal, type ZoomableCard } from './CardZoomModal';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useT } from '@/lib/locale';
 
 export interface BreakdownItem {
   key: string;
@@ -34,6 +35,7 @@ export function StatBreakdownModal({ target, onClose, onSelectItem }: Props) {
   const pct = target && target.total > 0 ? Math.round((target.owned / target.total) * 100) : 0;
   const [zoomCard, setZoomCard] = useState<ZoomableCard | null>(null);
   const { colors } = useTheme();
+  const t = useT();
   const styles = useThemedStyles((colors, shadow) => ({
     body: { padding: spacing.lg, alignItems: 'center' as const, gap: spacing.md },
     legend: { alignSelf: 'stretch' as const, gap: spacing.sm },
@@ -75,12 +77,12 @@ export function StatBreakdownModal({ target, onClose, onSelectItem }: Props) {
                 <View style={styles.legend}>
                   <View style={styles.legendRow}>
                     <View style={[styles.dot, { backgroundColor: target.color }]} />
-                    <Text style={styles.legendLabel}>Possédés</Text>
+                    <Text style={styles.legendLabel}>{t('statBreakdown.owned')}</Text>
                     <Text style={styles.legendValue}>{target.owned}</Text>
                   </View>
                   <View style={styles.legendRow}>
                     <View style={[styles.dot, { backgroundColor: colors.surfaceAlt }]} />
-                    <Text style={styles.legendLabel}>Manquants</Text>
+                    <Text style={styles.legendLabel}>{t('statBreakdown.missing')}</Text>
                     <Text style={styles.legendValue}>{target.total - target.owned}</Text>
                   </View>
                 </View>

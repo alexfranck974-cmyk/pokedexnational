@@ -40,6 +40,7 @@ import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
 import { RefreshButton } from '@/components/RefreshButton';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
+import { useLocale, useT } from '@/lib/locale';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
@@ -48,12 +49,6 @@ import { setFlagLabel } from '@/lib/tcg-set-labels';
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
 const TEAM_SIZE = 6;
-const BINDER_LAYOUT_LABEL: Record<BinderLayout, string> = { 1: '1 carte / page', 4: '2 × 2', 9: '3 × 3', 12: '4 × 3', 16: '4 × 4' };
-const REGION_ORDER: { id: string; label: string }[] = [
-  { id: 'global', label: 'Global' },
-  { id: 'jp', label: '🇯🇵 Japon' },
-  { id: 'cn', label: '🇨🇳 Chine' },
-];
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -82,6 +77,16 @@ const Chip = ({ label, active, onPress }: { label: string; active: boolean; onPr
 export default function FavoritesScreen() {
   const router = useRouter();
   const { session } = useSession();
+  const { locale } = useLocale();
+  const t = useT();
+  const BINDER_LAYOUT_LABEL: Record<BinderLayout, string> = {
+    1: t('favorites.layoutOnePerPage'), 4: '2 × 2', 9: '3 × 3', 12: '4 × 3', 16: '4 × 4',
+  };
+  const REGION_ORDER: { id: string; label: string }[] = [
+    { id: 'global', label: 'Global' },
+    { id: 'jp', label: t('favorites.regionJapan') },
+    { id: 'cn', label: t('favorites.regionChina') },
+  ];
   const userId = session?.user.id;
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
@@ -121,7 +126,7 @@ export default function FavoritesScreen() {
     return REGION_ORDER
       .map(r => ({ ...r, sets: allSets.filter(s => (s.region || 'global') === r.id && !pinnedSetIds.has(s.id)) }))
       .filter(g => g.sets.length > 0);
-  }, [allSets, pinnedSetIds]);
+  }, [allSets, pinnedSetIds, locale]);
 
   const { data: allArtists = [] } = useTcgArtists();
   // Owned count per artist — computed client-side from cards already fetched
@@ -322,8 +327,8 @@ export default function FavoritesScreen() {
 
   const confirmTarget: ConfirmTarget | null = deleteTarget
     ? {
-        title: deleteTarget.kind === 'team' ? 'Supprimer l’équipe' : deleteTarget.kind === 'binder' ? 'Supprimer le binder' : 'Retirer cet objectif ?',
-        message: deleteTarget.kind === 'setGoal' ? `${deleteTarget.name} ne sera plus suivie comme objectif de complétion.` : `Supprimer "${deleteTarget.name}" ?`,
+        title: deleteTarget.kind === 'team' ? 'Supprimer l’équipe' : deleteTarget.kind === 'binder' ? t('favorites.deleteBinderTitle') : t('dashboard.unpinTitle'),
+        message: deleteTarget.kind === 'setGoal' ? t('dashboard.unpinMessage', { name: deleteTarget.name }) : t('favorites.deleteConfirmMessage', { name: deleteTarget.name }),
       }
     : null;
 
@@ -450,20 +455,20 @@ export default function FavoritesScreen() {
         <View style={styles.titleRow}>
           <Text style={styles.title}>
             {subTab === 'teams' ? 'Équipes'
-              : subTab === 'binders' ? 'Mes binders'
-              : subTab === 'artists' ? 'Artistes'
-              : subTab === 'trainers' ? 'Dresseurs'
-              : subTab === 'duplicates' ? 'Doublons'
-              : 'Extensions'}
+              : subTab === 'binders' ? t('favorites.tabBinders')
+              : subTab === 'artists' ? t('favorites.tabArtists')
+              : subTab === 'trainers' ? t('favorites.tabTrainers')
+              : subTab === 'duplicates' ? t('favorites.tabDuplicates')
+              : t('favorites.tabExtensions')}
           </Text>
           <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          <Chip label="Extensions" active={subTab === 'goals'} onPress={() => setSubTab('goals')} />
-          <Chip label="Mes binders" active={subTab === 'binders'} onPress={() => setSubTab('binders')} />
-          <Chip label="Artistes" active={subTab === 'artists'} onPress={() => setSubTab('artists')} />
-          <Chip label="Doublons" active={subTab === 'duplicates'} onPress={() => setSubTab('duplicates')} />
-          <Chip label="Dresseurs" active={subTab === 'trainers'} onPress={() => setSubTab('trainers')} />
+          <Chip label={t('favorites.tabExtensions')} active={subTab === 'goals'} onPress={() => setSubTab('goals')} />
+          <Chip label={t('favorites.tabBinders')} active={subTab === 'binders'} onPress={() => setSubTab('binders')} />
+          <Chip label={t('favorites.tabArtists')} active={subTab === 'artists'} onPress={() => setSubTab('artists')} />
+          <Chip label={t('favorites.tabDuplicates')} active={subTab === 'duplicates'} onPress={() => setSubTab('duplicates')} />
+          <Chip label={t('favorites.tabTrainers')} active={subTab === 'trainers'} onPress={() => setSubTab('trainers')} />
           {/* "Équipes" is intentionally not surfaced for now — kept dormant (state/branch
               still below) for a possible future deckbuilding feature, not deleted. */}
         </ScrollView>
@@ -671,7 +676,7 @@ export default function FavoritesScreen() {
         <View style={styles.teamList}>
           <View style={styles.newTeamRow}>
             <TextInput
-              placeholder="Nom du nouveau binder"
+              placeholder={t('favorites.newBinderPlaceholder')}
               value={newBinderName}
               onChangeText={setNewBinderName}
               onSubmitEditing={handleCreateBinder}
@@ -684,7 +689,7 @@ export default function FavoritesScreen() {
 
           {binders.length === 0 ? (
             <View style={styles.center}>
-              <Text style={styles.emptyHint}>Aucun binder pour l’instant — crée-en un ci-dessus.</Text>
+              <Text style={styles.emptyHint}>{t('favorites.noBindersYet')}</Text>
             </View>
           ) : (
             <FlatList
@@ -696,7 +701,9 @@ export default function FavoritesScreen() {
               renderItem={({ item }) => (
                 <Pressable onPress={() => setSelectedBinderId(item.id)} style={({ pressed }) => [styles.teamRow, pressed && styles.teamRowPressed]}>
                   <Text style={styles.teamRowName} numberOfLines={1}>{item.name}</Text>
-                  <Text style={styles.teamRowCount}>{item.itemCount} carte{item.itemCount > 1 ? 's' : ''}</Text>
+                  <Text style={styles.teamRowCount}>
+                    {t(item.itemCount > 1 ? 'favorites.binderCardCountPlural' : 'favorites.binderCardCountSingular', { n: item.itemCount })}
+                  </Text>
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </Pressable>
               )}
@@ -707,14 +714,14 @@ export default function FavoritesScreen() {
       ) : subTab === 'artists' ? (
         <View style={styles.teamList}>
           <TextInput
-            placeholder="Chercher un artiste"
+            placeholder={t('favorites.searchArtistPlaceholder')}
             value={artistSearch}
             onChangeText={setArtistSearch}
             style={styles.dupSearchInput}
           />
           {filteredArtists.length === 0 ? (
             <View style={styles.center}>
-              <Text style={styles.emptyHint}>Aucun artiste trouvé.</Text>
+              <Text style={styles.emptyHint}>{t('favorites.noArtistFound')}</Text>
             </View>
           ) : (
             <FlatList
@@ -732,7 +739,9 @@ export default function FavoritesScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.catalogRowLabel} numberOfLines={1}>{item.artist}</Text>
-                    <Text style={styles.catalogRowCaption}>{ownedCountByArtist.get(item.artist) ?? 0}/{item.cardCount} cartes</Text>
+                    <Text style={styles.catalogRowCaption}>
+                      {t('favorites.cardsOfTotal', { owned: ownedCountByArtist.get(item.artist) ?? 0, total: item.cardCount })}
+                    </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                 </Pressable>
@@ -749,21 +758,21 @@ export default function FavoritesScreen() {
         <>
           <View style={styles.dupHeader}>
             <TextInput
-              placeholder="Chercher une carte"
+              placeholder={t('favorites.searchCardPlaceholder')}
               value={dupSearch}
               onChangeText={setDupSearch}
               style={styles.dupSearchInput}
             />
             <View style={styles.dupChipRow}>
-              <Chip label="Valeur" active={dupSort === 'value'} onPress={() => setDupSort('value')} />
-              <Chip label="Quantité" active={dupSort === 'quantity'} onPress={() => setDupSort('quantity')} />
-              <Chip label="A-Z" active={dupSort === 'name'} onPress={() => setDupSort('name')} />
+              <Chip label={t('favorites.sortValue')} active={dupSort === 'value'} onPress={() => setDupSort('value')} />
+              <Chip label={t('favorites.sortQuantity')} active={dupSort === 'quantity'} onPress={() => setDupSort('quantity')} />
+              <Chip label={t('favorites.sortNameAZ')} active={dupSort === 'name'} onPress={() => setDupSort('name')} />
             </View>
           </View>
           {duplicateCards.length === 0 ? (
             <View style={styles.center}>
               <Text style={styles.emptyHint}>
-                {dupSearch.trim() ? 'Aucun résultat.' : 'Aucun doublon pour l’instant — un doublon apparaît ici dès qu’une carte passe à 2 exemplaires ou plus.'}
+                {dupSearch.trim() ? t('favorites.noResults') : t('favorites.noDuplicatesYet')}
               </Text>
             </View>
           ) : (
@@ -790,7 +799,7 @@ export default function FavoritesScreen() {
                       </View>
                     </View>
                     {item.cardmarketTrendEur != null && (
-                      <Text style={styles.dupValueText}>{eurFormatter.format(item.cardmarketTrendEur)}</Text>
+                      <Text style={styles.dupValueText}>{eurFormatter(locale).format(item.cardmarketTrendEur)}</Text>
                     )}
                     <Text style={styles.dupName} numberOfLines={1}>{item.name}</Text>
                   </Pressable>
@@ -843,10 +852,12 @@ export default function FavoritesScreen() {
                     )}
                     <View style={{ flex: 1 }}>
                       <Text style={styles.catalogRowLabel} numberOfLines={1}>{setFlagLabel(set.name, set.region)}</Text>
-                      <Text style={styles.catalogRowCaption}>{year ? `${year} · ` : ''}{set.cardCount} cartes</Text>
+                      <Text style={styles.catalogRowCaption}>
+                        {year ? `${year} · ` : ''}{t('favorites.setCardsCount', { n: set.cardCount })}
+                      </Text>
                     </View>
                     <View style={styles.catalogRowPin}>
-                      <Text style={styles.catalogRowPinText}>Commencer</Text>
+                      <Text style={styles.catalogRowPinText}>{t('favorites.startPin')}</Text>
                     </View>
                   </Pressable>
                 );
@@ -876,7 +887,7 @@ export default function FavoritesScreen() {
         onClose={() => setPickingPosition(null)}
       />
 
-      <BubbleSheet visible={layoutPickerOpen} onClose={() => setLayoutPickerOpen(false)} tint={colors.primary} title="Mise en page" sizing="auto">
+      <BubbleSheet visible={layoutPickerOpen} onClose={() => setLayoutPickerOpen(false)} tint={colors.primary} title={t('favorites.layoutSheetTitle')} sizing="auto">
         <View style={styles.layoutOptions}>
           {BINDER_LAYOUTS.map((l) => (
             <Pressable
@@ -896,7 +907,7 @@ export default function FavoritesScreen() {
 
       <ConfirmDialog
         target={confirmTarget}
-        confirmLabel={deleteTarget?.kind === 'setGoal' ? 'Désépingler' : 'Supprimer'}
+        confirmLabel={deleteTarget?.kind === 'setGoal' ? t('common.unpin') : t('common.delete')}
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
