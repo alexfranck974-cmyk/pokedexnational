@@ -252,6 +252,11 @@ export const STRINGS = {
     'favorites.a11yRemoveCard': 'Retirer cette carte',
     'favorites.a11yZoomCard': 'Zoomer sur cette carte',
 
+    // App-wide error boundary
+    'errorBoundary.title': 'Une erreur est survenue',
+    'errorBoundary.message': 'Désolé, quelque chose s’est mal passé. Réessaie, ou reviens plus tard si ça persiste.',
+    'errorBoundary.retry': 'Réessayer',
+
     // Feedback
     'feedback.heroTitle': 'Suggestions & Support',
     'feedback.segmentSuggestions': 'Suggestions',
@@ -652,6 +657,10 @@ export const STRINGS = {
     'favorites.a11yAddCard': 'Add a card',
     'favorites.a11yRemoveCard': 'Remove this card',
     'favorites.a11yZoomCard': 'Zoom on this card',
+
+    'errorBoundary.title': 'Something went wrong',
+    'errorBoundary.message': 'Sorry about that. Try again, or come back later if it keeps happening.',
+    'errorBoundary.retry': 'Try again',
 
     'feedback.heroTitle': 'Suggestions & Support',
     'feedback.segmentSuggestions': 'Suggestions',

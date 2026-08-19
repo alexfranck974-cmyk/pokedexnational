@@ -13,6 +13,7 @@ import { ThemeProvider } from '@/lib/theme';
 import { MotionProvider } from '@/lib/motion';
 import { LocaleProvider } from '@/lib/locale';
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { toast } from '@/lib/toast';
 
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
@@ -97,7 +98,9 @@ function RootLayout() {
               <ThemedStatusBar />
               <QueryClientProvider client={queryClient}>
                 <RootSiblingParent>
-                  <Stack screenOptions={{ headerShown: false }} />
+                  <ErrorBoundary>
+                    <Stack screenOptions={{ headerShown: false }} />
+                  </ErrorBoundary>
                 </RootSiblingParent>
               </QueryClientProvider>
             </LocaleProvider>
