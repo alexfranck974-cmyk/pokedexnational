@@ -60,7 +60,8 @@
     "sync:tcg:finishes": "ts-node --project tsconfig.scripts.json scripts/sync-tcg-finishes.ts",
     "sync:tcgdex": "ts-node --project tsconfig.scripts.json scripts/sync-tcgdex-cards.ts",
     "sync:tcgplayer-images": "ts-node --project tsconfig.scripts.json scripts/sync-tcgplayer-images.ts",
-    "sync:tcgplayer-prices": "ts-node --project tsconfig.scripts.json scripts/sync-tcgplayer-prices.ts"
+    "sync:tcgplayer-prices": "ts-node --project tsconfig.scripts.json scripts/sync-tcgplayer-prices.ts",
+    "sync:tcgdex:prices": "ts-node --project tsconfig.scripts.json scripts/sync-tcgdex-prices.ts"
   },
   "jest": {
     "preset": "jest-expo",

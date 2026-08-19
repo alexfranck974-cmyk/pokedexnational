@@ -96,7 +96,7 @@ interface CardDetail {
   image?: string;
   dexId?: number[];
   set: { id: string; name: string };
-  pricing?: { cardmarket?: { trend?: number | null; avg?: number | null; low?: number | null } | null };
+  pricing?: { cardmarket?: { trend?: number | null; avg?: number | null; low?: number | null; updated?: string | null } | null };
 }
 
 const REGION_SERIES_LABEL: Record<'jp' | 'cn', string> = { jp: 'Japon', cn: 'Chine' };
@@ -137,7 +137,7 @@ function toRow(c: CardDetail, region: 'jp' | 'cn' | 'global', releaseDate: strin
     cardmarket_trend_eur: c.pricing?.cardmarket?.trend ?? null,
     cardmarket_avg_eur: c.pricing?.cardmarket?.avg ?? null,
     cardmarket_low_eur: c.pricing?.cardmarket?.low ?? null,
-    cardmarket_updated_at: null,
+    cardmarket_updated_at: c.pricing?.cardmarket?.updated ? new Date(c.pricing.cardmarket.updated).toISOString() : null,
     region,
     updated_at: new Date().toISOString(),
   };
