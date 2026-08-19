@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { toast } from '@/lib/toast';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useT } from '@/lib/locale';
 
 interface Props {
   visible: boolean;
@@ -14,6 +15,7 @@ interface Props {
 
 export function QRCodeModal({ visible, value, label, onClose }: Props) {
   const { colors } = useTheme();
+  const t = useT();
   const styles = useThemedStyles((colors, shadow) => ({
     backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center' as const, justifyContent: 'center' as const, padding: spacing.xl },
     card: {
@@ -42,7 +44,7 @@ export function QRCodeModal({ visible, value, label, onClose }: Props) {
   const copy = async () => {
     if (!value) return;
     await Clipboard.setStringAsync(value);
-    toast('Lien copié !');
+    toast(t('qrCode.linkCopiedToast'));
   };
 
   return (
@@ -54,13 +56,13 @@ export function QRCodeModal({ visible, value, label, onClose }: Props) {
           </Pressable>
           <Text style={styles.title}>{label}</Text>
           <QRCode value={value} size={200} backgroundColor="white" color="#171717" />
-          <Text style={styles.hint}>Scanne avec l'appareil photo de ton téléphone, ou partage le lien directement.</Text>
+          <Text style={styles.hint}>{t('qrCode.hint')}</Text>
           <View style={styles.divider} />
           <View style={styles.linkRow}>
             <Text style={styles.linkText} numberOfLines={1}>{value}</Text>
             <Pressable onPress={copy} style={styles.copyBtn}>
               <Ionicons name="copy-outline" size={13} color="white" />
-              <Text style={styles.copyBtnText}>Copier</Text>
+              <Text style={styles.copyBtnText}>{t('common.copy')}</Text>
             </Pressable>
           </View>
         </Pressable>

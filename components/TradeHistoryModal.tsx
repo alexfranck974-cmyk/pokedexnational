@@ -3,6 +3,8 @@ import { useCompletedTradeOffers, type CompletedTradeItem } from '@/lib/trades';
 import { BubbleSheet } from './BubbleSheet';
 import { TradeIcon } from './TradeIcon';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useLocale, useT, useTRich } from '@/lib/locale';
+import type { Locale } from '@/lib/locale';
 
 interface Props {
   userId?: string;
@@ -27,13 +29,18 @@ function Avatar({ name }: { name: string }) {
   );
 }
 
-const dateFormatter = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+function dateFormatter(locale: Locale) {
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 // Opened from the Dashboard "Échanges" ring — a log of trades actually
 // completed (both sides confirmed), not a management view. Pending offers
 // and in-progress exchanges already have their own dedicated spots (the
 // Marché tab and the spinning-Pokéball FAB in app/(app)/_layout.tsx).
 export function TradeHistoryModal({ userId, visible, onClose }: Props) {
+  const { locale } = useLocale();
+  const t = useT();
+  const tRich = useTRich();
   const { data: history = [] } = useCompletedTradeOffers(userId);
 
   const styles = useThemedStyles((colors, shadow) => ({
@@ -52,27 +59,27 @@ export function TradeHistoryModal({ userId, visible, onClose }: Props) {
   }));
 
   return (
-    <BubbleSheet visible={visible} onClose={onClose} tint={TINT} title="Historique des échanges">
+    <BubbleSheet visible={visible} onClose={onClose} tint={TINT} title={t('tradeHistory.title')}>
       {history.length === 0 ? (
-        <Text style={styles.empty}>Aucun échange finalisé pour l’instant.</Text>
+        <Text style={styles.empty}>{t('tradeHistory.empty')}</Text>
       ) : (
         <FlatList
           data={history}
-          keyExtractor={(t: CompletedTradeItem) => t.id}
+          keyExtractor={(ct: CompletedTradeItem) => ct.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item: t }) => (
+          renderItem={({ item: ct }) => (
             <View style={styles.row}>
-              <Avatar name={t.counterpartyName} />
+              <Avatar name={ct.counterpartyName} />
               <View style={styles.rowInfo}>
                 <Text style={styles.text}>
-                  Échange avec <Text style={styles.textBold}>{t.counterpartyName}</Text>
+                  {tRich('trade.exchangeWithName', { name: ct.counterpartyName }, styles.textBold)}
                 </Text>
-                <Text style={styles.date}>{dateFormatter.format(new Date(t.completedAt))}</Text>
+                <Text style={styles.date}>{dateFormatter(locale).format(new Date(ct.completedAt))}</Text>
               </View>
               <View style={styles.thumbs}>
-                <Image source={{ uri: t.gaveCard.imageSmall }} style={styles.thumb} resizeMode="contain" />
+                <Image source={{ uri: ct.gaveCard.imageSmall }} style={styles.thumb} resizeMode="contain" />
                 <TradeIcon size={12} color={TINT} />
-                <Image source={{ uri: t.receivedCard.imageSmall }} style={styles.thumb} resizeMode="contain" />
+                <Image source={{ uri: ct.receivedCard.imageSmall }} style={styles.thumb} resizeMode="contain" />
               </View>
             </View>
           )}

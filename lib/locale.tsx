@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Platform } from 'react-native';
+import { Platform, Text, type StyleProp, type TextStyle } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { STRINGS, type StringKey } from './strings';
 
@@ -69,5 +69,22 @@ export function useT() {
       for (const [k, v] of Object.entries(params)) str = str.replaceAll(`{${k}}`, String(v));
     }
     return str;
+  };
+}
+
+/** Like useT(), but for the rare sentence that needs one name rendered as a
+ * styled inline <Text> instead of plain interpolated text — e.g. "**{name}**
+ * te propose un échange". The dictionary entry wraps that one placeholder in
+ * `**`; this splits the already-interpolated string on `**...**` and wraps
+ * each captured run in a <Text style={boldStyle}>. Only handles one bold run
+ * per string (the one real case in this app) — not a general rich-text engine. */
+export function useTRich() {
+  const t = useT();
+  return (key: StringKey, params: Record<string, string | number>, boldStyle: StyleProp<TextStyle>): ReactNode[] => {
+    const raw = t(key, params);
+    return raw.split(/(\*\*.+?\*\*)/g).filter(Boolean).map((part, i) => {
+      const m = part.match(/^\*\*(.+)\*\*$/);
+      return m ? <Text key={i} style={boldStyle}>{m[1]}</Text> : part;
+    });
   };
 }

@@ -10,6 +10,7 @@ import { TradeIcon } from './TradeIcon';
 import { BubbleSheet } from './BubbleSheet';
 import { toast } from '@/lib/toast';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useLocale, useT } from '@/lib/locale';
 
 export interface TradeTarget {
   id: string;
@@ -52,6 +53,8 @@ function collectSetOptions(cards: { setId?: string; setName?: string }[]): SetOp
 
 export function TradeProposalModal({ target, onClose, initialOffered = null, initialRequested = null }: Props) {
   const { session } = useSession();
+  const { locale } = useLocale();
+  const t = useT();
   const myId = session?.user.id;
   const friendId = target?.id;
 
@@ -169,8 +172,8 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
   }));
 
   const step: 'offer' | 'request' | 'confirm' = !offeredCard ? 'offer' : !requestedCard ? 'request' : 'confirm';
-  const title = step === 'offer' ? `Offrir une carte à ${target?.displayName ?? ''}`
-    : step === 'request' ? 'Demander en retour' : 'Confirmer l’échange';
+  const title = step === 'offer' ? t('tradeProposal.offerTitle', { name: target?.displayName ?? '' })
+    : step === 'request' ? t('tradeProposal.requestTitle') : t('tradeProposal.confirmTitle');
 
   const renderList = (data: OwnedCardDetail[], onPick: (c: OwnedCardDetail) => void, matchIds: Set<string>, quantities?: Map<string, number>) => (
     <FlatList
@@ -195,7 +198,7 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
   const renderSearchAndFilters = (setOptions: SetOption[]) => (
     <>
       <TextInput
-        placeholder="Chercher une carte…"
+        placeholder={t('tradeProposal.searchCardPlaceholder')}
         value={search}
         onChangeText={setSearch}
         style={styles.searchInput}
@@ -203,7 +206,7 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
       {setOptions.length > 1 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.setChips}>
           <Pressable onPress={() => setSetFilter(null)} style={[styles.setChip, setFilter === null && styles.setChipActive]}>
-            <Text style={[styles.setChipText, setFilter === null && styles.setChipTextActive]}>Tous</Text>
+            <Text style={[styles.setChipText, setFilter === null && styles.setChipTextActive]}>{t('common.all')}</Text>
           </Pressable>
           {setOptions.map(s => (
             <Pressable key={s.id} onPress={() => setSetFilter(s.id)} style={[styles.setChip, setFilter === s.id && styles.setChipActive]}>
@@ -221,17 +224,17 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
         <ActivityIndicator style={{ margin: spacing.xl }} />
       ) : step === 'offer' ? (
         offerCandidates.length === 0 ? (
-          <Text style={styles.empty}>Tu ne possèdes aucune carte pour l’instant.</Text>
+          <Text style={styles.empty}>{t('tradeProposal.noOwnedCards')}</Text>
         ) : (
           <>
             <Text style={styles.hint}>
               {offerMatches.length > 0
-                ? `Ces cartes sont dans la wishlist de ${target?.displayName}.`
-                : 'Choisis une carte à proposer — les cartes marquées "unique" sont ta seule copie.'}
+                ? t('tradeProposal.wishlistMatchHint', { name: target?.displayName ?? '' })
+                : t('tradeProposal.chooseCardHint')}
             </Text>
             {renderSearchAndFilters(offerSetOptions)}
             {filteredOfferCandidates.length === 0 ? (
-              <Text style={styles.empty}>Aucune carte ne correspond à cette recherche.</Text>
+              <Text style={styles.empty}>{t('tradeProposal.noResultsSearch')}</Text>
             ) : (
               renderList(filteredOfferCandidates, pickOffered, friendWishlistIds, myQuantities)
             )}
@@ -239,18 +242,18 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
         )
       ) : step === 'request' ? (
         requestCandidates.length === 0 ? (
-          <Text style={styles.empty}>{target?.displayName} n’a aucun doublon à te proposer en retour pour l’instant.</Text>
+          <Text style={styles.empty}>{t('tradeProposal.noDuplicatesFromFriend', { name: target?.displayName ?? '' })}</Text>
         ) : (
           <>
             <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm }}>
               <Pressable onPress={() => { setOfferedCard(null); setSearch(''); setSetFilter(null); }} hitSlop={8} style={styles.backBtn}>
                 <Ionicons name="chevron-back" size={20} color={TINT} />
               </Pressable>
-              <Text style={styles.hint}>Les cartes marquées ★ sont dans ta wishlist.</Text>
+              <Text style={styles.hint}>{t('tradeProposal.wishlistStarHint')}</Text>
             </View>
             {renderSearchAndFilters(requestSetOptions)}
             {filteredRequestCandidates.length === 0 ? (
-              <Text style={styles.empty}>Aucune carte ne correspond à cette recherche.</Text>
+              <Text style={styles.empty}>{t('tradeProposal.noResultsSearch')}</Text>
             ) : (
               renderList(filteredRequestCandidates, pickRequested, myWishlistIds)
             )}
@@ -260,33 +263,34 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
         <View style={styles.confirmWrap}>
           <View style={styles.confirmRow}>
             <View style={styles.confirmCard}>
-              <Text style={styles.confirmLabel}>Tu donnes</Text>
+              <Text style={styles.confirmLabel}>{t('trade.youGive')}</Text>
               <Image source={{ uri: offeredCard!.imageSmall }} style={styles.confirmImg} resizeMode="contain" />
               <Text style={styles.confirmName} numberOfLines={2}>{offeredCard!.name}</Text>
               {offeredCard!.cardmarketTrendEur != null && (
-                <Text style={styles.confirmValue}>{eurFormatter().format(offeredCard!.cardmarketTrendEur)}</Text>
+                <Text style={styles.confirmValue}>{eurFormatter(locale).format(offeredCard!.cardmarketTrendEur)}</Text>
               )}
             </View>
             <TradeIcon size={28} color={TINT} />
             <View style={styles.confirmCard}>
-              <Text style={styles.confirmLabel}>Tu reçois</Text>
+              <Text style={styles.confirmLabel}>{t('trade.youReceive')}</Text>
               <Image source={{ uri: requestedCard!.imageSmall }} style={styles.confirmImg} resizeMode="contain" />
               <Text style={styles.confirmName} numberOfLines={2}>{requestedCard!.name}</Text>
               {requestedCard!.cardmarketTrendEur != null && (
-                <Text style={styles.confirmValue}>{eurFormatter().format(requestedCard!.cardmarketTrendEur)}</Text>
+                <Text style={styles.confirmValue}>{eurFormatter(locale).format(requestedCard!.cardmarketTrendEur)}</Text>
               )}
             </View>
           </View>
           {(myQuantities.get(offeredCard!.cardId) ?? 0) < 2 && (
-            <Text style={styles.uniqueWarning}>C’est ta seule copie — tu ne l’auras plus après l’échange.</Text>
+            <Text style={styles.uniqueWarning}>{t('tradeProposal.uniqueCopyWarning')}</Text>
           )}
           {offeredCard!.cardmarketTrendEur != null && requestedCard!.cardmarketTrendEur != null && (
             <Text style={styles.deltaText}>
               {(() => {
                 const delta = requestedCard!.cardmarketTrendEur! - offeredCard!.cardmarketTrendEur!;
-                if (Math.abs(delta) < 0.01) return 'Échange équilibré';
+                if (Math.abs(delta) < 0.01) return t('trade.balancedTrade');
                 const style = delta > 0 ? styles.deltaTextPositive : styles.deltaTextNegative;
-                return <Text style={style}>{delta > 0 ? '+' : ''}{eurFormatter().format(delta)} pour toi</Text>;
+                const amount = `${delta > 0 ? '+' : ''}${eurFormatter(locale).format(delta)}`;
+                return <Text style={style}>{t('trade.deltaForYou', { amount })}</Text>;
               })()}
             </Text>
           )}
@@ -295,16 +299,16 @@ export function TradeProposalModal({ target, onClose, initialOffered = null, ini
               if (!target || !offeredCard || !requestedCard) return;
               proposeTrade.mutate(
                 { receiverId: target.id, offeredCardId: offeredCard.cardId, requestedCardId: requestedCard.cardId },
-                { onSuccess: () => { toast(`Proposition envoyée à ${target.displayName} !`); onClose(); } },
+                { onSuccess: () => { toast(t('tradeProposal.tradeSentToast', { name: target.displayName })); onClose(); } },
               );
             }}
             disabled={proposeTrade.isPending}
             style={styles.btn}>
             <TradeIcon size={16} color="white" />
-            <Text style={styles.btnText}>{proposeTrade.isPending ? '…' : 'Proposer l’échange'}</Text>
+            <Text style={styles.btnText}>{proposeTrade.isPending ? '…' : t('trade.proposeButton')}</Text>
           </Pressable>
           <Pressable onPress={() => { setRequestedCard(null); setSearch(''); setSetFilter(null); }}>
-            <Text style={styles.hint}>Changer la carte demandée</Text>
+            <Text style={styles.hint}>{t('tradeProposal.changeRequestedCard')}</Text>
           </Pressable>
         </View>
       )}

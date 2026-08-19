@@ -7,6 +7,7 @@ import { BubbleSheet } from './BubbleSheet';
 import { ConfirmDialog } from './ConfirmDialog';
 import { toast } from '@/lib/toast';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useLocale, useT } from '@/lib/locale';
 
 interface Props {
   item: TradeInProgressItem | null;
@@ -20,6 +21,8 @@ const TINT = '#2dd4bf';
 // this is where both sides confirm it actually happened, which is what
 // finally moves the cards (see confirm_trade_exchange in migration 035).
 export function TradeInProgressPopup({ item, onClose }: Props) {
+  const { locale } = useLocale();
+  const t = useT();
   const confirm = useConfirmTradeExchange();
   const cancel = useCancelTrade();
   const [confirmingCancel, setConfirmingCancel] = useState(false);
@@ -61,8 +64,8 @@ export function TradeInProgressPopup({ item, onClose }: Props) {
     confirm.mutate(item.id, {
       onSuccess: () => {
         toast(completesIt
-          ? `Échange finalisé — tu as maintenant ${receive.name} !`
-          : `Confirmation enregistrée — en attente de ${item.counterpartyName}.`);
+          ? t('tradeInProgress.completedToast', { name: receive.name })
+          : t('tradeInProgress.confirmationRecordedToast', { name: item.counterpartyName }));
         onClose();
       },
     });
@@ -72,7 +75,7 @@ export function TradeInProgressPopup({ item, onClose }: Props) {
     if (!item) return;
     setConfirmingCancel(false);
     cancel.mutate(item.id, {
-      onSuccess: () => { toast('Échange annulé.'); onClose(); },
+      onSuccess: () => { toast(t('tradeInProgress.cancelledToast')); onClose(); },
     });
   };
 
@@ -81,55 +84,55 @@ export function TradeInProgressPopup({ item, onClose }: Props) {
       visible={item !== null}
       onClose={onClose}
       tint={TINT}
-      title={item ? `Échange en cours avec ${item.counterpartyName}` : undefined}>
+      title={item ? t('tradeInProgress.title', { name: item.counterpartyName }) : undefined}>
       {item && give && receive && (
         <View style={styles.body}>
           <Text style={styles.subtitle}>
-            Une fois les cartes échangées en vrai, confirmez tous les deux ici pour finaliser.
+            {t('tradeInProgress.subtitle')}
           </Text>
           <View style={styles.row}>
             <View style={styles.card}>
-              <Text style={styles.label}>Tu donnes</Text>
+              <Text style={styles.label}>{t('trade.youGive')}</Text>
               <Image source={{ uri: give.imageSmall }} style={styles.img} resizeMode="contain" />
               <Text style={styles.name} numberOfLines={2}>{give.name}</Text>
-              {give.cardmarketTrendEur != null && <Text style={styles.value}>{eurFormatter().format(give.cardmarketTrendEur)}</Text>}
+              {give.cardmarketTrendEur != null && <Text style={styles.value}>{eurFormatter(locale).format(give.cardmarketTrendEur)}</Text>}
             </View>
             <TradeIcon size={28} color={TINT} />
             <View style={styles.card}>
-              <Text style={styles.label}>Tu reçois</Text>
+              <Text style={styles.label}>{t('trade.youReceive')}</Text>
               <Image source={{ uri: receive.imageSmall }} style={styles.img} resizeMode="contain" />
               <Text style={styles.name} numberOfLines={2}>{receive.name}</Text>
-              {receive.cardmarketTrendEur != null && <Text style={styles.value}>{eurFormatter().format(receive.cardmarketTrendEur)}</Text>}
+              {receive.cardmarketTrendEur != null && <Text style={styles.value}>{eurFormatter(locale).format(receive.cardmarketTrendEur)}</Text>}
             </View>
           </View>
           <View style={styles.statusRow}>
             <View style={styles.statusItem}>
               <Ionicons name={item.myConfirmed ? 'checkmark-circle' : 'ellipse-outline'} size={14} color={item.myConfirmed ? '#22c55e' : colors.textMuted} />
-              <Text style={[styles.statusText, item.myConfirmed && styles.statusTextDone]}>Toi</Text>
+              <Text style={[styles.statusText, item.myConfirmed && styles.statusTextDone]}>{t('tradeInProgress.you')}</Text>
             </View>
             <View style={styles.statusItem}>
               <Ionicons name={item.counterpartyConfirmed ? 'checkmark-circle' : 'ellipse-outline'} size={14} color={item.counterpartyConfirmed ? '#22c55e' : colors.textMuted} />
               <Text style={[styles.statusText, item.counterpartyConfirmed && styles.statusTextDone]}>{item.counterpartyName}</Text>
             </View>
           </View>
-          {item.myConfirmed && <Text style={styles.hint}>En attente de la confirmation de {item.counterpartyName}.</Text>}
+          {item.myConfirmed && <Text style={styles.hint}>{t('tradeInProgress.waitingForConfirmation', { name: item.counterpartyName })}</Text>}
           <View style={styles.actions}>
             {!item.myConfirmed && (
               <Pressable onPress={doConfirm} disabled={confirm.isPending} style={[styles.btn, styles.btnConfirm]}>
                 <Ionicons name="checkmark" size={16} color="white" />
-                <Text style={styles.btnText}>{confirm.isPending ? '…' : 'J’ai échangé la carte'}</Text>
+                <Text style={styles.btnText}>{confirm.isPending ? '…' : t('tradeInProgress.confirmedButton')}</Text>
               </Pressable>
             )}
             <Pressable onPress={() => setConfirmingCancel(true)} disabled={cancel.isPending} style={[styles.btn, styles.btnCancel]}>
-              <Text style={styles.btnTextCancel}>{cancel.isPending ? '…' : 'Annuler l’échange'}</Text>
+              <Text style={styles.btnTextCancel}>{cancel.isPending ? '…' : t('trade.cancelExchange')}</Text>
             </Pressable>
           </View>
         </View>
       )}
       <ConfirmDialog
-        target={confirmingCancel ? { title: 'Annuler l’échange', message: `Annuler cet échange avec ${item?.counterpartyName} ? Aucune carte n’a encore changé de main.` } : null}
-        confirmLabel="Annuler l’échange"
-        cancelLabel="Retour"
+        target={confirmingCancel ? { title: t('trade.cancelExchange'), message: t('tradeInProgress.cancelConfirmMessage', { name: item?.counterpartyName ?? '' }) } : null}
+        confirmLabel={t('trade.cancelExchange')}
+        cancelLabel={t('common.back')}
         tone="danger"
         onConfirm={doCancel}
         onCancel={() => setConfirmingCancel(false)}

@@ -21,6 +21,7 @@ import { useBackTo } from '@/lib/navigation';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
+import { useT, useTRich } from '@/lib/locale';
 
 const TRADE_TINT = '#2dd4bf';
 
@@ -52,6 +53,8 @@ export default function MarketScreen() {
   const { session } = useSession();
   const userId = session?.user.id;
   const { colors, heroGradient, heroText } = useTheme();
+  const t = useT();
+  const tRich = useTRich();
   const { refreshing, onRefresh } = usePullToRefresh();
   const hideOnScrollProps = useHideOnScrollProps();
 
@@ -130,9 +133,9 @@ export default function MarketScreen() {
         style={styles.hero}>
         <Pressable onPress={goBack} style={styles.back} hitSlop={8}>
           <Ionicons name="chevron-back" size={18} color={heroText} />
-          <Text style={styles.backText}>Retour</Text>
+          <Text style={styles.backText}>{t('common.back')}</Text>
         </Pressable>
-        <Text style={styles.heroTitle}>Marché</Text>
+        <Text style={styles.heroTitle}>{t('market.title')}</Text>
         <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={heroText} />
       </LinearGradient>
 
@@ -145,7 +148,7 @@ export default function MarketScreen() {
               {!pickingFriend ? (
                 <Pressable onPress={() => setPickingFriend(true)} style={styles.freeTradeBtn}>
                   <TradeIcon size={15} color="white" />
-                  <Text style={styles.freeTradeBtnText}>Proposer un échange à un ami</Text>
+                  <Text style={styles.freeTradeBtnText}>{t('market.startFreeTradeButton')}</Text>
                 </Pressable>
               ) : (
                 <>
@@ -153,21 +156,21 @@ export default function MarketScreen() {
                     <IconBubble size={26} color={colors.primarySoft}>
                       <TradeIcon size={13} color={TRADE_TINT} />
                     </IconBubble>
-                    <Text style={styles.sectionTitle}>Choisir un ami</Text>
+                    <Text style={styles.sectionTitle}>{t('market.chooseFriendTitle')}</Text>
                     <View style={{ flex: 1 }} />
                     <Pressable onPress={() => { setPickingFriend(false); setFriendSearch(''); }} hitSlop={8}>
                       <Ionicons name="close" size={20} color={colors.textMuted} />
                     </Pressable>
                   </View>
                   <TextInput
-                    placeholder="Chercher un ami…"
+                    placeholder={t('market.searchFriendPlaceholder')}
                     value={friendSearch}
                     onChangeText={setFriendSearch}
                     style={styles.searchInput}
                   />
                   {filteredFriends.length === 0 ? (
                     <Text style={styles.marketEmpty}>
-                      {friends.length === 0 ? 'Ajoute des amis depuis Social pour pouvoir échanger.' : 'Aucun ami ne correspond à cette recherche.'}
+                      {friends.length === 0 ? t('market.noFriendsForTrading') : t('market.noFriendMatchesSearch')}
                     </Text>
                   ) : (
                     filteredFriends.map((f: FriendProfile) => (
@@ -191,21 +194,19 @@ export default function MarketScreen() {
                   <IconBubble size={26} color={colors.primarySoft}>
                     <TradeIcon size={13} color={TRADE_TINT} />
                   </IconBubble>
-                  <Text style={styles.sectionTitle}>Échanges</Text>
+                  <Text style={styles.sectionTitle}>{t('market.tradesTitle')}</Text>
                   <Text style={styles.sectionCount}>{tradeOffers.length}</Text>
                 </View>
-                {tradeOffers.map((t: TradeOfferItem) => (
-                  <Pressable key={t.id} onPress={() => setOpenTrade(t)} style={styles.row}>
-                    <Avatar name={t.counterpartyName} />
+                {tradeOffers.map((to: TradeOfferItem) => (
+                  <Pressable key={to.id} onPress={() => setOpenTrade(to)} style={styles.row}>
+                    <Avatar name={to.counterpartyName} />
                     <Text style={styles.newsText}>
-                      {t.direction === 'incoming' ? (
-                        <><Text style={styles.newsTextBold}>{t.counterpartyName}</Text> te propose un échange</>
-                      ) : (
-                        <>En attente de <Text style={styles.newsTextBold}>{t.counterpartyName}</Text></>
-                      )}
+                      {to.direction === 'incoming'
+                        ? tRich('trade.friendProposes', { name: to.counterpartyName }, styles.newsTextBold)
+                        : tRich('market.waitingRow', { name: to.counterpartyName }, styles.newsTextBold)}
                     </Text>
                     <Image
-                      source={{ uri: t.direction === 'incoming' ? t.offeredCard.imageSmall : t.requestedCard.imageSmall }}
+                      source={{ uri: to.direction === 'incoming' ? to.offeredCard.imageSmall : to.requestedCard.imageSmall }}
                       style={styles.newsThumb} resizeMode="contain"
                     />
                   </Pressable>
@@ -219,23 +220,23 @@ export default function MarketScreen() {
                   <IconBubble size={26} color={colors.primarySoft}>
                     <Pokeball size={15} />
                   </IconBubble>
-                  <Text style={styles.sectionTitle}>Échanges en cours</Text>
+                  <Text style={styles.sectionTitle}>{t('market.inProgressTitle')}</Text>
                   <Text style={styles.sectionCount}>{inProgressOffers.length}</Text>
                 </View>
-                <Text style={styles.marketHint}>Échangez les cartes en vrai, puis confirmez ici tous les deux.</Text>
-                {inProgressOffers.map((t: TradeInProgressItem) => (
-                  <Pressable key={t.id} onPress={() => setOpenInProgress(t)} style={styles.row}>
-                    <Avatar name={t.counterpartyName} />
+                <Text style={styles.marketHint}>{t('market.inProgressHint')}</Text>
+                {inProgressOffers.map((ip: TradeInProgressItem) => (
+                  <Pressable key={ip.id} onPress={() => setOpenInProgress(ip)} style={styles.row}>
+                    <Avatar name={ip.counterpartyName} />
                     <View style={styles.rowInfo}>
                       <Text style={styles.newsText}>
-                        Échange avec <Text style={styles.newsTextBold}>{t.counterpartyName}</Text>
+                        {tRich('trade.exchangeWithName', { name: ip.counterpartyName }, styles.newsTextBold)}
                       </Text>
                       <Text style={styles.marketNoteText}>
-                        {t.myConfirmed ? `En attente de ${t.counterpartyName}` : 'À confirmer de ton côté'}
+                        {ip.myConfirmed ? t('tradeOffer.outgoingTitle', { name: ip.counterpartyName }) : t('market.waitingOnYourSide')}
                       </Text>
                     </View>
                     <Image
-                      source={{ uri: t.direction === 'incoming' ? t.offeredCard.imageSmall : t.requestedCard.imageSmall }}
+                      source={{ uri: ip.direction === 'incoming' ? ip.offeredCard.imageSmall : ip.requestedCard.imageSmall }}
                       style={styles.newsThumb} resizeMode="contain"
                     />
                   </Pressable>
@@ -248,12 +249,12 @@ export default function MarketScreen() {
                 <IconBubble size={26} color={colors.primarySoft}>
                   <TradeIcon size={13} color={TRADE_TINT} />
                 </IconBubble>
-                <Text style={styles.sectionTitle}>Disponible chez tes amis</Text>
+                <Text style={styles.sectionTitle}>{t('market.availableTitle')}</Text>
                 <Text style={styles.sectionCount}>{availableCards.length}</Text>
               </View>
-              <Text style={styles.marketHint}>Doublons de tes amis — propose un échange pour en récupérer un.</Text>
+              <Text style={styles.marketHint}>{t('market.availableHint')}</Text>
               {availableCards.length === 0 ? (
-                <Text style={styles.marketEmpty}>Aucun doublon disponible chez tes amis pour l’instant.</Text>
+                <Text style={styles.marketEmpty}>{t('market.noAvailableCards')}</Text>
               ) : (
                 availableCards.map((a: FriendCardListing, i: number) => (
                   <Pressable
@@ -264,7 +265,7 @@ export default function MarketScreen() {
                     style={styles.row}>
                     <Avatar name={a.friendName} />
                     <Text style={styles.newsText}>
-                      <Text style={styles.newsTextBold}>{a.friendName}</Text> a {a.card.name} en double
+                      {tRich('market.friendHasDuplicate', { name: a.friendName, cardName: a.card.name }, styles.newsTextBold)}
                     </Text>
                     <Image source={{ uri: a.card.imageSmall }} style={styles.newsThumb} resizeMode="contain" />
                   </Pressable>
@@ -277,12 +278,12 @@ export default function MarketScreen() {
                 <IconBubble size={26} color={colors.primarySoft}>
                   <Ionicons name="heart-outline" size={13} color={colors.primary} />
                 </IconBubble>
-                <Text style={styles.sectionTitle}>Recherché par tes amis</Text>
+                <Text style={styles.sectionTitle}>{t('market.wantedTitle')}</Text>
                 <Text style={styles.sectionCount}>{wantedCards.length}</Text>
               </View>
-              <Text style={styles.marketHint}>Cartes dans la wishlist de tes amis — propose un échange, doublon ou pas.</Text>
+              <Text style={styles.marketHint}>{t('market.wantedHint')}</Text>
               {wantedCards.length === 0 ? (
-                <Text style={styles.marketEmpty}>Tes amis n’ont rien en wishlist pour l’instant.</Text>
+                <Text style={styles.marketEmpty}>{t('market.noWantedCards')}</Text>
               ) : (
                 wantedCards.map((w: FriendCardListing, i: number) => {
                   // Manual proposals work from a single unique copy — only the
@@ -302,10 +303,10 @@ export default function MarketScreen() {
                       <Avatar name={w.friendName} />
                       <View style={styles.rowInfo}>
                         <Text style={styles.newsText}>
-                          <Text style={styles.newsTextBold}>{w.friendName}</Text> recherche {w.card.name}
+                          {tRich('market.friendWantsCard', { name: w.friendName, cardName: w.card.name }, styles.newsTextBold)}
                         </Text>
-                        {!canFulfill && <Text style={styles.marketNoteText}>Tu ne possèdes pas cette carte</Text>}
-                        {canFulfill && !isDuplicate && <Text style={styles.marketNoteText}>Ta seule copie — tu ne l’auras plus après l’échange</Text>}
+                        {!canFulfill && <Text style={styles.marketNoteText}>{t('market.dontOwnCard')}</Text>}
+                        {canFulfill && !isDuplicate && <Text style={styles.marketNoteText}>{t('market.onlyCopyWarning')}</Text>}
                       </View>
                       <Image source={{ uri: w.card.imageSmall }} style={styles.newsThumb} resizeMode="contain" />
                     </Pressable>

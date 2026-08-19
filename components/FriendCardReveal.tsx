@@ -7,6 +7,7 @@ import { hapticRevealSuccess } from '@/lib/haptics';
 import { CHASE_GOLD } from '@/lib/rarity-tiers';
 import { useMotion } from '@/lib/motion';
 import { radius, spacing, fonts } from '@/lib/theme';
+import { useT } from '@/lib/locale';
 
 interface Props {
   item: FriendNewsItem | null;
@@ -23,6 +24,7 @@ const HOLD_MS = 2300;
 // shared RarityBurstCard), but crediting the friend instead of "you".
 export function FriendCardReveal({ item, mode, onClose }: Props) {
   const { animationsEnabled } = useMotion();
+  const t = useT();
   const dismiss = useDismissFriendNews();
   const react = useReactToFriendNews();
   const appear = useRef(new Animated.Value(0)).current;
@@ -87,19 +89,19 @@ export function FriendCardReveal({ item, mode, onClose }: Props) {
         <View style={styles.burstWrap}>
           <RarityBurstCard imageUri={item.imageLarge ?? item.imageSmall} accent={CHASE_GOLD} appear={appear} sparkle={sparkle} particleScale={1.7} />
         </View>
-        <Animated.Text style={[styles.title, { opacity: appear }]}>✨ {item.rarityLabel} !</Animated.Text>
-        <Animated.Text style={[styles.subtitle, { opacity: appear }]}>{item.authorName} a débloqué cette carte</Animated.Text>
+        <Animated.Text style={[styles.title, { opacity: appear }]}>{t('capture.rarityTitle', { rarityLabel: item.rarityLabel })}</Animated.Text>
+        <Animated.Text style={[styles.subtitle, { opacity: appear }]}>{t('friendReveal.unlockedSubtitle', { name: item.authorName })}</Animated.Text>
         {!!item.setName && (
-          <Animated.Text style={[styles.caption, { opacity: appear }]}>N° {item.cardNumber} · {item.setName}</Animated.Text>
+          <Animated.Text style={[styles.caption, { opacity: appear }]}>{t('friendReveal.caption', { cardNumber: item.cardNumber, setName: item.setName })}</Animated.Text>
         )}
         {mode === 'live' && (
           <Animated.View style={[styles.actions, { opacity: appear }]}>
             <Pressable onPress={(e) => { e.stopPropagation(); onBravo(); }} style={styles.bravoBtn} hitSlop={4}>
               <Text style={styles.bravoEmoji}>{BRAVO_EMOJI}</Text>
-              <Text style={styles.bravoText}>Bravo !</Text>
+              <Text style={styles.bravoText}>{t('friendReveal.bravo')}</Text>
             </Pressable>
             <Pressable onPress={(e) => { e.stopPropagation(); close(); }} style={styles.closeBtn} hitSlop={8}>
-              <Text style={styles.closeText}>Fermer</Text>
+              <Text style={styles.closeText}>{t('badgeDetail.close')}</Text>
             </Pressable>
           </Animated.View>
         )}

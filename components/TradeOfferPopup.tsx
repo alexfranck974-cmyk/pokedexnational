@@ -6,6 +6,7 @@ import { BubbleSheet } from './BubbleSheet';
 import { ConfirmDialog, type ConfirmTarget } from './ConfirmDialog';
 import { toast } from '@/lib/toast';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useLocale, useT, useTRich } from '@/lib/locale';
 
 interface Props {
   item: TradeOfferItem | null;
@@ -15,6 +16,9 @@ interface Props {
 const TINT = '#2dd4bf';
 
 export function TradeOfferPopup({ item, onClose }: Props) {
+  const { locale } = useLocale();
+  const t = useT();
+  const tRich = useTRich();
   const accept = useAcceptTrade();
   const decline = useDeclineTrade();
   const cancel = useCancelTrade();
@@ -55,22 +59,22 @@ export function TradeOfferPopup({ item, onClose }: Props) {
     if (!item || !receive) return;
     setConfirmingAccept(false);
     accept.mutate(item.id, {
-      onSuccess: () => { toast('Échange accepté — retrouve-le dans « Échanges en cours » une fois les cartes échangées en vrai.'); onClose(); },
+      onSuccess: () => { toast(t('tradeOffer.acceptedToast')); onClose(); },
     });
   };
   const doDecline = () => {
     if (!item) return;
-    decline.mutate(item.id, { onSuccess: () => { toast('Offre refusée.'); onClose(); } });
+    decline.mutate(item.id, { onSuccess: () => { toast(t('tradeOffer.declinedToast')); onClose(); } });
   };
   const doCancel = () => {
     if (!item) return;
-    cancel.mutate(item.id, { onSuccess: () => { toast('Offre annulée.'); onClose(); } });
+    cancel.mutate(item.id, { onSuccess: () => { toast(t('tradeOffer.cancelledToast')); onClose(); } });
   };
 
   const confirmTarget: ConfirmTarget | null = confirmingAccept && give && receive
     ? {
-        title: 'Accepter l’échange',
-        message: `Tu donnes ${give.name} et tu reçois ${receive.name}. Une fois les cartes échangées en vrai, vous devrez tous les deux le confirmer pour que ça devienne définitif.`,
+        title: t('tradeOffer.acceptTitle'),
+        message: t('tradeOffer.acceptMessage', { give: give.name, receive: receive.name }),
       }
     : null;
 
@@ -79,36 +83,37 @@ export function TradeOfferPopup({ item, onClose }: Props) {
       visible={item !== null}
       onClose={onClose}
       tint={TINT}
-      title={item ? (incoming ? `Proposition de ${item.counterpartyName}` : `En attente de ${item.counterpartyName}`) : undefined}>
+      title={item ? (incoming ? t('tradeOffer.incomingTitle', { name: item.counterpartyName }) : t('tradeOffer.outgoingTitle', { name: item.counterpartyName })) : undefined}>
       {item && give && receive && (
       <View style={styles.body}>
         <Text style={styles.subtitle}>
           {incoming
-            ? <><Text style={styles.subtitleBold}>{item.counterpartyName}</Text> te propose un échange</>
-            : <>Tu attends la réponse de <Text style={styles.subtitleBold}>{item.counterpartyName}</Text></>}
+            ? tRich('trade.friendProposes', { name: item.counterpartyName }, styles.subtitleBold)
+            : tRich('tradeOffer.waitingSubtitle', { name: item.counterpartyName }, styles.subtitleBold)}
         </Text>
         <View style={styles.row}>
           <View style={styles.card}>
-            <Text style={styles.label}>Tu donnes</Text>
+            <Text style={styles.label}>{t('trade.youGive')}</Text>
             <Image source={{ uri: give.imageSmall }} style={styles.img} resizeMode="contain" />
             <Text style={styles.name} numberOfLines={2}>{give.name}</Text>
-            {give.cardmarketTrendEur != null && <Text style={styles.value}>{eurFormatter().format(give.cardmarketTrendEur)}</Text>}
+            {give.cardmarketTrendEur != null && <Text style={styles.value}>{eurFormatter(locale).format(give.cardmarketTrendEur)}</Text>}
           </View>
           <TradeIcon size={28} color={TINT} />
           <View style={styles.card}>
-            <Text style={styles.label}>Tu reçois</Text>
+            <Text style={styles.label}>{t('trade.youReceive')}</Text>
             <Image source={{ uri: receive.imageSmall }} style={styles.img} resizeMode="contain" />
             <Text style={styles.name} numberOfLines={2}>{receive.name}</Text>
-            {receive.cardmarketTrendEur != null && <Text style={styles.value}>{eurFormatter().format(receive.cardmarketTrendEur)}</Text>}
+            {receive.cardmarketTrendEur != null && <Text style={styles.value}>{eurFormatter(locale).format(receive.cardmarketTrendEur)}</Text>}
           </View>
         </View>
         {give.cardmarketTrendEur != null && receive.cardmarketTrendEur != null && (
           <Text style={styles.delta}>
             {(() => {
               const delta = receive.cardmarketTrendEur! - give.cardmarketTrendEur!;
-              if (Math.abs(delta) < 0.01) return 'Échange équilibré';
+              if (Math.abs(delta) < 0.01) return t('trade.balancedTrade');
               const deltaStyle = delta > 0 ? styles.deltaPositive : styles.deltaNegative;
-              return <Text style={deltaStyle}>{delta > 0 ? '+' : ''}{eurFormatter().format(delta)} pour toi</Text>;
+              const amount = `${delta > 0 ? '+' : ''}${eurFormatter(locale).format(delta)}`;
+              return <Text style={deltaStyle}>{t('trade.deltaForYou', { amount })}</Text>;
             })()}
           </Text>
         )}
@@ -119,13 +124,13 @@ export function TradeOfferPopup({ item, onClose }: Props) {
                 onPress={() => setConfirmingAccept(true)}
                 disabled={accept.isPending}
                 style={[styles.btn, styles.btnAccept]}>
-                <Text style={styles.btnText}>{accept.isPending ? '…' : 'Accepter'}</Text>
+                <Text style={styles.btnText}>{accept.isPending ? '…' : t('profile.friendStatusAccept')}</Text>
               </Pressable>
               <Pressable
                 onPress={doDecline}
                 disabled={decline.isPending}
                 style={[styles.btn, styles.btnDecline]}>
-                <Text style={styles.btnTextDecline}>Refuser</Text>
+                <Text style={styles.btnTextDecline}>{t('tradeOffer.decline')}</Text>
               </Pressable>
             </>
           ) : (
@@ -133,7 +138,7 @@ export function TradeOfferPopup({ item, onClose }: Props) {
               onPress={doCancel}
               disabled={cancel.isPending}
               style={[styles.btn, styles.btnDecline]}>
-              <Text style={styles.btnTextDecline}>{cancel.isPending ? '…' : 'Annuler l’offre'}</Text>
+              <Text style={styles.btnTextDecline}>{cancel.isPending ? '…' : t('tradeOffer.cancelOffer')}</Text>
             </Pressable>
           )}
         </View>
@@ -141,7 +146,7 @@ export function TradeOfferPopup({ item, onClose }: Props) {
       )}
       <ConfirmDialog
         target={confirmTarget}
-        confirmLabel="Accepter"
+        confirmLabel={t('profile.friendStatusAccept')}
         tone="primary"
         onConfirm={doAccept}
         onCancel={() => setConfirmingAccept(false)}

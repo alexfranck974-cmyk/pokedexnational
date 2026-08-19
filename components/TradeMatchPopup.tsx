@@ -3,6 +3,7 @@ import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native
 import { TradeIcon } from './TradeIcon';
 import { useMotion } from '@/lib/motion';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useT, useTRich } from '@/lib/locale';
 
 export interface TradeMatch {
   friendId: string;
@@ -27,6 +28,8 @@ const TINT = '#2dd4bf';
 // to go find it in the Marché tab later.
 export function TradeMatchPopup({ match, onPropose, onDismiss }: Props) {
   const { animationsEnabled } = useMotion();
+  const t = useT();
+  const tRich = useTRich();
   const appear = useRef(new Animated.Value(0)).current;
   const styles = useThemedStyles((colors, shadow) => ({
     overlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center' as const, justifyContent: 'center' as const, zIndex: 1000 },
@@ -68,18 +71,18 @@ export function TradeMatchPopup({ match, onPropose, onDismiss }: Props) {
           { opacity: appear, transform: [{ scale: appear.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) }] },
         ]}>
         <TradeIcon size={26} color={TINT} />
-        <Text style={styles.headline}>Échange possible !</Text>
+        <Text style={styles.headline}>{t('tradeMatch.headline')}</Text>
         <Text style={styles.subtitle}>
-          <Text style={styles.subtitleBold}>{match.friendName}</Text> recherche cette carte que tu viens de dupliquer.
+          {tRich('tradeMatch.friendWantsThis', { name: match.friendName }, styles.subtitleBold)}
         </Text>
         <Image source={{ uri: match.card.imageSmall }} style={styles.img} resizeMode="contain" />
         <Text style={styles.cardName} numberOfLines={1}>{match.card.name}</Text>
         <Pressable onPress={onPropose} style={styles.proposeBtn}>
           <TradeIcon size={16} color="white" />
-          <Text style={styles.proposeText}>Proposer l’échange</Text>
+          <Text style={styles.proposeText}>{t('trade.proposeButton')}</Text>
         </Pressable>
         <Pressable onPress={onDismiss} style={styles.laterBtn}>
-          <Text style={styles.laterText}>Plus tard</Text>
+          <Text style={styles.laterText}>{t('tradeMatch.later')}</Text>
         </Pressable>
       </Animated.View>
     </View>

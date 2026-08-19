@@ -23,6 +23,7 @@ import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } 
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 import { withReturnTo } from '@/lib/navigation';
+import { useT, useTRich } from '@/lib/locale';
 
 interface NewsGroup { authorId: string; authorName: string; items: FriendNewsItem[]; }
 
@@ -57,6 +58,8 @@ export default function FriendsScreen() {
   const { session } = useSession();
   const userId = session?.user.id;
   const { colors } = useTheme();
+  const t = useT();
+  const tRich = useTRich();
   const { refreshing, onRefresh } = usePullToRefresh();
   const hideOnScrollProps = useHideOnScrollProps();
 
@@ -161,7 +164,7 @@ export default function FriendsScreen() {
   const alreadyRelated = found && (friendIds.has(found.id) || outgoingIds.has(found.id) || found.id === userId);
 
   const confirmTarget: ConfirmTarget | null = unfriendTarget
-    ? { title: 'Retirer cet ami', message: `Retirer "${unfriendTarget.name}" de tes amis ?` }
+    ? { title: t('friends.unfriendTitle'), message: t('friends.unfriendMessage', { name: unfriendTarget.name }) }
     : null;
 
   const NewsRow = ({ item, onPress }: { item: FriendNewsItem; onPress: () => void }) => (
@@ -169,7 +172,7 @@ export default function FriendsScreen() {
       <Avatar name={item.authorName} />
       <View style={styles.newsRowInfo}>
         <Text style={styles.newsText}>
-          <Text style={styles.newsTextBold}>{item.authorName}</Text> a obtenu une carte {item.rarityLabel}
+          {tRich('friends.newsSingle', { name: item.authorName, rarity: item.rarityLabel }, styles.newsTextBold)}
         </Text>
         {item.reactionCount > 0 && (
           <View style={styles.reactionRow}>
@@ -189,7 +192,7 @@ export default function FriendsScreen() {
         <Avatar name={group.authorName} />
         <View style={styles.newsRowInfo}>
           <Text style={styles.newsText}>
-            <Text style={styles.newsTextBold}>{group.authorName}</Text> a obtenu {group.items.length} cartes remarquables
+            {tRich('friends.newsGroup', { name: group.authorName, count: group.items.length }, styles.newsTextBold)}
           </Text>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.newsGroupThumbs}>
@@ -207,7 +210,7 @@ export default function FriendsScreen() {
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Text style={styles.title}>Amis</Text>
+          <Text style={styles.title}>{t('friends.title')}</Text>
           <View style={styles.headerActions}>
             <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
             <Pressable onPress={() => setQrOpen(true)} style={styles.qrBtn} hitSlop={8}>
@@ -216,7 +219,7 @@ export default function FriendsScreen() {
           </View>
         </View>
         <TextInput
-          placeholder="Chercher un pseudo pour ajouter un ami"
+          placeholder={t('friends.searchPlaceholder')}
           value={search}
           onChangeText={setSearch}
           autoCapitalize="none"
@@ -234,17 +237,17 @@ export default function FriendsScreen() {
               </View>
               {alreadyRelated ? (
                 <Text style={styles.rowUsername}>
-                  {found.id === userId ? 'C’est toi' : friendIds.has(found.id) ? 'Déjà ami' : 'Demande envoyée'}
+                  {found.id === userId ? t('friends.isYou') : friendIds.has(found.id) ? t('friends.alreadyFriend') : t('profile.friendStatusPendingSent')}
                 </Text>
               ) : (
                 <Pressable onPress={() => sendRequest.mutate(found.id)} style={styles.actionBtn}>
                   <Ionicons name="person-add-outline" size={14} color="white" />
-                  <Text style={styles.actionBtnText}>Ajouter</Text>
+                  <Text style={styles.actionBtnText}>{t('profile.friendStatusAdd')}</Text>
                 </Pressable>
               )}
             </View>
           ) : (
-            <Text style={styles.empty}>Aucun compte avec ce pseudo.</Text>
+            <Text style={styles.empty}>{t('friends.noAccountFound')}</Text>
           )
         )}
       </View>
@@ -260,7 +263,7 @@ export default function FriendsScreen() {
                   <IconBubble size={26} color={colors.primarySoft}>
                     <Ionicons name="mail-unread-outline" size={13} color={colors.primary} />
                   </IconBubble>
-                  <Text style={styles.sectionTitle}>Demandes reçues</Text>
+                  <Text style={styles.sectionTitle}>{t('friends.incomingRequests')}</Text>
                   <Text style={styles.sectionCount}>{incoming.length}</Text>
                 </View>
                 {incoming.map((r: FriendRequest) => (
@@ -271,7 +274,7 @@ export default function FriendsScreen() {
                       <Text style={styles.rowUsername}>@{r.username}</Text>
                     </View>
                     <Pressable onPress={() => acceptRequest.mutate(r.id)} style={styles.actionBtn}>
-                      <Text style={styles.actionBtnText}>Accepter</Text>
+                      <Text style={styles.actionBtnText}>{t('profile.friendStatusAccept')}</Text>
                     </Pressable>
                     <Pressable onPress={() => removeFriendship.mutate(r.id)} style={styles.secondaryBtn} hitSlop={8}>
                       <Ionicons name="close" size={18} color={colors.textMuted} />
@@ -287,7 +290,7 @@ export default function FriendsScreen() {
                   <IconBubble size={26} color={colors.primarySoft}>
                     <Ionicons name="paper-plane-outline" size={13} color={colors.primary} />
                   </IconBubble>
-                  <Text style={styles.sectionTitle}>Demandes envoyées</Text>
+                  <Text style={styles.sectionTitle}>{t('friends.outgoingRequests')}</Text>
                   <Text style={styles.sectionCount}>{outgoing.length}</Text>
                 </View>
                 {outgoing.map((r: FriendRequest) => (
@@ -298,7 +301,7 @@ export default function FriendsScreen() {
                       <Text style={styles.rowUsername}>@{r.username}</Text>
                     </View>
                     <Pressable onPress={() => removeFriendship.mutate(r.id)} style={styles.secondaryBtn} hitSlop={8}>
-                      <Text style={styles.rowUsername}>Annuler</Text>
+                      <Text style={styles.rowUsername}>{t('common.cancel')}</Text>
                     </Pressable>
                   </View>
                 ))}
@@ -310,13 +313,13 @@ export default function FriendsScreen() {
                 <IconBubble size={26} color={colors.primarySoft}>
                   <Ionicons name="people-outline" size={13} color={colors.primary} />
                 </IconBubble>
-                <Text style={styles.sectionTitle}>Mes amis</Text>
+                <Text style={styles.sectionTitle}>{t('friends.myFriends')}</Text>
                 <Text style={styles.sectionCount}>{friends.length}</Text>
               </View>
               {friendsLoading ? (
                 <ActivityIndicator />
               ) : friends.length === 0 ? (
-                <Text style={styles.empty}>Pas encore d’amis — cherche un pseudo ci-dessus pour envoyer une demande.</Text>
+                <Text style={styles.empty}>{t('friends.noFriendsYet')}</Text>
               ) : (
                 friends.map((f: FriendProfile) => (
                   <Pressable key={f.id} onPress={() => router.push(withReturnTo(`/u/${f.username}`, '/friends') as never)} style={styles.row}>
@@ -341,7 +344,7 @@ export default function FriendsScreen() {
                 <IconBubble size={26} color={colors.primarySoft}>
                   <Ionicons name="sparkles-outline" size={13} color={colors.primary} />
                 </IconBubble>
-                <Text style={styles.sectionTitle}>Nouveautés</Text>
+                <Text style={styles.sectionTitle}>{t('friends.newsTitle')}</Text>
                 {friendNews.length > 0 && <Text style={styles.sectionCount}>{friendNews.length}</Text>}
                 <View style={{ flex: 1 }} />
                 <Pressable onPress={() => setHistoryOpen(true)} hitSlop={8}>
@@ -351,7 +354,7 @@ export default function FriendsScreen() {
               {newsAuthors.length > 1 && (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChips}>
                   <Pressable onPress={() => setNewsFilterId(null)} style={[styles.filterChip, newsFilterId === null && styles.filterChipActive]}>
-                    <Text style={[styles.filterChipText, newsFilterId === null && styles.filterChipTextActive]}>Tous</Text>
+                    <Text style={[styles.filterChipText, newsFilterId === null && styles.filterChipTextActive]}>{t('common.all')}</Text>
                   </Pressable>
                   {newsAuthors.map(a => (
                     <Pressable
@@ -364,9 +367,9 @@ export default function FriendsScreen() {
                 </ScrollView>
               )}
               {friendNews.length === 0 ? (
-                <Text style={styles.empty}>Rien de notable chez tes amis pour l’instant.</Text>
+                <Text style={styles.empty}>{t('friends.newsEmpty')}</Text>
               ) : newsGroups.length === 0 ? (
-                <Text style={styles.empty}>Rien de notable de ce côté-là pour l’instant.</Text>
+                <Text style={styles.empty}>{t('friends.newsEmptyFiltered')}</Text>
               ) : (
                 newsGroups.map((g: NewsGroup) => (
                   <NewsGroupRow key={g.items[0].id} group={g} onOpen={setOpenNews} />
@@ -381,12 +384,12 @@ export default function FriendsScreen() {
         onConfirm={() => { if (unfriendTarget) removeFriendship.mutate(unfriendTarget.id); setUnfriendTarget(null); }}
         onCancel={() => setUnfriendTarget(null)}
       />
-      <QRCodeModal visible={qrOpen} value={myShareUrl} label="Mon QR code" onClose={() => setQrOpen(false)} />
+      <QRCodeModal visible={qrOpen} value={myShareUrl} label={t('friends.myQrCode')} onClose={() => setQrOpen(false)} />
       <FriendCardReveal item={openNews} mode="live" onClose={() => setOpenNews(null)} />
-      <BubbleSheet visible={historyOpen} onClose={() => setHistoryOpen(false)} tint={CHASE_GOLD} title="Historique">
+      <BubbleSheet visible={historyOpen} onClose={() => setHistoryOpen(false)} tint={CHASE_GOLD} title={t('friends.historyTitle')}>
         <ScrollView contentContainerStyle={[styles.list, { padding: spacing.md }]}>
           {newsHistory.length === 0 ? (
-            <Text style={styles.empty}>Aucune pêche notable pour l'instant.</Text>
+            <Text style={styles.empty}>{t('friends.historyEmpty')}</Text>
           ) : (
             newsHistory.map((n: FriendNewsItem) => (
               <NewsRow key={n.id} item={n} onPress={() => setHistoryReveal(n)} />
