@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, Image, StyleSheet, FlatList, ScrollView, RefreshControl, useWindowDimensions,
+  type NativeSyntheticEvent, type NativeScrollEvent, type LayoutChangeEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -22,7 +24,7 @@ import {
 } from '@/lib/teams';
 import {
   useBinders, useCreateBinder, useRenameBinder, useDeleteBinder,
-  useBinderCards, useRemoveBinderSlot, useSetBinderLayout,
+  useBinderCards, useRemoveBinderSlot, useSetBinderLayout, useSwapBinderSlots,
   BINDER_LAYOUTS, BINDER_LAYOUT_COLS, type BinderLayout,
 } from '@/lib/binders';
 import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
@@ -106,6 +108,7 @@ export default function FavoritesScreen() {
   const deleteBinder = useDeleteBinder();
   const removeBinderSlot = useRemoveBinderSlot();
   const setBinderLayout = useSetBinderLayout();
+  const swapBinderSlots = useSwapBinderSlots();
 
   const { data: goals = [] } = useSetGoals(userId);
   const toggleGoal = useToggleSetGoal();
@@ -145,6 +148,23 @@ export default function FavoritesScreen() {
   const [binderRenameValue, setBinderRenameValue] = useState('');
   const [pickingPosition, setPickingPosition] = useState<number | null>(null);
   const [layoutPickerOpen, setLayoutPickerOpen] = useState(false);
+
+  // Drag-and-drop state for binder slots — see swap_binder_slots RPC (050) for
+  // the DB side. draggingPosition/dragTranslation drive the floating ghost
+  // visual, hoverPosition drives the drop-target ring. The *Ref twins mirror
+  // the state synchronously (refs update instantly, state waits for the next
+  // render) so the gesture callbacks — which can fire many times between
+  // renders — always gate and commit against the current value, not a stale one.
+  const [draggingPosition, setDraggingPosition] = useState<number | null>(null);
+  const [dragTranslation, setDragTranslation] = useState({ x: 0, y: 0 });
+  const [dragStartAbsolute, setDragStartAbsolute] = useState({ x: 0, y: 0 });
+  const [hoverPosition, setHoverPosition] = useState<number | null>(null);
+  const activeDragPositionRef = useRef<number | null>(null);
+  const hoverPositionRef = useRef<number | null>(null);
+  const gridContainerRef = useRef<View>(null);
+  const gridOriginRef = useRef({ x: 0, y: 0 });
+  const scrollYRef = useRef(0);
+  const tileSizeRef = useRef({ width: 0, height: 0 });
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'team' | 'binder' | 'setGoal'; id: string; name: string } | null>(null);
 
   const [artistSearch, setArtistSearch] = useState('');
@@ -195,6 +215,72 @@ export default function FavoritesScreen() {
     const usedPages = Math.ceil((maxPosition + 1) / layout);
     return (usedPages + 1) * layout;
   }, [selectedBinder, binderCards]);
+
+  // Long-press-then-drag gesture for one occupied binder slot. Hit-testing is
+  // done by grid geometry (origin + scroll offset + measured tile size), not
+  // by measuring every tile — FlashList recycles views, so per-tile layout
+  // tracking would be unreliable across scroll. On release, swaps (or moves,
+  // if the target is empty) the dragged slot with whatever's under the finger.
+  const buildSlotDragGesture = (position: number) => {
+    const longPress = Gesture.LongPress()
+      .minDuration(250)
+      .onStart((e) => {
+        activeDragPositionRef.current = position;
+        hoverPositionRef.current = position;
+        setDraggingPosition(position);
+        setHoverPosition(position);
+        setDragStartAbsolute({ x: e.absoluteX, y: e.absoluteY });
+        setDragTranslation({ x: 0, y: 0 });
+      });
+
+    const pan = Gesture.Pan()
+      .minDistance(10)
+      .onUpdate((e) => {
+        if (activeDragPositionRef.current !== position || !selectedBinder) return;
+        setDragTranslation({ x: e.translationX, y: e.translationY });
+        const { width: tw, height: th } = tileSizeRef.current;
+        if (tw <= 0 || th <= 0) return;
+        const numCols = BINDER_LAYOUT_COLS[selectedBinder.layout];
+        const col = Math.floor((e.absoluteX - gridOriginRef.current.x) / tw);
+        const row = Math.floor((e.absoluteY - gridOriginRef.current.y + scrollYRef.current) / th);
+        const target = Math.max(0, Math.min(binderSlotCount - 1, row * numCols + col));
+        hoverPositionRef.current = target;
+        setHoverPosition(target);
+      })
+      .onEnd(() => {
+        if (activeDragPositionRef.current === position && selectedBinder) {
+          const target = hoverPositionRef.current;
+          if (target != null && target !== position) {
+            swapBinderSlots.mutate({ binderId: selectedBinder.id, positionA: position, positionB: target });
+          }
+        }
+        activeDragPositionRef.current = null;
+        hoverPositionRef.current = null;
+        setDraggingPosition(null);
+        setHoverPosition(null);
+        setDragTranslation({ x: 0, y: 0 });
+      });
+
+    return Gesture.Simultaneous(longPress, pan);
+  };
+
+  const onGridLayout = (_e: LayoutChangeEvent) => {
+    gridContainerRef.current?.measure((_x, _y, _w, _h, pageX, pageY) => {
+      gridOriginRef.current = { x: pageX, y: pageY };
+    });
+  };
+
+  const onGridScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollYRef.current = e.nativeEvent.contentOffset.y;
+  };
+
+  const onTileLayout = (e: LayoutChangeEvent) => {
+    if (tileSizeRef.current.width > 0) return;
+    const { width, height } = e.nativeEvent.layout;
+    tileSizeRef.current = { width, height };
+  };
+
+  const draggedItem = draggingPosition != null ? binderCardsByPosition.get(draggingPosition) : undefined;
 
   const pickerOptions = useMemo(() => {
     if (!selectedTeam) return [];
@@ -300,10 +386,20 @@ export default function FavoritesScreen() {
       backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
     binderSlotTile: { flex: 1, padding: 6, aspectRatio: 0.72 },
+    binderSlotDragging: { opacity: 0.35 },
+    binderSlotHover: { borderRadius: radius.bubble, borderWidth: 2, borderColor: colors.primary },
     binderSlotEmpty: {
       flex: 1, borderRadius: radius.bubble, borderWidth: 2, borderStyle: 'dashed' as const,
       borderColor: colors.border, alignItems: 'center' as const, justifyContent: 'center' as const,
       backgroundColor: colors.surfaceAlt,
+    },
+    dragGhost: {
+      position: 'absolute' as const, width: 110, height: 110 / 0.72, marginLeft: -55, marginTop: -(110 / 0.72) / 2,
+      zIndex: 100, elevation: 8, ...shadow.md,
+    },
+    dragGhostImg: {
+      width: '100%' as const, height: '100%' as const, borderRadius: radius.bubble,
+      backgroundColor: colors.surfaceAlt, borderWidth: 2, borderColor: colors.primary,
     },
     layoutOptions: { padding: spacing.md, gap: spacing.sm },
     layoutOption: { padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surfaceAlt },
@@ -495,61 +591,81 @@ export default function FavoritesScreen() {
             </Pressable>
           </View>
 
-          <FlashList
-            data={Array.from({ length: binderSlotCount }, (_, position) => binderCardsByPosition.get(position) ?? { position })}
-            numColumns={BINDER_LAYOUT_COLS[selectedBinder.layout]}
-            estimatedItemSize={200}
-            contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
-            maintainVisibleContentPosition={{ disabled: true }}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-            {...hideOnScrollProps}
-            keyExtractor={(s) => String(s.position)}
-            renderItem={({ item }) => {
-              const filled = 'cardId' in item;
-              if (!filled) {
+          <View ref={gridContainerRef} onLayout={onGridLayout} style={{ flex: 1 }}>
+            <FlashList
+              data={Array.from({ length: binderSlotCount }, (_, position) => binderCardsByPosition.get(position) ?? { position })}
+              numColumns={BINDER_LAYOUT_COLS[selectedBinder.layout]}
+              estimatedItemSize={200}
+              contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
+              maintainVisibleContentPosition={{ disabled: true }}
+              scrollEnabled={draggingPosition === null}
+              onScroll={(e) => { onGridScroll(e); hideOnScrollProps.onScroll(e); }}
+              scrollEventThrottle={16}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+              keyExtractor={(s) => String(s.position)}
+              renderItem={({ item }) => {
+                const filled = 'cardId' in item;
+                if (!filled) {
+                  return (
+                    <View style={styles.binderSlotTile}>
+                      <Pressable onPress={() => setPickingPosition(item.position)} style={styles.binderSlotEmpty}>
+                        <Ionicons name="add" size={28} color={colors.textDim} />
+                      </Pressable>
+                    </View>
+                  );
+                }
+                const isCard = item.kind === 'card';
+                const isOwned = isCard && ownedCardIds.has(item.cardId as string);
+                const isDragging = draggingPosition === item.position;
+                const isHoverTarget = hoverPosition === item.position && draggingPosition !== item.position;
                 return (
-                  <View style={styles.binderSlotTile}>
-                    <Pressable onPress={() => setPickingPosition(item.position)} style={styles.binderSlotEmpty}>
-                      <Ionicons name="add" size={28} color={colors.textDim} />
-                    </Pressable>
-                  </View>
+                  <GestureDetector gesture={buildSlotDragGesture(item.position)}>
+                    <View
+                      onLayout={onTileLayout}
+                      style={[styles.binderSlotTile, isDragging && styles.binderSlotDragging, isHoverTarget && styles.binderSlotHover]}>
+                      <View style={styles.collectionImgWrap}>
+                        {isOwned ? (
+                          <LinearGradient
+                            colors={[colors.primary, colors.warning, colors.primary]}
+                            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                            style={styles.holoBorder}>
+                            <View style={styles.holoInner}>
+                              <Image source={{ uri: item.imageUrl }} style={styles.collectionImg} resizeMode="contain" />
+                            </View>
+                          </LinearGradient>
+                        ) : (
+                          <View style={styles.plainInner}>
+                            <Image source={{ uri: item.imageUrl }} style={styles.collectionImg} resizeMode={isCard ? 'contain' : 'cover'} />
+                          </View>
+                        )}
+                        {isCard && !isOwned && (
+                          <View style={styles.notOwnedBadge}>
+                            <Pokeball size={16} muted />
+                          </View>
+                        )}
+                        <Pressable
+                          hitSlop={8}
+                          onPress={() => removeBinderSlot.mutate({ binderId: selectedBinder.id, position: item.position, imagePath: item.imagePath })}
+                          style={styles.removeBtn}>
+                          <Ionicons name="close" size={16} color="white" />
+                        </Pressable>
+                      </View>
+                    </View>
+                  </GestureDetector>
                 );
-              }
-              const isCard = item.kind === 'card';
-              const isOwned = isCard && ownedCardIds.has(item.cardId as string);
-              return (
-                <View style={styles.binderSlotTile}>
-                  <View style={styles.collectionImgWrap}>
-                    {isOwned ? (
-                      <LinearGradient
-                        colors={[colors.primary, colors.warning, colors.primary]}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                        style={styles.holoBorder}>
-                        <View style={styles.holoInner}>
-                          <Image source={{ uri: item.imageUrl }} style={styles.collectionImg} resizeMode="contain" />
-                        </View>
-                      </LinearGradient>
-                    ) : (
-                      <View style={styles.plainInner}>
-                        <Image source={{ uri: item.imageUrl }} style={styles.collectionImg} resizeMode={isCard ? 'contain' : 'cover'} />
-                      </View>
-                    )}
-                    {isCard && !isOwned && (
-                      <View style={styles.notOwnedBadge}>
-                        <Pokeball size={16} muted />
-                      </View>
-                    )}
-                    <Pressable
-                      hitSlop={8}
-                      onPress={() => removeBinderSlot.mutate({ binderId: selectedBinder.id, position: item.position, imagePath: item.imagePath })}
-                      style={styles.removeBtn}>
-                      <Ionicons name="close" size={16} color="white" />
-                    </Pressable>
-                  </View>
-                </View>
-              );
-            }}
-          />
+              }}
+            />
+            {draggingPosition != null && draggedItem && (
+              <View
+                pointerEvents="none"
+                style={[styles.dragGhost, {
+                  left: dragStartAbsolute.x + dragTranslation.x - gridOriginRef.current.x,
+                  top: dragStartAbsolute.y + dragTranslation.y - gridOriginRef.current.y,
+                }]}>
+                <Image source={{ uri: draggedItem.imageUrl }} style={styles.dragGhostImg} resizeMode="contain" />
+              </View>
+            )}
+          </View>
         </View>
       ) : (
         <View style={styles.teamList}>

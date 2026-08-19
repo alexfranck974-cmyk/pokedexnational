@@ -244,6 +244,43 @@ export function useUploadBinderImage() {
   });
 }
 
+// Swaps two slot positions (or, if the target is empty, simply moves the
+// dragged card there) via the swap_binder_slots RPC — see 050_swap_binder_slots.sql
+// for why this can't be two plain client-side UPDATEs (unique index on
+// (collection_id, position)). Optimistically reorders the cached binder_cards
+// list so the drag-and-drop UI in favorites.tsx snaps immediately on release.
+export function useSwapBinderSlots() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ binderId, positionA, positionB }: { binderId: string; positionA: number; positionB: number }) => {
+      const { error } = await supabase.rpc('swap_binder_slots', {
+        p_collection_id: binderId, p_position_a: positionA, p_position_b: positionB,
+      });
+      if (error) throw error;
+    },
+    onMutate: async ({ binderId, positionA, positionB }) => {
+      const key = ['binder_cards', binderId];
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<BinderSlotItem[]>(key);
+      if (previous) {
+        qc.setQueryData<BinderSlotItem[]>(key, previous.map((item) => {
+          if (item.position === positionA) return { ...item, position: positionB };
+          if (item.position === positionB) return { ...item, position: positionA };
+          return item;
+        }));
+      }
+      return { previous, binderId };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) qc.setQueryData(['binder_cards', context.binderId], context.previous);
+      toast('Impossible de déplacer cette carte, réessaie.');
+    },
+    onSettled: (_r, _e, { binderId }) => {
+      qc.invalidateQueries({ queryKey: ['binder_cards', binderId] });
+    },
+  });
+}
+
 // Removes whatever occupies a slot (card or photo) by position — position is
 // the universal address, unlike card_id which is null for photo slots. Cleans
 // up the Storage object too when the slot held a photo.

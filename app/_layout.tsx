@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect, useMemo } from 'react';
 import { AppState, type AppStateStatus, Platform } from 'react-native';
 import { RootSiblingParent } from 'react-native-root-siblings';
@@ -68,20 +69,22 @@ function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <MotionProvider>
-          <LocaleProvider>
-            <ThemedStatusBar />
-            <QueryClientProvider client={queryClient}>
-              <RootSiblingParent>
-                <Stack screenOptions={{ headerShown: false }} />
-              </RootSiblingParent>
-            </QueryClientProvider>
-          </LocaleProvider>
-        </MotionProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <MotionProvider>
+            <LocaleProvider>
+              <ThemedStatusBar />
+              <QueryClientProvider client={queryClient}>
+                <RootSiblingParent>
+                  <Stack screenOptions={{ headerShown: false }} />
+                </RootSiblingParent>
+              </QueryClientProvider>
+            </LocaleProvider>
+          </MotionProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
