@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, Image, Pressable, ScrollView, RefreshControl, TextInput } from 'react-native';
+import { View, Text, Image, Pressable, ScrollView, RefreshControl, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,7 +58,7 @@ export default function MarketScreen() {
   const { refreshing, onRefresh } = usePullToRefresh();
   const hideOnScrollProps = useHideOnScrollProps();
 
-  const { data: friends = [] } = useFriends(userId);
+  const { data: friends = [], isLoading: friendsLoading } = useFriends(userId);
   const friendIdsArr = useMemo(() => friends.map((f: FriendProfile) => f.id), [friends]);
   const { data: availableCards = [] } = useFriendsAvailableCards(friendIdsArr);
   const { data: wantedCards = [] } = useFriendsWantedCards(friendIdsArr);
@@ -90,6 +90,7 @@ export default function MarketScreen() {
 
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
+    center: { flex: 1, justifyContent: 'center' as const, alignItems: 'center' as const },
     hero: {
       flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
       padding: spacing.md, gap: spacing.sm, ...shadow.sm,
@@ -124,6 +125,14 @@ export default function MarketScreen() {
       fontSize: 14, fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt,
     },
   }));
+
+  if (friendsLoading) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.center}><ActivityIndicator /></View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.screen}>

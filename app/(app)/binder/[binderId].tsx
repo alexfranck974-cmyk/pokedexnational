@@ -25,9 +25,9 @@ export default function BinderViewerScreen() {
   const { colors, heroGradient, heroText, heroTextMuted } = useTheme();
   const { width } = useWindowDimensions();
 
-  const { data: binders = [] } = useBinders(userId);
+  const { data: binders = [], isLoading: bindersLoading } = useBinders(userId);
   const binder = binders.find((b) => b.id === binderId);
-  const { data: slots = [], isLoading } = useBinderCards(binderId);
+  const { data: slots = [], isLoading: slotsLoading } = useBinderCards(binderId);
   const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
 
   const [pageIndex, setPageIndex] = useState(0);
@@ -85,7 +85,7 @@ export default function BinderViewerScreen() {
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.empty}>
-          {isLoading ? <ActivityIndicator /> : <Text style={styles.emptyText}>Binder introuvable.</Text>}
+          {(bindersLoading || slotsLoading) ? <ActivityIndicator /> : <Text style={styles.emptyText}>Binder introuvable.</Text>}
         </View>
       </SafeAreaView>
     );
