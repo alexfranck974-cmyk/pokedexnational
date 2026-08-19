@@ -1,15 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
+import type { Locale } from './locale';
 
 export type FeedbackKind = 'bug' | 'suggestion';
 export type FeedbackStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 
-export const STATUS_LABEL: Record<FeedbackStatus, string> = {
+const STATUS_LABEL_FR: Record<FeedbackStatus, string> = {
   open: 'Ouvert',
   in_progress: 'En cours',
   resolved: 'Résolu',
   closed: 'Fermé',
 };
+
+const STATUS_LABEL_EN: Record<FeedbackStatus, string> = {
+  open: 'Open',
+  in_progress: 'In progress',
+  resolved: 'Resolved',
+  closed: 'Closed',
+};
+
+export function getStatusLabel(status: FeedbackStatus, locale: Locale): string {
+  return locale === 'en' ? STATUS_LABEL_EN[status] : STATUS_LABEL_FR[status];
+}
 
 export interface FeedbackItem {
   id: string;

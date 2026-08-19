@@ -32,15 +32,17 @@ import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useBackTo } from '@/lib/navigation';
 import { TabBarVisibilityProvider } from '@/lib/tab-bar-visibility';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
+import { useLocale, useT } from '@/lib/locale';
+import type { StringKey } from '@/lib/strings';
 
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
 
 type ProfileTab = 'stats' | 'collection' | 'wishlist';
-const TABS: { key: ProfileTab; label: string }[] = [
-  { key: 'stats', label: 'Statistiques' },
-  { key: 'collection', label: 'Collection' },
-  { key: 'wishlist', label: 'Wishlist' },
+const TABS: { key: ProfileTab; labelKey: StringKey }[] = [
+  { key: 'stats', labelKey: 'statsTabs.title' },
+  { key: 'collection', labelKey: 'tabs.collection' },
+  { key: 'wishlist', labelKey: 'tabs.wishlist' },
 ];
 
 export default function PublicProfile() {
@@ -55,6 +57,8 @@ function PublicProfileInner() {
   const { username } = useLocalSearchParams<{ username: string }>();
   const router = useRouter();
   const goBack = useBackTo('/friends');
+  const { locale } = useLocale();
+  const t = useT();
   const { session } = useSession();
   const viewerId = session?.user.id;
   const [profile, setProfile] = useState<{ id: string; display_name: string; username: string } | 'notfound'>('notfound');
@@ -223,9 +227,9 @@ function PublicProfileInner() {
   if (profile === 'notfound') {
     return (
       <SafeAreaView style={styles.center}>
-        <Text style={styles.notFoundTitle}>Ce Pokédex n'existe pas ou est privé</Text>
+        <Text style={styles.notFoundTitle}>{t('profile.notFoundTitle')}</Text>
         <Pressable style={styles.cta} onPress={() => router.push('/signup')}>
-          <Text style={styles.ctaText}>Créer mon Pokédex TCG</Text>
+          <Text style={styles.ctaText}>{t('profile.createCta')}</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -238,33 +242,33 @@ function PublicProfileInner() {
       <View style={styles.banner}>
         <Pressable onPress={goBack} style={styles.backRow} hitSlop={8}>
           <Ionicons name="chevron-back" size={18} color={colors.primary} />
-          <Text style={styles.backText}>Retour</Text>
+          <Text style={styles.backText}>{t('common.back')}</Text>
         </Pressable>
         <View style={styles.bannerTitleRow}>
-          <Text style={styles.bannerTitle}>Pokédex TCG de {profile.display_name}</Text>
+          <Text style={styles.bannerTitle}>{t('profile.heroTitle', { name: profile.display_name })}</Text>
           {viewerId && userId && viewerId !== userId && (
             friendStatus === 'friends' ? (
               <Pressable
                 onPress={() => removeFriendship.mutate(userId)}
                 style={[styles.friendBtn, styles.friendBtnSecondary]}>
                 <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                <Text style={[styles.friendBtnText, styles.friendBtnTextSecondary]}>Ami</Text>
+                <Text style={[styles.friendBtnText, styles.friendBtnTextSecondary]}>{t('profile.friendStatusFriends')}</Text>
               </Pressable>
             ) : friendStatus === 'pending_sent' ? (
               <Pressable
                 onPress={() => removeFriendship.mutate(userId)}
                 style={[styles.friendBtn, styles.friendBtnSecondary]}>
-                <Text style={[styles.friendBtnText, styles.friendBtnTextSecondary]}>Demande envoyée</Text>
+                <Text style={[styles.friendBtnText, styles.friendBtnTextSecondary]}>{t('profile.friendStatusPendingSent')}</Text>
               </Pressable>
             ) : friendStatus === 'pending_received' ? (
               <Pressable onPress={() => acceptRequest.mutate(userId)} style={styles.friendBtn}>
                 <Ionicons name="person-add" size={14} color="white" />
-                <Text style={styles.friendBtnText}>Accepter</Text>
+                <Text style={styles.friendBtnText}>{t('profile.friendStatusAccept')}</Text>
               </Pressable>
             ) : (
               <Pressable onPress={() => sendRequest.mutate(userId)} style={styles.friendBtn}>
                 <Ionicons name="person-add-outline" size={14} color="white" />
-                <Text style={styles.friendBtnText}>Ajouter</Text>
+                <Text style={styles.friendBtnText}>{t('profile.friendStatusAdd')}</Text>
               </Pressable>
             )
           )}
@@ -272,14 +276,14 @@ function PublicProfileInner() {
         <ProgressCounter owned={ownedCount} total={items.length} />
         <Pressable onPress={() => setComparePromptOpen(true)} style={styles.compareBtn}>
           <Ionicons name="git-compare-outline" size={14} color={colors.text} />
-          <Text style={styles.compareBtnText}>Comparer avec un autre Pokédex</Text>
+          <Text style={styles.compareBtnText}>{t('profile.compareButton')}</Text>
         </Pressable>
       </View>
 
       <View style={styles.tabRow}>
-        {TABS.map(t => (
-          <Pressable key={t.key} onPress={() => setTab(t.key)} style={[styles.tabBtn, tab === t.key && styles.tabBtnActive]}>
-            <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>{t.label}</Text>
+        {TABS.map(tb => (
+          <Pressable key={tb.key} onPress={() => setTab(tb.key)} style={[styles.tabBtn, tab === tb.key && styles.tabBtnActive]}>
+            <Text style={[styles.tabText, tab === tb.key && styles.tabTextActive]}>{t(tb.labelKey)}</Text>
           </Pressable>
         ))}
       </View>
@@ -337,10 +341,10 @@ function PublicProfileInner() {
               <IconBubble size={28} color={colors.primarySoft}>
                 <Ionicons name="albums" size={15} color={colors.primary} />
               </IconBubble>
-              <Text style={styles.sectionTitle}>Sets en cours</Text>
+              <Text style={styles.sectionTitle}>{t('profile.pinnedSetsTitle')}</Text>
             </View>
             {pinnedGoals.length === 0 ? (
-              <Text style={styles.empty}>Aucune extension épinglée pour l’instant.</Text>
+              <Text style={styles.empty}>{t('profile.noPinnedSets')}</Text>
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
                 {pinnedGoals.map(g => {
@@ -378,7 +382,7 @@ function PublicProfileInner() {
         <ScrollView contentContainerStyle={styles.wishlistScroll}>
           <VitrineCarousel items={vitrineItems} />
           {wishlistGroups.length === 0 ? (
-            <Text style={styles.empty}>Aucune carte dans la wishlist.</Text>
+            <Text style={styles.empty}>{t('profile.noWishlistCards')}</Text>
           ) : (
             wishlistGroups.map(group => {
               const mon = POKEDEX_BY_DEX.get(group.dexNum);
@@ -388,7 +392,7 @@ function PublicProfileInner() {
                   <Pressable
                     style={styles.pokemonMain}
                     onPress={() => setGallerySet({
-                      setName: mon ? getName(mon) : `#${String(group.dexNum).padStart(4, '0')}`,
+                      setName: mon ? getName(mon, locale) : `#${String(group.dexNum).padStart(4, '0')}`,
                       owned: groupOwnedCount,
                       total: group.cards.length,
                       cards: group.cards.map(c => ({ key: c.id, imageSmall: c.image_small, imageLarge: c.image_large })),
@@ -399,11 +403,11 @@ function PublicProfileInner() {
                     </View>
                     <View style={styles.pokemonInfo}>
                       <Text style={styles.pokemonName} numberOfLines={1}>
-                        #{String(group.dexNum).padStart(4, '0')} · {mon ? getName(mon) : group.dexNum}
+                        #{String(group.dexNum).padStart(4, '0')} · {mon ? getName(mon, locale) : group.dexNum}
                       </Text>
                       <Text style={styles.pokemonSub}>
-                        {group.cards.length} carte{group.cards.length > 1 ? 's' : ''} en wishlist
-                        {groupOwnedCount > 0 ? ` · ${groupOwnedCount} déjà possédée${groupOwnedCount > 1 ? 's' : ''}` : ''}
+                        {t(group.cards.length > 1 ? 'wishlist.cardsInWishlistPlural' : 'wishlist.cardsInWishlistSingular', { n: group.cards.length })}
+                        {groupOwnedCount > 0 ? t(groupOwnedCount > 1 ? 'wishlist.alreadyOwnedPlural' : 'wishlist.alreadyOwnedSingular', { n: groupOwnedCount }) : ''}
                       </Text>
                     </View>
                   </Pressable>
@@ -440,7 +444,7 @@ function PublicProfileInner() {
               }}
               style={styles.proposeTradeBtn}>
               <TradeIcon size={15} color="white" />
-              <Text style={styles.proposeTradeBtnText}>Proposer un échange</Text>
+              <Text style={styles.proposeTradeBtnText}>{t('profile.proposeTradeButton')}</Text>
             </Pressable>
           ) : undefined
         }
@@ -454,10 +458,10 @@ function PublicProfileInner() {
         visible={comparePromptOpen}
         onClose={() => setComparePromptOpen(false)}
         tint={colors.primary}
-        title="Comparer les Pokédex"
+        title={t('profile.compareSheetTitle')}
         sizing="auto">
         <View style={styles.compareSheetBody}>
-          <Text style={styles.compareSheetHint}>Entre le username de l'autre Pokédex (public) à comparer avec celui de {profile.display_name}.</Text>
+          <Text style={styles.compareSheetHint}>{t('profile.compareSheetHint', { name: profile.display_name })}</Text>
           <TextInput
             placeholder="username"
             placeholderTextColor={colors.textMuted}
@@ -475,7 +479,7 @@ function PublicProfileInner() {
               router.push(`/compare/${profile.username}/${other}` as never);
             }}
             style={[styles.compareSubmitBtn, !compareInput.trim() && { opacity: 0.5 }]}>
-            <Text style={styles.compareSubmitText}>Comparer</Text>
+            <Text style={styles.compareSubmitText}>{t('profile.compareSubmit')}</Text>
           </Pressable>
         </View>
       </BubbleSheet>

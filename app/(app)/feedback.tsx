@@ -16,12 +16,14 @@ import { useBackTo } from '@/lib/navigation';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
+import { useLocale, useT } from '@/lib/locale';
+import type { Locale } from '@/lib/locale';
 
 const TINT = '#8b5cf6';
 type Segment = 'suggestions' | 'mine' | 'admin';
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+function formatDate(iso: string, locale: Locale): string {
+  return new Date(iso).toLocaleDateString(locale === 'en' ? 'en-US' : 'fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 // Public suggestion board (votable) + a private "mes tickets" history (bug
@@ -31,6 +33,8 @@ function formatDate(iso: string): string {
 // Settings, not a bottom-bar tab (same pattern as market.tsx/favorites.tsx).
 export default function FeedbackScreen() {
   const goBack = useBackTo('/settings');
+  const { locale } = useLocale();
+  const t = useT();
   const { session } = useSession();
   const userId = session?.user.id;
   const { colors, heroGradient, heroText } = useTheme();
@@ -114,9 +118,9 @@ export default function FeedbackScreen() {
         style={styles.hero}>
         <Pressable onPress={goBack} style={styles.back} hitSlop={8}>
           <Ionicons name="chevron-back" size={18} color={heroText} />
-          <Text style={styles.backText}>Retour</Text>
+          <Text style={styles.backText}>{t('common.back')}</Text>
         </Pressable>
-        <Text style={styles.heroTitle}>Suggestions & Support</Text>
+        <Text style={styles.heroTitle}>{t('feedback.heroTitle')}</Text>
         <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={heroText} />
       </LinearGradient>
 
@@ -127,21 +131,21 @@ export default function FeedbackScreen() {
 
         <View style={styles.segmentRow}>
           <Pressable onPress={() => setSegment('suggestions')} style={[styles.segmentChip, segment === 'suggestions' && styles.segmentChipActive]}>
-            <Text style={[styles.segmentChipText, segment === 'suggestions' && styles.segmentChipTextActive]}>Suggestions</Text>
+            <Text style={[styles.segmentChipText, segment === 'suggestions' && styles.segmentChipTextActive]}>{t('feedback.segmentSuggestions')}</Text>
           </Pressable>
           <Pressable onPress={() => setSegment('mine')} style={[styles.segmentChip, segment === 'mine' && styles.segmentChipActive]}>
-            <Text style={[styles.segmentChipText, segment === 'mine' && styles.segmentChipTextActive]}>Mes tickets</Text>
+            <Text style={[styles.segmentChipText, segment === 'mine' && styles.segmentChipTextActive]}>{t('feedback.segmentMine')}</Text>
           </Pressable>
           {isAdmin && (
             <Pressable onPress={() => setSegment('admin')} style={[styles.segmentChip, segment === 'admin' && styles.segmentChipActive]}>
-              <Text style={[styles.segmentChipText, segment === 'admin' && styles.segmentChipTextActive]}>Admin</Text>
+              <Text style={[styles.segmentChipText, segment === 'admin' && styles.segmentChipTextActive]}>{t('feedback.segmentAdmin')}</Text>
             </Pressable>
           )}
         </View>
 
         {segment === 'suggestions' && (
           loadingSuggestions ? <ActivityIndicator /> : suggestions.length === 0 ? (
-            <Text style={styles.empty}>Aucune suggestion pour l'instant — sois le premier à en proposer une !</Text>
+            <Text style={styles.empty}>{t('feedback.noSuggestionsYet')}</Text>
           ) : suggestions.map((s: SuggestionItem) => {
             const voted = myVotes.has(s.id);
             return (
@@ -160,7 +164,7 @@ export default function FeedbackScreen() {
                   <Text style={styles.cardMessage} numberOfLines={3}>{s.message}</Text>
                   <View style={styles.cardMetaRow}>
                     <FeedbackStatusBadge status={s.status} />
-                    <Text style={styles.cardMeta}>{s.authorName} · {formatDate(s.createdAt)}</Text>
+                    <Text style={styles.cardMeta}>{s.authorName} · {formatDate(s.createdAt, locale)}</Text>
                   </View>
                 </View>
               </Pressable>
@@ -173,35 +177,35 @@ export default function FeedbackScreen() {
             <View style={styles.composeRow}>
               <View style={styles.kindRow}>
                 <Pressable onPress={() => setComposeKind('suggestion')} style={[styles.kindChip, composeKind === 'suggestion' && styles.kindChipActive]}>
-                  <Text style={[styles.kindChipText, composeKind === 'suggestion' && styles.kindChipTextActive]}>Suggestion</Text>
+                  <Text style={[styles.kindChipText, composeKind === 'suggestion' && styles.kindChipTextActive]}>{t('feedback.kindSuggestion')}</Text>
                 </Pressable>
                 <Pressable onPress={() => setComposeKind('bug')} style={[styles.kindChip, composeKind === 'bug' && styles.kindChipActive]}>
-                  <Text style={[styles.kindChipText, composeKind === 'bug' && styles.kindChipTextActive]}>Bug</Text>
+                  <Text style={[styles.kindChipText, composeKind === 'bug' && styles.kindChipTextActive]}>{t('feedback.kindBug')}</Text>
                 </Pressable>
               </View>
               <TextInput
                 value={composeMessage}
                 onChangeText={setComposeMessage}
-                placeholder={composeKind === 'bug' ? 'Décris le bug que tu as rencontré...' : "Décris ton idée d'amélioration..."}
+                placeholder={t(composeKind === 'bug' ? 'feedback.bugPlaceholder' : 'feedback.suggestionPlaceholder')}
                 placeholderTextColor={colors.textDim}
                 multiline
                 style={styles.composeInput}
               />
               <Pressable onPress={submit} disabled={!composeMessage.trim() || submitFeedback.isPending} style={styles.sendBtn}>
                 <Ionicons name="send-outline" size={14} color="white" />
-                <Text style={styles.sendBtnText}>{submitFeedback.isPending ? 'Envoi…' : 'Envoyer'}</Text>
+                <Text style={styles.sendBtnText}>{submitFeedback.isPending ? t('feedback.sending') : t('feedback.send')}</Text>
               </Pressable>
             </View>
 
             {myFeedback.length === 0 ? (
-              <Text style={styles.empty}>Tu n'as encore rien envoyé.</Text>
+              <Text style={styles.empty}>{t('feedback.noneSentYet')}</Text>
             ) : myFeedback.map((f: FeedbackItem) => (
               <Pressable key={f.id} style={styles.card} onPress={() => setDetailTarget(f)}>
                 <View style={styles.cardBody}>
                   <Text style={styles.cardMessage} numberOfLines={3}>{f.message}</Text>
                   <View style={styles.cardMetaRow}>
                     <FeedbackStatusBadge status={f.status} />
-                    <Text style={styles.cardMeta}>{f.kind === 'bug' ? 'Bug' : 'Suggestion'} · {formatDate(f.createdAt)}</Text>
+                    <Text style={styles.cardMeta}>{t(f.kind === 'bug' ? 'feedback.kindBug' : 'feedback.kindSuggestion')} · {formatDate(f.createdAt, locale)}</Text>
                   </View>
                 </View>
               </Pressable>
@@ -211,7 +215,7 @@ export default function FeedbackScreen() {
 
         {segment === 'admin' && isAdmin && (
           loadingAdmin ? <ActivityIndicator /> : adminItems.length === 0 ? (
-            <Text style={styles.empty}>Rien à traiter.</Text>
+            <Text style={styles.empty}>{t('feedback.nothingToReview')}</Text>
           ) : adminItems.map((a: AdminFeedbackItem) => (
             <Pressable
               key={a.id}
@@ -221,7 +225,7 @@ export default function FeedbackScreen() {
                 <Text style={styles.cardMessage} numberOfLines={2}>{a.message}</Text>
                 <View style={styles.cardMetaRow}>
                   <FeedbackStatusBadge status={a.status} />
-                  <Text style={styles.cardMeta}>{a.kind === 'bug' ? 'Bug' : 'Suggestion'} · {a.authorName} · {formatDate(a.createdAt)}</Text>
+                  <Text style={styles.cardMeta}>{t(a.kind === 'bug' ? 'feedback.kindBug' : 'feedback.kindSuggestion')} · {a.authorName} · {formatDate(a.createdAt, locale)}</Text>
                 </View>
               </View>
             </Pressable>

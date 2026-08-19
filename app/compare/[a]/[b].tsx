@@ -10,6 +10,7 @@ import { fetchPublicProfile, useSession } from '@/lib/auth';
 import { useUserDex } from '@/lib/collection';
 import { CompareTile, COMPARE_BUCKET_COLOR, type CompareBucket } from '@/components/CompareTile';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
+import { useT } from '@/lib/locale';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -29,6 +30,7 @@ export default function ComparePokedexes() {
   const { session } = useSession();
   const viewerId = session?.user.id;
   const { colors } = useTheme();
+  const t = useT();
 
   const [profileA, setProfileA] = useState<ProfileState>(null);
   const [profileB, setProfileB] = useState<ProfileState>(null);
@@ -86,23 +88,23 @@ export default function ComparePokedexes() {
     return (
       <SafeAreaView style={styles.center}>
         <Text style={styles.notFoundTitle}>
-          {profileA === 'notfound' && profileB === 'notfound' ? "Ces deux Pokédex n'existent pas ou sont privés"
-            : profileA === 'notfound' ? `Le Pokédex "${usernameA}" n'existe pas ou est privé`
-            : `Le Pokédex "${usernameB}" n'existe pas ou est privé`}
+          {profileA === 'notfound' && profileB === 'notfound' ? t('compare.bothNotFound')
+            : profileA === 'notfound' ? t('compare.oneNotFound', { username: usernameA })
+            : t('compare.oneNotFound', { username: usernameB })}
         </Text>
         <Pressable onPress={() => router.back()} style={styles.backRow} hitSlop={8}>
           <Ionicons name="chevron-back" size={18} color={colors.primary} />
-          <Text style={styles.backText}>Retour</Text>
+          <Text style={styles.backText}>{t('common.back')}</Text>
         </Pressable>
       </SafeAreaView>
     );
   }
 
   const legend: { bucket: CompareBucket; label: string }[] = [
-    { bucket: 'both', label: `Les deux · ${counts.both}` },
-    { bucket: 'onlyA', label: `${profileA.display_name} seul · ${counts.onlyA}` },
-    { bucket: 'onlyB', label: `${profileB.display_name} seul · ${counts.onlyB}` },
-    { bucket: 'neither', label: `Aucun · ${counts.neither}` },
+    { bucket: 'both', label: t('compare.legendBoth', { n: counts.both }) },
+    { bucket: 'onlyA', label: t('compare.legendOnlyOne', { name: profileA.display_name, n: counts.onlyA }) },
+    { bucket: 'onlyB', label: t('compare.legendOnlyOne', { name: profileB.display_name, n: counts.onlyB }) },
+    { bucket: 'neither', label: t('compare.legendNeither', { n: counts.neither }) },
   ];
 
   return (
@@ -110,7 +112,7 @@ export default function ComparePokedexes() {
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backRow} hitSlop={8}>
           <Ionicons name="chevron-back" size={18} color={colors.primary} />
-          <Text style={styles.backText}>Retour</Text>
+          <Text style={styles.backText}>{t('common.back')}</Text>
         </Pressable>
         <View style={styles.namesRow}>
           <Text style={styles.nameA} numberOfLines={1}>{profileA.display_name}</Text>

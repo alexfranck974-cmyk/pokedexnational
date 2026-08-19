@@ -3,15 +3,16 @@ import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, StyleS
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/lib/auth';
 import {
-  useFeedbackComments, useAddFeedbackComment, useUpdateFeedbackStatus, STATUS_LABEL,
+  useFeedbackComments, useAddFeedbackComment, useUpdateFeedbackStatus, getStatusLabel,
   type FeedbackKind, type FeedbackStatus,
 } from '@/lib/feedback';
 import { FeedbackStatusBadge } from './FeedbackStatusBadge';
 import { BubbleSheet } from './BubbleSheet';
 import { useThemedStyles, useTheme, radius, spacing, fonts } from '@/lib/theme';
+import { useLocale, useT } from '@/lib/locale';
+import type { Locale } from '@/lib/locale';
 
 const TINT = '#8b5cf6';
-const KIND_LABEL: Record<FeedbackKind, string> = { bug: 'Bug', suggestion: 'Suggestion' };
 const STATUS_OPTIONS: FeedbackStatus[] = ['open', 'in_progress', 'resolved', 'closed'];
 
 export interface FeedbackDetailTarget {
@@ -30,12 +31,14 @@ interface Props {
   isAdmin: boolean;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+function formatDate(iso: string, locale: Locale): string {
+  return new Date(iso).toLocaleDateString(locale === 'en' ? 'en-US' : 'fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 export function FeedbackDetailModal({ item, onClose, isAdmin }: Props) {
   const { colors } = useTheme();
+  const { locale } = useLocale();
+  const t = useT();
   const { session } = useSession();
   const myId = session?.user.id;
   const [comment, setComment] = useState('');
@@ -84,12 +87,12 @@ export function FeedbackDetailModal({ item, onClose, isAdmin }: Props) {
   };
 
   return (
-    <BubbleSheet visible={!!item} onClose={onClose} tint={TINT} title={KIND_LABEL[item.kind]} sizing="standard">
+    <BubbleSheet visible={!!item} onClose={onClose} tint={TINT} title={t(item.kind === 'bug' ? 'feedback.kindBug' : 'feedback.kindSuggestion')} sizing="standard">
       <View style={styles.body}>
         <View style={styles.headRow}>
           <FeedbackStatusBadge status={item.status} />
           {item.authorName && <Text style={styles.meta}>{item.authorName}</Text>}
-          <Text style={styles.meta}>{formatDate(item.createdAt)}</Text>
+          <Text style={styles.meta}>{formatDate(item.createdAt, locale)}</Text>
         </View>
 
         <Text style={styles.message}>{item.message}</Text>
@@ -103,7 +106,7 @@ export function FeedbackDetailModal({ item, onClose, isAdmin }: Props) {
                 onPress={() => s !== item.status && updateStatus.mutate({ feedbackId: item.id, status: s })}
                 style={[styles.statusChip, s === item.status && styles.statusChipActive]}>
                 <Text style={[styles.statusChipText, s === item.status && styles.statusChipTextActive]}>
-                  {STATUS_LABEL[s]}
+                  {getStatusLabel(s, locale)}
                 </Text>
               </Pressable>
             ))}
@@ -116,12 +119,12 @@ export function FeedbackDetailModal({ item, onClose, isAdmin }: Props) {
           <ActivityIndicator />
         ) : (
           <ScrollView style={styles.commentsScroll} contentContainerStyle={styles.comments}>
-            {comments.length === 0 && <Text style={styles.empty}>Aucune réponse pour l'instant.</Text>}
+            {comments.length === 0 && <Text style={styles.empty}>{t('feedback.noRepliesYet')}</Text>}
             {comments.map((c) => (
               <View key={c.id} style={styles.comment}>
                 <View style={styles.commentHead}>
                   <Text style={styles.commentAuthor}>{c.authorName}</Text>
-                  <Text style={styles.commentDate}>{formatDate(c.createdAt)}</Text>
+                  <Text style={styles.commentDate}>{formatDate(c.createdAt, locale)}</Text>
                 </View>
                 <Text style={styles.commentBody}>{c.body}</Text>
               </View>
@@ -134,7 +137,7 @@ export function FeedbackDetailModal({ item, onClose, isAdmin }: Props) {
             <TextInput
               value={comment}
               onChangeText={setComment}
-              placeholder={isAdmin ? 'Répondre…' : 'Ajouter un message…'}
+              placeholder={t(isAdmin ? 'feedback.replyPlaceholder' : 'feedback.addMessagePlaceholder')}
               placeholderTextColor={colors.textDim}
               multiline
               style={styles.input}
