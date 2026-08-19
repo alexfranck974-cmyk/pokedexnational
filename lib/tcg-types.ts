@@ -25,10 +25,6 @@ const TCG_TYPE_LABEL_EN: Record<string, string> = {
   Fairy: 'Fairy', Dragon: 'Dragon', Colorless: 'Colorless',
 };
 
-export function tcgTypeLabelFr(tcgType: string): string {
-  return TCG_TYPE_LABEL_FR[tcgType] ?? tcgType;
-}
-
 export function getTcgTypeLabel(tcgType: string, locale: Locale): string {
   return (locale === 'en' ? TCG_TYPE_LABEL_EN[tcgType] : TCG_TYPE_LABEL_FR[tcgType]) ?? tcgType;
 }
