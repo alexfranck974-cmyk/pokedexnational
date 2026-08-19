@@ -38,14 +38,10 @@ export function StatRingTile({ label, owned, total, color, size = 64, icon, hide
         {icon}
       </ProgressRing>
       {!hideCaption && (
-        icon ? (
-          <Text style={styles.count}>{pct}% · {owned}/{total}</Text>
-        ) : (
-          <>
-            <Text style={styles.label} numberOfLines={1}>{label}</Text>
-            <Text style={styles.count}>{owned}/{total}</Text>
-          </>
-        )
+        <>
+          <Text style={styles.label} numberOfLines={1}>{label}</Text>
+          <Text style={styles.count}>{icon ? `${pct}% · ${owned}/${total}` : `${owned}/${total}`}</Text>
+        </>
       )}
     </Pressable>
   );
