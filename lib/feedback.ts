@@ -4,6 +4,13 @@ import { supabase } from './supabase';
 export type FeedbackKind = 'bug' | 'suggestion';
 export type FeedbackStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 
+export const STATUS_LABEL: Record<FeedbackStatus, string> = {
+  open: 'Ouvert',
+  in_progress: 'En cours',
+  resolved: 'Résolu',
+  closed: 'Fermé',
+};
+
 export interface FeedbackItem {
   id: string;
   kind: FeedbackKind;

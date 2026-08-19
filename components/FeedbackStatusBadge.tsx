@@ -1,13 +1,6 @@
 import { View, Text } from 'react-native';
-import { type FeedbackStatus } from '@/lib/feedback';
+import { STATUS_LABEL, type FeedbackStatus } from '@/lib/feedback';
 import { useTheme, radius, fonts } from '@/lib/theme';
-
-const STATUS_LABEL: Record<FeedbackStatus, string> = {
-  open: 'Ouvert',
-  in_progress: 'En cours',
-  resolved: 'Résolu',
-  closed: 'Fermé',
-};
 
 export function FeedbackStatusBadge({ status }: { status: FeedbackStatus }) {
   const { colors } = useTheme();

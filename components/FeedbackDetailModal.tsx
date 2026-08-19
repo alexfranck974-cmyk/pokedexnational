@@ -3,7 +3,7 @@ import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, StyleS
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/lib/auth';
 import {
-  useFeedbackComments, useAddFeedbackComment, useUpdateFeedbackStatus,
+  useFeedbackComments, useAddFeedbackComment, useUpdateFeedbackStatus, STATUS_LABEL,
   type FeedbackKind, type FeedbackStatus,
 } from '@/lib/feedback';
 import { FeedbackStatusBadge } from './FeedbackStatusBadge';
@@ -148,7 +148,3 @@ export function FeedbackDetailModal({ item, onClose, isAdmin }: Props) {
     </BubbleSheet>
   );
 }
-
-const STATUS_LABEL: Record<FeedbackStatus, string> = {
-  open: 'Ouvert', in_progress: 'En cours', resolved: 'Résolu', closed: 'Fermé',
-};
