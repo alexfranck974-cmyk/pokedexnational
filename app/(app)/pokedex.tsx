@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, RefreshControl } from 'react-native';
+import { View, Text, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -50,8 +50,9 @@ export default function PokedexScreen() {
     heroCount: { fontSize: 20, fontFamily: fonts.monoBold, color: heroTextColor },
     heroFilter: { fontSize: 11, fontFamily: fonts.body, color: heroTextMuted },
     heroValue: { fontSize: 12, fontFamily: fonts.monoBold, color: heroTextMuted },
+    center: { flex: 1, justifyContent: 'center' as const, alignItems: 'center' as const },
   }));
-  const { data: owned = new Set<number>(), refetch: refetchOwned } = useUserDex(userId);
+  const { data: owned = new Set<number>(), refetch: refetchOwned, isLoading: dexLoading } = useUserDex(userId);
   const { data: collectedDex = new Set<number>() } = useOwnedDexNums(userId);
   const { data: ownedImages = new Map<number, string>(), refetch: refetchOwnedImages } = useOwnedCardImages(userId);
   const { data: ownedCardsDetailed = [] } = useAllOwnedCardsDetailed(userId);
@@ -146,6 +147,15 @@ export default function PokedexScreen() {
   const zoomCardImage = zoomCard ? { image_small: zoomCard.imageSmall, image_large: zoomCard.imageLarge } : null;
 
   const reset = () => { setStatus('all'); setType([]); setSet(null); setRarity(null); setGeneration([]); };
+
+  if (dexLoading) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <PokedexSectionTabs active="pokedex" />
+        <View style={styles.center}><ActivityIndicator /></View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.screen}>

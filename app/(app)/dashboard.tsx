@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Animated, Easing, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, Animated, Easing, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,7 +49,7 @@ export default function DashboardScreen() {
   const { session } = useSession();
   const userId = session?.user.id;
   const joinedAt = session?.user.created_at;
-  const { data: owned = new Set<number>() } = useUserDex(userId);
+  const { data: owned = new Set<number>(), isLoading: dexLoading } = useUserDex(userId);
   const { data: ownedCards = [] } = useAllOwnedCardsDetailed(userId);
   const { data: showcase = new Set<number>() } = useShowcase(userId);
   const { data: wishedCards = [] } = useAllWishedCards(userId);
@@ -111,6 +111,7 @@ export default function DashboardScreen() {
   const hideOnScrollProps = useHideOnScrollProps();
   const styles = useThemedStyles((colors) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
+    center: { flex: 1, justifyContent: 'center' as const, alignItems: 'center' as const },
     scroll: { padding: spacing.lg, paddingBottom: spacing.lg + TAB_BAR_CLEARANCE, gap: spacing.lg },
     titleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
     h1: { fontSize: 30, fontFamily: fonts.display, color: colors.text },
@@ -141,6 +142,14 @@ export default function DashboardScreen() {
       borderWidth: 2, borderColor: colors.bg,
     },
   }));
+
+  if (dexLoading) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.center}><ActivityIndicator /></View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.screen}>
