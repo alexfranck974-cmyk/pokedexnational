@@ -250,6 +250,7 @@ export const STRINGS = {
     'favorites.a11yChangeLayout': 'Changer la mise en page',
     'favorites.a11yAddCard': 'Ajouter une carte',
     'favorites.a11yRemoveCard': 'Retirer cette carte',
+    'favorites.a11yZoomCard': 'Zoomer sur cette carte',
 
     // Feedback
     'feedback.heroTitle': 'Suggestions & Support',
@@ -650,6 +651,7 @@ export const STRINGS = {
     'favorites.a11yChangeLayout': 'Change layout',
     'favorites.a11yAddCard': 'Add a card',
     'favorites.a11yRemoveCard': 'Remove this card',
+    'favorites.a11yZoomCard': 'Zoom on this card',
 
     'feedback.heroTitle': 'Suggestions & Support',
     'feedback.segmentSuggestions': 'Suggestions',

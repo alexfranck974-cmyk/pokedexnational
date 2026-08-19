@@ -279,35 +279,38 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
         )}
         {statsTab === 'generation' && (
           <View style={[styles.card, styles.grid]}>
-            {byGeneration.map(g => (
-              <StatRingTile
-                key={g.gen}
-                label={locale === 'en' ? g.labelEn : g.label}
-                owned={g.owned}
-                total={g.total}
-                color={GEN_COLORS[g.gen] ?? colors.primary}
-                size={76}
-                icon={(
-                  <IconBubble size={44} color={GEN_COLORS[g.gen] ?? colors.primary}>
-                    <View style={styles.starterTrio}>
-                      {(GEN_STARTERS[g.gen] ?? []).map((dexNum, i) => (
-                        <Image
-                          key={dexNum}
-                          source={{ uri: SPRITE_BY_DEX.get(dexNum) }}
-                          style={[styles.starterTrioSprite, i > 0 && styles.starterTrioSpriteOverlap]}
-                          resizeMode="contain"
-                        />
-                      ))}
-                    </View>
-                  </IconBubble>
-                )}
-                hideCaption
-                onPress={() => setBreakdown({
-                  title: locale === 'en' ? g.labelEn : g.label, owned: g.owned, total: g.total, color: GEN_COLORS[g.gen] ?? colors.primary,
-                  items: pokemonItems(POKEDEX.filter(p => getGeneration(p.num) === g.gen)),
-                })}
-              />
-            ))}
+            {byGeneration.map(g => {
+              const genIcon = (
+                <IconBubble size={44} color={GEN_COLORS[g.gen] ?? colors.primary}>
+                  <View style={styles.starterTrio}>
+                    {(GEN_STARTERS[g.gen] ?? []).map((dexNum, i) => (
+                      <Image
+                        key={dexNum}
+                        source={{ uri: SPRITE_BY_DEX.get(dexNum) }}
+                        style={[styles.starterTrioSprite, i > 0 && styles.starterTrioSpriteOverlap]}
+                        resizeMode="contain"
+                      />
+                    ))}
+                  </View>
+                </IconBubble>
+              );
+              return (
+                <StatRingTile
+                  key={g.gen}
+                  label={locale === 'en' ? g.labelEn : g.label}
+                  owned={g.owned}
+                  total={g.total}
+                  color={GEN_COLORS[g.gen] ?? colors.primary}
+                  size={76}
+                  icon={genIcon}
+                  onPress={() => setBreakdown({
+                    title: locale === 'en' ? g.labelEn : g.label, owned: g.owned, total: g.total, color: GEN_COLORS[g.gen] ?? colors.primary,
+                    items: pokemonItems(POKEDEX.filter(p => getGeneration(p.num) === g.gen)),
+                    icon: genIcon,
+                  })}
+                />
+              );
+            })}
           </View>
         )}
         {statsTab === 'type' && (

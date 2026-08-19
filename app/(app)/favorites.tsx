@@ -176,6 +176,7 @@ export default function FavoritesScreen() {
   const [dupSearch, setDupSearch] = useState('');
   const [dupSort, setDupSort] = useState<'value' | 'quantity' | 'name'>('value');
   const [dupZoom, setDupZoom] = useState<ZoomableCard | null>(null);
+  const [binderZoom, setBinderZoom] = useState<ZoomableCard | null>(null);
 
   const ownedPokemon = useMemo(() => POKEDEX.filter(p => owned.has(p.num)), [owned]);
 
@@ -384,6 +385,10 @@ export default function FavoritesScreen() {
     collectionImg: { width: '100%' as const, aspectRatio: 0.72 },
     removeBtn: {
       position: 'absolute' as const, top: 4, right: 4, width: 24, height: 24, borderRadius: 12,
+      backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
+    },
+    zoomBtn: {
+      position: 'absolute' as const, top: 4, left: 4, width: 24, height: 24, borderRadius: 12,
       backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
     notOwnedBadge: {
@@ -665,6 +670,13 @@ export default function FavoritesScreen() {
                         )}
                         <Pressable
                           hitSlop={8}
+                          onPress={() => setBinderZoom({ image_small: item.imageUrl })}
+                          style={styles.zoomBtn}
+                          accessibilityLabel={t('favorites.a11yZoomCard')}>
+                          <Ionicons name="search" size={14} color="white" />
+                        </Pressable>
+                        <Pressable
+                          hitSlop={8}
                           onPress={() => removeBinderSlot.mutate({ binderId: selectedBinder.id, position: item.position, imagePath: item.imagePath })}
                           style={styles.removeBtn}
                           accessibilityLabel={t('favorites.a11yRemoveCard')}>
@@ -928,6 +940,7 @@ export default function FavoritesScreen() {
         onCancel={() => setDeleteTarget(null)}
       />
       <CardZoomModal card={dupZoom} onClose={() => setDupZoom(null)} />
+      <CardZoomModal card={binderZoom} onClose={() => setBinderZoom(null)} />
     </SafeAreaView>
   );
 }

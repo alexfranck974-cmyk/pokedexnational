@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { View, Text, Image, Pressable, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ProgressRing } from './ProgressRing';
@@ -23,6 +23,10 @@ export interface BreakdownTarget {
   color: string;
   items: BreakdownItem[];
   ringless?: boolean;
+  /** Optional small bubble (e.g. the starter-trio sprite cluster) shown above
+   * the ring — a visual anchor carried over from the summary tile, on top of
+   * (not instead of) the usual pct/fraction ring and legend below it. */
+  icon?: ReactNode;
 }
 
 interface Props {
@@ -70,6 +74,7 @@ export function StatBreakdownModal({ target, onClose, onSelectItem }: Props) {
           <>
             {!target.ringless && (
               <View style={styles.body}>
+                {target.icon}
                 <ProgressRing
                   pct={pct} size={120} strokeWidth={14} color={target.color}
                   centerLabel={`${pct}%`} centerSub={`${target.owned}/${target.total}`}
