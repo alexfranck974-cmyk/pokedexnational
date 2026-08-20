@@ -21,6 +21,7 @@ export const STRINGS = {
     'common.unpin': 'Désépingler',
     'common.close': 'Fermer',
     'common.refresh': 'Actualiser',
+    'common.loadError': 'Impossible de charger ton profil, réessaie.',
 
     // App layout — global FABs
     'appLayout.a11ySettings': 'Réglages',
@@ -71,6 +72,7 @@ export const STRINGS = {
     'settings.terms': "Conditions d'utilisation",
     'settings.privacy': 'Confidentialité',
     'settings.trainerFallback': 'Dresseur',
+    'settings.displayNameEmpty': 'Le nom affiché ne peut pas être vide.',
 
     // Pokédex screen
     'pokedex.heroTitle': 'Pokédex National',
@@ -473,6 +475,7 @@ export const STRINGS = {
     'common.unpin': 'Unpin',
     'common.close': 'Close',
     'common.refresh': 'Refresh',
+    'common.loadError': 'Couldn’t load your profile, try again.',
 
     // App layout — global FABs
     'appLayout.a11ySettings': 'Settings',
@@ -520,6 +523,7 @@ export const STRINGS = {
     'settings.terms': 'Terms of use',
     'settings.privacy': 'Privacy',
     'settings.trainerFallback': 'Trainer',
+    'settings.displayNameEmpty': 'Display name can’t be empty.',
 
     'pokedex.heroTitle': 'National Pokédex',
     'pokedex.filterHint': 'Filter: {hint}',

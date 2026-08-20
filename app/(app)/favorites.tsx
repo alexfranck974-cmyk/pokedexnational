@@ -490,6 +490,7 @@ export default function FavoritesScreen() {
                   value={renameValue}
                   onChangeText={setRenameValue}
                   autoFocus
+                  maxLength={40}
                   style={styles.renameInput}
                   onSubmitEditing={() => { renameTeam.mutate({ teamId: selectedTeam.id, name: renameValue.trim() || selectedTeam.name }); setRenaming(false); }}
                   onBlur={() => { renameTeam.mutate({ teamId: selectedTeam.id, name: renameValue.trim() || selectedTeam.name }); setRenaming(false); }}
@@ -550,6 +551,7 @@ export default function FavoritesScreen() {
                 value={newTeamName}
                 onChangeText={setNewTeamName}
                 onSubmitEditing={handleCreateTeam}
+                maxLength={40}
                 style={styles.newTeamInput}
               />
               <Pressable onPress={handleCreateTeam} style={styles.newTeamBtn}>
@@ -594,6 +596,7 @@ export default function FavoritesScreen() {
                 value={binderRenameValue}
                 onChangeText={setBinderRenameValue}
                 autoFocus
+                maxLength={40}
                 style={styles.renameInput}
                 onSubmitEditing={() => { renameBinder.mutate({ binderId: selectedBinder.id, name: binderRenameValue.trim() || selectedBinder.name }); setBinderRenaming(false); }}
                 onBlur={() => { renameBinder.mutate({ binderId: selectedBinder.id, name: binderRenameValue.trim() || selectedBinder.name }); setBinderRenaming(false); }}
@@ -718,6 +721,7 @@ export default function FavoritesScreen() {
               value={newBinderName}
               onChangeText={setNewBinderName}
               onSubmitEditing={handleCreateBinder}
+              maxLength={40}
               style={styles.newTeamInput}
             />
             <Pressable onPress={handleCreateBinder} style={styles.newTeamBtn}>

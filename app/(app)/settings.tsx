@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TextInput, Pressable, Switch, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, Pressable, Switch, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE, P
 import { useMotion } from '@/lib/motion';
 import { useLocale, useT } from '@/lib/locale';
 import { useIsAdmin } from '@/lib/feedback';
+import { toast } from '@/lib/toast';
 
 export default function Settings() {
   const router = useRouter();
@@ -72,14 +73,20 @@ export default function Settings() {
 
   useEffect(() => {
     if (!userId) return;
-    supabase.from('profiles').select('username, display_name, is_public').eq('id', userId).single()
-      .then(({ data }) => {
+    (async () => {
+      try {
+        const { data, error } = await supabase.from('profiles').select('username, display_name, is_public').eq('id', userId).single();
         if (data) {
           setUsername(data.username);
           setDisplayName(data.display_name);
           setIsPublic(data.is_public);
+        } else if (error) {
+          toast(t('common.loadError'));
         }
-      });
+      } catch {
+        toast(t('common.loadError'));
+      }
+    })();
   }, [userId]);
 
   const shareBase = process.env.EXPO_PUBLIC_APP_URL ?? '';
@@ -87,18 +94,24 @@ export default function Settings() {
 
   const save = async () => {
     if (!userId) return;
+    const trimmedName = displayName.trim();
+    if (!trimmedName) {
+      toast(t('settings.displayNameEmpty'));
+      return;
+    }
     setSaving(true);
     const { error } = await supabase.from('profiles')
-      .update({ display_name: displayName, is_public: isPublic })
+      .update({ display_name: trimmedName, is_public: isPublic })
       .eq('id', userId);
     setSaving(false);
-    if (error) Alert.alert(t('common.error'), error.message);
+    if (error) toast(error.message);
+    else setDisplayName(trimmedName);
   };
 
   const copy = async () => {
     if (!shareUrl) return;
     await Clipboard.setStringAsync(shareUrl);
-    Alert.alert(t('common.copied'), shareUrl);
+    toast(t('qrCode.linkCopiedToast'));
   };
 
   return (
@@ -134,7 +147,7 @@ export default function Settings() {
             </IconBubble>
             <Text style={styles.label}>{t('settings.displayNameLabel')}</Text>
           </View>
-          <TextInput value={displayName} onChangeText={setDisplayName} style={styles.input} />
+          <TextInput value={displayName} onChangeText={setDisplayName} style={styles.input} maxLength={60} />
         </View>
 
         <View style={styles.rowInline}>

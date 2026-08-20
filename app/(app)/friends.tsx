@@ -22,6 +22,7 @@ import { QRCodeModal } from '@/components/QRCodeModal';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
+import { toast } from '@/lib/toast';
 import { withReturnTo } from '@/lib/navigation';
 import { useT, useTRich } from '@/lib/locale';
 
@@ -100,8 +101,15 @@ export default function FriendsScreen() {
 
   useEffect(() => {
     if (!userId) return;
-    supabase.from('profiles').select('username').eq('id', userId).single()
-      .then(({ data }) => { if (data) setMyUsername(data.username); });
+    (async () => {
+      try {
+        const { data, error } = await supabase.from('profiles').select('username').eq('id', userId).single();
+        if (data) setMyUsername(data.username);
+        else if (error) toast(t('common.loadError'));
+      } catch {
+        toast(t('common.loadError'));
+      }
+    })();
   }, [userId]);
 
   const myShareUrl = myUsername ? `${process.env.EXPO_PUBLIC_APP_URL ?? ''}/u/${myUsername}` : '';
