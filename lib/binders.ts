@@ -352,3 +352,45 @@ export function useRemoveBinderSlot() {
     onError: () => toast('Impossible de retirer cette carte, réessaie.'),
   });
 }
+
+// Frees up a position by shifting everything at/after it by +1 — creates no
+// row itself, the freed position becomes a normal "+" tile. See
+// 051_binder_slot_insert_delete.sql for why this needs an RPC (the same
+// unique-index-collision problem swap_binder_slots (050) has, but for a bulk
+// shift instead of a two-item swap).
+export function useInsertBinderSlot() {
+  const qc = useQueryClient();
+  const { session } = useSession();
+  const userId = session?.user.id;
+  return useMutation({
+    mutationFn: async ({ binderId, position }: { binderId: string; position: number }) => {
+      const { error } = await supabase.rpc('insert_binder_slot', { p_collection_id: binderId, p_position: position });
+      if (error) throw error;
+    },
+    onSuccess: (_r, { binderId }) => {
+      qc.invalidateQueries({ queryKey: ['binders', userId] });
+      qc.invalidateQueries({ queryKey: ['binder_cards', binderId] });
+    },
+    onError: () => toast('Impossible d’insérer un emplacement, réessaie.'),
+  });
+}
+
+// Deletes whatever is at a position (if anything) and shifts everything
+// after it down by -1 — distinct from useRemoveBinderSlot, which only clears
+// content and leaves the position gap in place.
+export function useDeleteBinderSlot() {
+  const qc = useQueryClient();
+  const { session } = useSession();
+  const userId = session?.user.id;
+  return useMutation({
+    mutationFn: async ({ binderId, position }: { binderId: string; position: number }) => {
+      const { error } = await supabase.rpc('delete_binder_slot', { p_collection_id: binderId, p_position: position });
+      if (error) throw error;
+    },
+    onSuccess: (_r, { binderId }) => {
+      qc.invalidateQueries({ queryKey: ['binders', userId] });
+      qc.invalidateQueries({ queryKey: ['binder_cards', binderId] });
+    },
+    onError: () => toast('Impossible de supprimer cet emplacement, réessaie.'),
+  });
+}

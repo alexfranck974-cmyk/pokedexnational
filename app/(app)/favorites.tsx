@@ -25,7 +25,8 @@ import {
 import {
   useBinders, useCreateBinder, useCreatePrefilledBinder, useRenameBinder, useDeleteBinder,
   useBinderCards, useRemoveBinderSlot, useSetBinderLayout, useSwapBinderSlots,
-  BINDER_LAYOUTS, BINDER_LAYOUT_COLS, type BinderLayout,
+  useInsertBinderSlot, useDeleteBinderSlot,
+  BINDER_LAYOUTS, BINDER_LAYOUT_COLS, type BinderLayout, type BinderSlotItem,
 } from '@/lib/binders';
 import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
 import { useTcgSets, useTcgArtists } from '@/lib/tcg-index';
@@ -116,6 +117,8 @@ export default function FavoritesScreen() {
   const removeBinderSlot = useRemoveBinderSlot();
   const setBinderLayout = useSetBinderLayout();
   const swapBinderSlots = useSwapBinderSlots();
+  const insertBinderSlot = useInsertBinderSlot();
+  const deleteBinderSlot = useDeleteBinderSlot();
 
   const { data: goals = [] } = useSetGoals(userId);
   const toggleGoal = useToggleSetGoal();
@@ -162,6 +165,12 @@ export default function FavoritesScreen() {
   const [binderRenameValue, setBinderRenameValue] = useState('');
   const [pickingPosition, setPickingPosition] = useState<number | null>(null);
   const [layoutPickerOpen, setLayoutPickerOpen] = useState(false);
+  // "Organiser" mode — insert/delete-with-shift, distinct from drag (move) and
+  // ✕ (clear content). Tool-then-target: arm a tool from the floating
+  // toolbar, then tap any slot to apply it. Stays armed across taps so
+  // several inserts/deletes can be chained without re-tapping the tool.
+  const [organizeMode, setOrganizeMode] = useState(false);
+  const [armedTool, setArmedTool] = useState<'insertLeft' | 'insertRight' | 'delete' | null>(null);
 
   // Drag-and-drop state for binder slots — see swap_binder_slots RPC (050) for
   // the DB side. draggingPosition/dragTranslation drive the floating ghost
@@ -340,6 +349,18 @@ export default function FavoritesScreen() {
     setSelectedBinderId(id);
   };
 
+  const toggleOrganizeMode = () => {
+    setOrganizeMode(o => !o);
+    setArmedTool(null);
+  };
+
+  const applyArmedTool = (position: number) => {
+    if (!armedTool || !selectedBinder) return;
+    if (armedTool === 'insertLeft') insertBinderSlot.mutate({ binderId: selectedBinder.id, position });
+    else if (armedTool === 'insertRight') insertBinderSlot.mutate({ binderId: selectedBinder.id, position: position + 1 });
+    else deleteBinderSlot.mutate({ binderId: selectedBinder.id, position });
+  };
+
   const handleConfirmDelete = () => {
     if (!deleteTarget) return;
     if (deleteTarget.kind === 'team') {
@@ -456,6 +477,13 @@ export default function FavoritesScreen() {
     wizardBtnText: { fontSize: 15, fontFamily: fonts.bodyBold, color: 'white' },
     wizardBackBtn: { alignSelf: 'flex-start' as const, padding: spacing.xs },
     wizardBackBtnText: { fontSize: 13, fontFamily: fonts.body, color: colors.primary },
+    organizeToolbar: { padding: spacing.md, gap: spacing.sm, backgroundColor: colors.surfaceAlt, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+    organizeHint: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
+    organizeSlot: {
+      flex: 1, borderRadius: radius.bubble, borderWidth: 2, borderColor: colors.warning,
+      alignItems: 'center' as const, justifyContent: 'center' as const, overflow: 'hidden' as const,
+      backgroundColor: colors.surfaceAlt,
+    },
     goalsGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm },
     catalogList: { padding: spacing.md, gap: spacing.lg, paddingBottom: TAB_BAR_CLEARANCE },
     catalogSection: { gap: spacing.xs },
@@ -658,12 +686,31 @@ export default function FavoritesScreen() {
               <Ionicons name="grid-outline" size={20} color={colors.primary} />
             </Pressable>
             <Pressable
+              onPress={toggleOrganizeMode}
+              hitSlop={8} style={{ marginRight: spacing.sm }}
+              accessibilityLabel={t('favorites.a11yOrganize')}>
+              <Ionicons name="construct-outline" size={20} color={organizeMode ? colors.warning : colors.primary} />
+            </Pressable>
+            <Pressable
               onPress={() => setDeleteTarget({ kind: 'binder', id: selectedBinder.id, name: selectedBinder.name })}
               hitSlop={8}
               accessibilityLabel={t('favorites.deleteBinderTitle')}>
               <Ionicons name="trash-outline" size={20} color={colors.danger} />
             </Pressable>
           </View>
+
+          {organizeMode && (
+            <View style={styles.organizeToolbar}>
+              <Text style={styles.organizeHint}>
+                {t(armedTool ? 'favorites.organizeHintArmed' : 'favorites.organizeHintIdle')}
+              </Text>
+              <View style={styles.chipRow}>
+                <Chip label={t('favorites.organizeInsertLeft')} active={armedTool === 'insertLeft'} onPress={() => setArmedTool('insertLeft')} />
+                <Chip label={t('favorites.organizeInsertRight')} active={armedTool === 'insertRight'} onPress={() => setArmedTool('insertRight')} />
+                <Chip label={t('favorites.organizeDelete')} active={armedTool === 'delete'} onPress={() => setArmedTool('delete')} />
+              </View>
+            </View>
+          )}
 
           <View ref={gridContainerRef} onLayout={onGridLayout} style={{ flex: 1 }}>
             <FlashList
@@ -678,6 +725,19 @@ export default function FavoritesScreen() {
               keyExtractor={(s) => String(s.position)}
               renderItem={({ item }) => {
                 const filled = 'cardId' in item;
+                if (organizeMode) {
+                  return (
+                    <View style={styles.binderSlotTile}>
+                      <Pressable onPress={() => applyArmedTool(item.position)} style={styles.organizeSlot}>
+                        {filled ? (
+                          <Image source={{ uri: (item as BinderSlotItem).imageUrl }} style={styles.collectionImg} resizeMode="contain" />
+                        ) : (
+                          <View style={styles.binderSlotEmpty} />
+                        )}
+                      </Pressable>
+                    </View>
+                  );
+                }
                 if (!filled) {
                   return (
                     <View style={styles.binderSlotTile}>
