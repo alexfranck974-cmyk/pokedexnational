@@ -189,6 +189,7 @@ export default function FeedbackScreen() {
                 placeholder={t(composeKind === 'bug' ? 'feedback.bugPlaceholder' : 'feedback.suggestionPlaceholder')}
                 placeholderTextColor={colors.textDim}
                 multiline
+                maxLength={2000}
                 style={styles.composeInput}
               />
               <Pressable onPress={submit} disabled={!composeMessage.trim() || submitFeedback.isPending} style={styles.sendBtn}>

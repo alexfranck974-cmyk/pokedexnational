@@ -140,6 +140,7 @@ export function FeedbackDetailModal({ item, onClose, isAdmin }: Props) {
               placeholder={t(isAdmin ? 'feedback.replyPlaceholder' : 'feedback.addMessagePlaceholder')}
               placeholderTextColor={colors.textDim}
               multiline
+              maxLength={2000}
               style={styles.input}
             />
             <Pressable onPress={submitComment} disabled={!comment.trim() || addComment.isPending} style={styles.sendBtn}>
