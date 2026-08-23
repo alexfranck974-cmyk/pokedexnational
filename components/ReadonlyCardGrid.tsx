@@ -33,7 +33,6 @@ export function ReadonlyCardGrid({ cards, onZoom }: Props) {
     <FlashList
       data={cards}
       numColumns={numColsFor(width)}
-      estimatedItemSize={140}
       maintainVisibleContentPosition={{ disabled: true }}
       keyExtractor={c => c.key}
       renderItem={({ item }) => !item ? null : (

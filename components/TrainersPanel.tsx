@@ -245,7 +245,6 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
         <FlashList
           data={visibleGroups}
           numColumns={numColsFor(width)}
-          estimatedItemSize={150}
           contentContainerStyle={styles.grid}
           maintainVisibleContentPosition={{ disabled: true }}
           refreshControl={refreshControl}

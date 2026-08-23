@@ -191,7 +191,6 @@ export default function WishlistScreen() {
       ) : viewMode === 'pokemon' ? (
         <FlashList
           data={grouped}
-          estimatedItemSize={76}
           contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
           maintainVisibleContentPosition={{ disabled: true }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
@@ -239,7 +238,6 @@ export default function WishlistScreen() {
         <FlashList
           data={filtered}
           numColumns={numColsFor(width)}
-          estimatedItemSize={200}
           contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
           maintainVisibleContentPosition={{ disabled: true }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}

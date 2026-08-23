@@ -630,7 +630,6 @@ export default function FavoritesScreen() {
             <FlashList
               data={Array.from({ length: binderSlotCount }, (_, position) => binderCardsByPosition.get(position) ?? { position })}
               numColumns={BINDER_LAYOUT_COLS[selectedBinder.layout]}
-              estimatedItemSize={200}
               contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
               maintainVisibleContentPosition={{ disabled: true }}
               scrollEnabled={draggingPosition === null}
@@ -821,7 +820,6 @@ export default function FavoritesScreen() {
             <FlashList
               data={duplicateCards}
               numColumns={numColsFor(width)}
-              estimatedItemSize={150}
               contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
               maintainVisibleContentPosition={{ disabled: true }}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}

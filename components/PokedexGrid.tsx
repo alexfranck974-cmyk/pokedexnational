@@ -87,7 +87,6 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, co
     <FlashList
       data={rows}
       numColumns={cols}
-      estimatedItemSize={120}
       keyExtractor={row => row?.key ?? 'missing'}
       getItemType={row => row?.type ?? 'pokemon'}
       ListHeaderComponent={ListHeaderComponent}

@@ -99,7 +99,7 @@ describe('applyPokedexPipeline', () => {
   });
 
   it('filters by generation (Gen 1 = dex 1..151)', () => {
-    const bigSample = [
+    const bigSample: Pokemon[] = [
       ...sample,
       { num: 152, name_fr: 'Germignon', name_en: 'Chikorita', types: ['grass'], sprite_url: '', evolvesFromNum: null },
       { num: 906, name_fr: 'Poussacha', name_en: 'Sprigatito', types: ['grass'], sprite_url: '', evolvesFromNum: null },
@@ -111,7 +111,7 @@ describe('applyPokedexPipeline', () => {
   });
 
   it('filters by generation (Gen 9 = dex 906..1025)', () => {
-    const bigSample = [
+    const bigSample: Pokemon[] = [
       ...sample,
       { num: 906, name_fr: 'Poussacha', name_en: 'Sprigatito', types: ['grass'], sprite_url: '', evolvesFromNum: null },
       { num: 1025, name_fr: 'Pêchaminus', name_en: 'Pecharunt', types: ['poison'], sprite_url: '', evolvesFromNum: null },
@@ -123,7 +123,7 @@ describe('applyPokedexPipeline', () => {
   });
 
   it('filters by generation, multi-select is OR', () => {
-    const bigSample = [
+    const bigSample: Pokemon[] = [
       ...sample,
       { num: 152, name_fr: 'Germignon', name_en: 'Chikorita', types: ['grass'], sprite_url: '', evolvesFromNum: null },
       { num: 906, name_fr: 'Poussacha', name_en: 'Sprigatito', types: ['grass'], sprite_url: '', evolvesFromNum: null },

@@ -131,7 +131,6 @@ export default function ComparePokedexes() {
       <FlashList
         data={POKEDEX}
         numColumns={numColsFor(width)}
-        estimatedItemSize={100}
         contentContainerStyle={{ padding: spacing.sm, paddingBottom: TAB_BAR_CLEARANCE }}
         keyExtractor={p => String(p.num)}
         renderItem={({ item }) => !item ? null : (

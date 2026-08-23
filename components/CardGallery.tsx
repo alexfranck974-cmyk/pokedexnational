@@ -46,7 +46,6 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
     return (
       <FlashList
         data={cards}
-        estimatedItemSize={100}
         contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
         maintainVisibleContentPosition={{ disabled: true }}
         keyExtractor={c => c.id}
@@ -75,7 +74,6 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
     <FlashList
       data={cards}
       numColumns={columnsOverride ?? numColsFor(width)}
-      estimatedItemSize={200}
       contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
       maintainVisibleContentPosition={{ disabled: true }}
       keyExtractor={c => c.id}
