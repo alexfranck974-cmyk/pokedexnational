@@ -23,7 +23,7 @@ import {
   useTeams, useCreateTeam, useRenameTeam, useDeleteTeam, useSetTeamSlot, useClearTeamSlot,
 } from '@/lib/teams';
 import {
-  useBinders, useCreateBinder, useRenameBinder, useDeleteBinder,
+  useBinders, useCreateBinder, useCreatePrefilledBinder, useRenameBinder, useDeleteBinder,
   useBinderCards, useRemoveBinderSlot, useSetBinderLayout, useSwapBinderSlots,
   BINDER_LAYOUTS, BINDER_LAYOUT_COLS, type BinderLayout,
 } from '@/lib/binders';
@@ -110,6 +110,7 @@ export default function FavoritesScreen() {
 
   const { data: binders = [] } = useBinders(userId);
   const createBinder = useCreateBinder();
+  const createPrefilledBinder = useCreatePrefilledBinder();
   const renameBinder = useRenameBinder();
   const deleteBinder = useDeleteBinder();
   const removeBinderSlot = useRemoveBinderSlot();
@@ -150,6 +151,13 @@ export default function FavoritesScreen() {
 
   const [selectedBinderId, setSelectedBinderId] = useState<string | null>(null);
   const [newBinderName, setNewBinderName] = useState('');
+  // Creation wizard — step 1 (name) reuses newBinderName above; steps 2-3
+  // (layout, mode/set) live in their own sheet, opened once a name is typed.
+  const [binderWizardStep, setBinderWizardStep] = useState<'layout' | 'mode' | 'set' | null>(null);
+  const [wizardLayout, setWizardLayout] = useState<BinderLayout>(9);
+  const [wizardMode, setWizardMode] = useState<'free' | 'prefill'>('free');
+  const [wizardSetId, setWizardSetId] = useState<string | null>(null);
+  const [wizardSetSearch, setWizardSetSearch] = useState('');
   const [binderRenaming, setBinderRenaming] = useState(false);
   const [binderRenameValue, setBinderRenameValue] = useState('');
   const [pickingPosition, setPickingPosition] = useState<number | null>(null);
@@ -186,6 +194,11 @@ export default function FavoritesScreen() {
     const q = normalize(debouncedArtistSearch.trim());
     return q ? allArtists.filter(a => normalize(a.artist).includes(q)) : allArtists;
   }, [allArtists, debouncedArtistSearch]);
+
+  const wizardFilteredSets = useMemo(() => {
+    const q = normalize(wizardSetSearch.trim());
+    return q ? allSets.filter(s => normalize(s.name).includes(q)) : allSets;
+  }, [allSets, wizardSetSearch]);
 
   // Debounced: search can shrink this FlashList drastically on every keystroke.
   const debouncedDupSearch = useDebouncedValue(dupSearch, 200);
@@ -305,11 +318,25 @@ export default function FavoritesScreen() {
     setSelectedTeamId(id);
   };
 
-  const handleCreateBinder = async () => {
+  const openBinderWizard = () => {
     const name = newBinderName.trim();
     if (!name) return;
-    const id = await createBinder.mutateAsync(name);
+    setWizardLayout(9);
+    setWizardMode('free');
+    setWizardSetId(null);
+    setWizardSetSearch('');
+    setBinderWizardStep('layout');
+  };
+
+  const finishBinderWizard = async (setId?: string) => {
+    const name = newBinderName.trim();
+    if (!name) return;
+    const effectiveSetId = setId ?? wizardSetId;
+    const id = wizardMode === 'prefill' && effectiveSetId
+      ? await createPrefilledBinder.mutateAsync({ name, layout: wizardLayout, setId: effectiveSetId })
+      : await createBinder.mutateAsync({ name, layout: wizardLayout });
     setNewBinderName('');
+    setBinderWizardStep(null);
     setSelectedBinderId(id);
   };
 
@@ -393,7 +420,11 @@ export default function FavoritesScreen() {
       backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
     notOwnedBadge: {
-      position: 'absolute' as const, top: 4, right: 4, width: 22, height: 22, borderRadius: 11,
+      // Bottom-left, deliberately not top-left/top-right — those corners are
+      // already taken by zoomBtn/removeBtn and used to silently collide with
+      // removeBtn (both top:4,right:4), hiding this badge behind it whenever
+      // a slot held a not-owned card.
+      position: 'absolute' as const, bottom: 4, left: 4, width: 22, height: 22, borderRadius: 11,
       backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
     binderSlotTile: { flex: 1, padding: 6, aspectRatio: 0.72 },
@@ -417,6 +448,14 @@ export default function FavoritesScreen() {
     layoutOptionActive: { backgroundColor: colors.primary },
     layoutOptionText: { fontSize: 15, fontFamily: fonts.bodyBold, color: colors.text, textAlign: 'center' as const },
     layoutOptionTextActive: { color: 'white' },
+
+    wizardBody: { padding: spacing.md, gap: spacing.md },
+    wizardHint: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted },
+    wizardBtn: { padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: 'center' as const },
+    wizardBtnDisabled: { opacity: 0.5 },
+    wizardBtnText: { fontSize: 15, fontFamily: fonts.bodyBold, color: 'white' },
+    wizardBackBtn: { alignSelf: 'flex-start' as const, padding: spacing.xs },
+    wizardBackBtnText: { fontSize: 13, fontFamily: fonts.body, color: colors.primary },
     goalsGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm },
     catalogList: { padding: spacing.md, gap: spacing.lg, paddingBottom: TAB_BAR_CLEARANCE },
     catalogSection: { gap: spacing.xs },
@@ -719,11 +758,11 @@ export default function FavoritesScreen() {
               placeholder={t('favorites.newBinderPlaceholder')}
               value={newBinderName}
               onChangeText={setNewBinderName}
-              onSubmitEditing={handleCreateBinder}
+              onSubmitEditing={openBinderWizard}
               maxLength={40}
               style={styles.newTeamInput}
             />
-            <Pressable onPress={handleCreateBinder} style={styles.newTeamBtn}>
+            <Pressable onPress={openBinderWizard} style={styles.newTeamBtn}>
               <Ionicons name="add" size={20} color="white" />
             </Pressable>
           </View>
@@ -942,6 +981,77 @@ export default function FavoritesScreen() {
               </Text>
             </Pressable>
           ))}
+        </View>
+      </BubbleSheet>
+
+      <BubbleSheet visible={binderWizardStep === 'layout'} onClose={() => setBinderWizardStep(null)} tint={colors.primary} title={t('favorites.wizardLayoutTitle')} sizing="auto">
+        <View style={styles.layoutOptions}>
+          {BINDER_LAYOUTS.map((l) => (
+            <Pressable
+              key={l}
+              onPress={() => { setWizardLayout(l); setBinderWizardStep('mode'); }}
+              style={[styles.layoutOption, wizardLayout === l && styles.layoutOptionActive]}>
+              <Text style={[styles.layoutOptionText, wizardLayout === l && styles.layoutOptionTextActive]}>
+                {BINDER_LAYOUT_LABEL[l]}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </BubbleSheet>
+
+      <BubbleSheet visible={binderWizardStep === 'mode'} onClose={() => setBinderWizardStep(null)} tint={colors.primary} title={t('favorites.wizardModeTitle')} sizing="auto">
+        <View style={styles.wizardBody}>
+          <Pressable onPress={() => setBinderWizardStep('layout')} style={styles.wizardBackBtn}>
+            <Text style={styles.wizardBackBtnText}>{t('common.back')}</Text>
+          </Pressable>
+          <View style={styles.chipRow}>
+            <Chip label={t('favorites.wizardModeFree')} active={wizardMode === 'free'} onPress={() => setWizardMode('free')} />
+            <Chip label={t('favorites.wizardModePrefill')} active={wizardMode === 'prefill'} onPress={() => setWizardMode('prefill')} />
+          </View>
+          <Text style={styles.wizardHint}>
+            {t(wizardMode === 'free' ? 'favorites.wizardModeFreeHint' : 'favorites.wizardModePrefillHint')}
+          </Text>
+          <Pressable
+            onPress={() => wizardMode === 'prefill' ? setBinderWizardStep('set') : finishBinderWizard()}
+            disabled={createBinder.isPending}
+            style={[styles.wizardBtn, createBinder.isPending && styles.wizardBtnDisabled]}>
+            <Text style={styles.wizardBtnText}>{t(wizardMode === 'prefill' ? 'favorites.wizardNext' : 'favorites.wizardCreate')}</Text>
+          </Pressable>
+        </View>
+      </BubbleSheet>
+
+      <BubbleSheet visible={binderWizardStep === 'set'} onClose={() => setBinderWizardStep(null)} tint={colors.primary} title={t('favorites.wizardSetTitle')} sizing="auto">
+        <View style={[styles.wizardBody, { flex: 1 }]}>
+          <Pressable onPress={() => setBinderWizardStep('mode')} style={styles.wizardBackBtn}>
+            <Text style={styles.wizardBackBtnText}>{t('common.back')}</Text>
+          </Pressable>
+          <TextInput
+            placeholder={t('favorites.wizardSearchSetPlaceholder')}
+            value={wizardSetSearch}
+            onChangeText={setWizardSetSearch}
+            style={styles.dupSearchInput}
+          />
+          {wizardFilteredSets.length === 0 ? (
+            <View style={styles.center}>
+              <Text style={styles.emptyHint}>{t('favorites.noResults')}</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={wizardFilteredSets}
+              contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
+              keyExtractor={s => s.id}
+              renderItem={({ item }) => (
+                <Pressable
+                  disabled={createPrefilledBinder.isPending}
+                  onPress={() => { setWizardSetId(item.id); finishBinderWizard(item.id); }}
+                  style={({ pressed }) => [styles.teamRow, pressed && styles.teamRowPressed]}>
+                  <Text style={styles.teamRowName} numberOfLines={1}>{setFlagLabel(item.name, item.region)}</Text>
+                  <Text style={styles.teamRowCount}>{item.cardCount}</Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                </Pressable>
+              )}
+            />
+          )}
         </View>
       </BubbleSheet>
 

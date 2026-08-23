@@ -137,15 +137,62 @@ export function useCreateBinder() {
   const userId = session?.user.id;
   const invalidate = useInvalidateBinders();
   return useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async ({ name, layout }: { name: string; layout: BinderLayout }) => {
       if (!userId) throw new Error('Not signed in');
       const { data, error } = await supabase
         .from('user_collections')
-        .insert({ user_id: userId, name })
+        .insert({ user_id: userId, name, layout })
         .select('id')
         .single();
       if (error) throw error;
       return data.id as string;
+    },
+    onSuccess: invalidate,
+    onError: () => toast('Impossible de créer le binder, réessaie.'),
+  });
+}
+
+// Same as useCreateBinder, then bulk-fills every position with a card from the
+// chosen set (in the order given — see useCardsForSet, sorted by dex_num) so
+// the binder immediately shows the whole set as a checklist. No new slot
+// state needed: a prefilled position just holds a real card_id like any
+// manually-assigned one, so the existing "not owned" badge in the editor
+// grid (favorites.tsx) already renders it correctly, and tapping a prefilled
+// slot opens the same picker used to replace any other filled slot. Safe to
+// insert sequentially (create then bulk-insert) since this is a brand new
+// collection with no existing rows to collide with on the (collection_id,
+// position) unique index.
+export function useCreatePrefilledBinder() {
+  const { session } = useSession();
+  const userId = session?.user.id;
+  const invalidate = useInvalidateBinders();
+  return useMutation({
+    mutationFn: async ({ name, layout, setId }: { name: string; layout: BinderLayout; setId: string }) => {
+      if (!userId) throw new Error('Not signed in');
+      // Fetched here (not passed in from a separately-called useCardsForSet)
+      // so there's no risk of finalizing the wizard against a stale/still-
+      // loading card list — same query useCardsForSet runs, ordered by
+      // dex_num (groups by evolution line, a reasonable default reading order).
+      const { data: cards, error: cardsErr } = await supabase
+        .from('tcg_cards')
+        .select('id')
+        .eq('set_id', setId)
+        .order('dex_num', { ascending: true });
+      if (cardsErr) throw cardsErr;
+
+      const { data, error } = await supabase
+        .from('user_collections')
+        .insert({ user_id: userId, name, layout })
+        .select('id')
+        .single();
+      if (error) throw error;
+      const collectionId = data.id as string;
+      if (cards && cards.length > 0) {
+        const rows = cards.map((c, position) => ({ collection_id: collectionId, card_id: c.id as string, position }));
+        const { error: itemsErr } = await supabase.from('user_collection_items').insert(rows);
+        if (itemsErr) throw itemsErr;
+      }
+      return collectionId;
     },
     onSuccess: invalidate,
     onError: () => toast('Impossible de créer le binder, réessaie.'),
