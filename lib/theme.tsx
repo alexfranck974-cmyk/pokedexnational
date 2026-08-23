@@ -78,9 +78,9 @@ export interface ShadowTokens {
 // each named after a Poké Ball. Success/danger/warning and shadows stay identical across
 // palettes (semantic meaning shouldn't shift with the accent hue) and only vary by dark/light
 // mode, same as before palettes existed.
-export type PaletteId = 'pokeball' | 'greatball' | 'ultraball' | 'masterball' | 'healball';
+export type PaletteId = 'pokeball' | 'greatball' | 'ultraball' | 'masterball' | 'healball' | 'luxuryball';
 
-export const PALETTE_ORDER: PaletteId[] = ['pokeball', 'greatball', 'ultraball', 'masterball', 'healball'];
+export const PALETTE_ORDER: PaletteId[] = ['pokeball', 'greatball', 'ultraball', 'masterball', 'healball', 'luxuryball'];
 
 type NeutralAccentTokens = Pick<ColorTokens,
   | 'bg' | 'surface' | 'surfaceAlt' | 'border' | 'borderStrong'
@@ -175,6 +175,21 @@ const PALETTES: Record<PaletteId, PaletteDefinition> = {
       primary: '#d1467e', primaryDark: '#a8355f', primaryBg: '#3d1a2a', primarySoft: '#fbdce6',
     },
   },
+  luxuryball: {
+    label: 'Luxury Ball',
+    swatch: '#d4af37',
+    overlayRgb: '10, 9, 7',
+    dark: {
+      bg: '#0a0908', surface: '#161310', surfaceAlt: '#211c16', border: '#332b20', borderStrong: '#4a3f2c',
+      text: '#f5efe0', textMuted: '#c2b393', textDim: '#a3966f',
+      primary: '#d4af37', primaryDark: '#a8842a', primaryBg: '#2b2005', primarySoft: '#332812',
+    },
+    light: {
+      bg: '#faf7ee', surface: '#ffffff', surfaceAlt: '#f2ead0', border: '#e2d3a0', borderStrong: '#cbb772',
+      text: '#1a1610', textMuted: '#6b5d3f', textDim: '#7d6f4d',
+      primary: '#a8842a', primaryDark: '#7a5f1a', primaryBg: '#2b2005', primarySoft: '#f5ecc8',
+    },
+  },
 };
 
 export const PALETTE_META: Record<PaletteId, { label: string; swatch: string }> =
@@ -207,19 +222,19 @@ function buildTokens(id: PaletteId, mode: ThemeMode): ColorTokens {
 
 const darkShadow: ShadowTokens = {
   sm: {
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.4, shadowRadius: 2, elevation: 1,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.5, shadowRadius: 4, elevation: 2,
   },
   md: {
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 10, elevation: 2,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.6, shadowRadius: 16, elevation: 4,
   },
 };
 
 const lightShadow: ShadowTokens = {
   sm: {
-    shadowColor: '#3a2320', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 1,
+    shadowColor: '#3a2320', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 2,
   },
   md: {
-    shadowColor: '#3a2320', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 2,
+    shadowColor: '#3a2320', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 16, elevation: 4,
   },
 };
 
