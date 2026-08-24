@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { View, Text, Image, Pressable, ScrollView, ActivityIndicator, type NativeSyntheticEvent, type NativeScrollEvent, useWindowDimensions } from 'react-native';
+import { View, Text, Image, Pressable, ScrollView, Animated, ActivityIndicator, type NativeSyntheticEvent, type NativeScrollEvent, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,6 +35,10 @@ export default function BinderViewerScreen() {
   const [pageIndex, setPageIndex] = useState(0);
   const [zoomTarget, setZoomTarget] = useState<ZoomableCard | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  // Drives the page-turn transform below — continuous, tied 1:1 to actual
+  // scroll position (not a fire-and-forget timer), so it stays responsive
+  // even on web where useNativeDriver doesn't get true thread isolation.
+  const scrollX = useRef(new Animated.Value(0)).current;
 
   const layout = binder?.layout ?? 9;
   const cols = BINDER_LAYOUT_COLS[layout];
@@ -117,14 +121,26 @@ export default function BinderViewerScreen() {
       </LinearGradient>
 
       <View style={{ flex: 1 }}>
-        <ScrollView
+        <Animated.ScrollView
           ref={scrollRef}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: true })}
+          scrollEventThrottle={16}
           onMomentumScrollEnd={onMomentumScrollEnd}>
-          {Array.from({ length: pageCount }, (_, page) => (
-            <View key={page} style={[styles.page, { width }]}>
+          {Array.from({ length: pageCount }, (_, page) => {
+            // Fans neighboring pages back in 3D as they scroll off, like a
+            // held-open binder — 0deg/full scale/opacity exactly at rest,
+            // tapering out toward the adjacent pages on either side.
+            const inputRange = [(page - 1) * width, page * width, (page + 1) * width];
+            const rotateY = scrollX.interpolate({ inputRange, outputRange: ['12deg', '0deg', '-12deg'], extrapolate: 'clamp' });
+            const scale = scrollX.interpolate({ inputRange, outputRange: [0.94, 1, 0.94], extrapolate: 'clamp' });
+            const opacity = scrollX.interpolate({ inputRange, outputRange: [0.75, 1, 0.75], extrapolate: 'clamp' });
+            return (
+            <Animated.View
+              key={page}
+              style={[styles.page, { width, opacity, transform: [{ perspective: 800 }, { rotateY }, { scale }] }]}>
               <View style={styles.grid}>
                 {Array.from({ length: layout }, (_, i) => {
                   const position = page * layout + i;
@@ -161,9 +177,10 @@ export default function BinderViewerScreen() {
                   );
                 })}
               </View>
-            </View>
-          ))}
-        </ScrollView>
+            </Animated.View>
+            );
+          })}
+        </Animated.ScrollView>
 
         {pageCount > 1 && (
           <>
