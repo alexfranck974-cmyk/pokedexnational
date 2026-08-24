@@ -90,12 +90,14 @@ export function CardCopySheet({ card, onClose }: Props) {
                   <Pressable
                     hitSlop={8}
                     disabled={quantity <= 0}
+                    accessibilityLabel={t('cardCopy.a11yDecreaseQty', { finish: getFinishLabel(finish, locale) })}
                     onPress={() => adjustQuantity.mutate({ cardId: card.id, finish, delta: -1, currentQuantity: quantity, rarity: card.rarity })}>
                     <Ionicons name="remove-circle-outline" size={22} color={quantity > 0 ? colors.text : colors.textMuted} />
                   </Pressable>
                   <Text style={styles.qtyText}>{quantity}</Text>
                   <Pressable
                     hitSlop={8}
+                    accessibilityLabel={t('cardCopy.a11yIncreaseQty', { finish: getFinishLabel(finish, locale) })}
                     onPress={() => { hapticCardAdded(); adjustQuantity.mutate({ cardId: card.id, finish, delta: 1, currentQuantity: quantity, rarity: card.rarity }); }}>
                     <Ionicons name="add-circle-outline" size={22} color={colors.text} />
                   </Pressable>

@@ -136,6 +136,8 @@ export const STRINGS = {
     'cardCopy.editButton': 'Modifier finition / état',
     'cardCopy.detailsA11yLabel': 'Voir finition et état',
     'cardCopy.notListedHint': 'Non listée pour cette carte',
+    'cardCopy.a11yDecreaseQty': 'Retirer une copie {finish}',
+    'cardCopy.a11yIncreaseQty': 'Ajouter une copie {finish}',
 
     // Capture celebration overlay (shared across Pokédex, pinned sets, etc.)
     'capture.rarityCaptured': 'Carte {rarityLabel} capturée',
@@ -598,6 +600,8 @@ export const STRINGS = {
     'cardCopy.editButton': 'Edit finish / condition',
     'cardCopy.detailsA11yLabel': 'View finish and condition',
     'cardCopy.notListedHint': 'Not listed for this card',
+    'cardCopy.a11yDecreaseQty': 'Remove one {finish} copy',
+    'cardCopy.a11yIncreaseQty': 'Add one {finish} copy',
 
     'capture.rarityCaptured': '{rarityLabel} card captured',
     'capture.typeComplete': '{type} type complete!',
