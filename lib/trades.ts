@@ -215,6 +215,7 @@ export function useDeclineTrade() {
       if (error) throw error;
     },
     onSuccess: invalidate,
+    onError: () => toast('Impossible de refuser cet échange, réessaie.'),
   });
 }
 
@@ -226,6 +227,7 @@ export function useCancelTrade() {
       if (error) throw error;
     },
     onSuccess: invalidate,
+    onError: () => toast('Impossible d’annuler cet échange, réessaie.'),
   });
 }
 
