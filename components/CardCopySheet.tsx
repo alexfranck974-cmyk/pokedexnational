@@ -9,6 +9,7 @@ import {
   CONDITION_LABELS, getFinishLabel, useOwnedCardFinishRows, useAdjustOwnedCardQuantity, useUpdateFinishCondition,
   type OwnedCardFinish, type OwnedCardCondition,
 } from '@/lib/collection';
+import { hapticCardAdded } from '@/lib/haptics';
 
 const FINISHES: OwnedCardFinish[] = ['normal', 'holo', 'reverse_holo'];
 const CONDITIONS: OwnedCardCondition[] = ['mint', 'near_mint', 'excellent', 'good', 'played', 'poor'];
@@ -95,7 +96,7 @@ export function CardCopySheet({ card, onClose }: Props) {
                   <Text style={styles.qtyText}>{quantity}</Text>
                   <Pressable
                     hitSlop={8}
-                    onPress={() => adjustQuantity.mutate({ cardId: card.id, finish, delta: 1, currentQuantity: quantity, rarity: card.rarity })}>
+                    onPress={() => { hapticCardAdded(); adjustQuantity.mutate({ cardId: card.id, finish, delta: 1, currentQuantity: quantity, rarity: card.rarity }); }}>
                     <Ionicons name="add-circle-outline" size={22} color={colors.text} />
                   </Pressable>
                 </View>
