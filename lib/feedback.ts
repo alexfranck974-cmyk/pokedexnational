@@ -112,13 +112,16 @@ export function useIsAdmin(userId?: string) {
 // Public suggestion board — every user's suggestion, vote count embedded via
 // PostgREST's count aggregate. Sorted client-side (votes desc, then newest)
 // since ordering by an embedded aggregate isn't expressible in PostgREST.
+// profiles must be disambiguated (!feedback_user_id_fkey) — feedback_votes
+// (040) opened a second feedback->profiles path (via feedback_votes.user_id),
+// so a bare profiles(...) embed 300s with "more than one relationship found".
 export function usePublicSuggestions() {
   return useQuery({
     queryKey: ['public_suggestions'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('feedback')
-        .select('id, message, status, created_at, user_id, profiles(username, display_name), feedback_votes(count)')
+        .select('id, message, status, created_at, user_id, profiles!feedback_user_id_fkey(username, display_name), feedback_votes(count)')
         .eq('kind', 'suggestion');
       if (error) throw error;
       return (data ?? [])
@@ -191,13 +194,14 @@ export function useToggleVote(userId?: string) {
 const STATUS_ORDER: Record<FeedbackStatus, number> = { open: 0, in_progress: 1, resolved: 2, closed: 3 };
 
 // Admin-only: every ticket/suggestion across all users, open items first.
+// profiles disambiguated for the same reason as usePublicSuggestions above.
 export function useAdminFeedback() {
   return useQuery({
     queryKey: ['admin_feedback'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('feedback')
-        .select('id, kind, message, status, created_at, user_id, profiles(username, display_name)')
+        .select('id, kind, message, status, created_at, user_id, profiles!feedback_user_id_fkey(username, display_name)')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? [])
@@ -227,6 +231,7 @@ export function useUpdateFeedbackStatus() {
       qc.invalidateQueries({ queryKey: ['public_suggestions'] });
       qc.invalidateQueries({ queryKey: ['feedback'] });
     },
+    onError: () => toast('Impossible de mettre à jour le statut, réessaie.'),
   });
 }
 
