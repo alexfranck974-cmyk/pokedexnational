@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, type StyleProp, type ViewStyle } from 'react-native';
+import { Animated, Easing, Platform, type StyleProp, type ViewStyle } from 'react-native';
 import { spacing } from '@/lib/theme';
 
 const SLIDE_DURATION = 300; // ms
@@ -24,31 +24,40 @@ export function SlideTransition({ transitionKey, direction, style, children }: P
 
   useEffect(() => {
     if (!direction) { progress.setValue(1); return; }
-    // Double-rAF before resetting+starting: the content this wraps just
-    // mounted/updated in this same commit, and that layout+paint work
-    // competes with the JS thread that Animated.timing's clock runs on under
-    // react-native-web (no true native driver on web — useNativeDriver here
-    // just avoids a warning, it doesn't get the animation off the JS thread).
-    // Starting immediately meant the heavy first paint could eat most of the
-    // budget before the browser got a chance to render an intermediate
-    // frame, so the "animation" was really just a jump. Waiting two frames
-    // lets that first paint land first. Crucially, setValue(0) also has to
-    // wait for those same two frames, not fire eagerly — resetting early
-    // left the already-visible content snapped to invisible/offset for the
-    // whole deferred window with nothing animating yet, which read as a
-    // flash (a real blank frame gets painted and held, then it recovers).
-    // Reset and start happen back-to-back in the same synchronous tick here,
-    // so there's no gap for the browser to paint the reset-but-not-yet-
-    // animating state in between.
+
+    const start = () => {
+      progress.setValue(0);
+      const anim = Animated.timing(progress, {
+        toValue: 1, duration: SLIDE_DURATION, easing: Easing.out(Easing.cubic), useNativeDriver: true,
+      });
+      anim.start();
+      return anim;
+    };
+
+    // On native, useNativeDriver: true is truly isolated on the UI thread —
+    // no reason to delay, and delaying is actively harmful: whatever screen
+    // this wraps becomes visible (tab focus / mount) in the same commit as
+    // this effect, so any gap before we reset+start leaves it showing its
+    // *previous* settled frame (opacity 1 from last time it was visible)
+    // before snapping through the reset — that flash of stale content was
+    // reported on the Android build. Reset+start synchronously here.
+    if (Platform.OS !== 'web') {
+      const anim = start();
+      return () => anim.stop();
+    }
+
+    // On web there's no true native driver — Animated.timing's clock runs on
+    // the same JS thread as the heavy synchronous mount/layout work this
+    // content just triggered, so starting immediately let that first paint
+    // eat most of the animation budget (looked like a jump, not a slide).
+    // Deferring two frames lets that paint land first. Reset has to be
+    // deferred right alongside the start (not fired eagerly) so there's no
+    // window where the browser paints "reset but not yet animating".
     let anim: Animated.CompositeAnimation | null = null;
     let raf2 = 0;
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
-        progress.setValue(0);
-        anim = Animated.timing(progress, {
-          toValue: 1, duration: SLIDE_DURATION, easing: Easing.out(Easing.cubic), useNativeDriver: true,
-        });
-        anim.start();
+        anim = start();
       });
     });
     return () => {
