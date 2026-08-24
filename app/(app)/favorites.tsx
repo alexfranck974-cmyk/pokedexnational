@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, Image, StyleSheet, FlatList, ScrollView, RefreshControl, useWindowDimensions,
+  View, Text, TextInput, Pressable, Image, StyleSheet, FlatList, ScrollView, RefreshControl, ActivityIndicator, useWindowDimensions,
   type NativeSyntheticEvent, type NativeScrollEvent, type LayoutChangeEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -100,7 +100,7 @@ export default function FavoritesScreen() {
   const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
   const { data: finishesByCard = new Map<string, OwnedCardFinish[]>() } = useOwnedCardFinishes(userId);
   const { data: ownedCardsDetailed = [] } = useAllOwnedCardsDetailed(userId);
-  const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
+  const { data: ledgerCards = [], isLoading: ledgerCardsLoading } = useAllOwnedCardsLedgerDetailed(userId);
   const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
 
   const { data: teams = [] } = useTeams(userId);
@@ -110,7 +110,7 @@ export default function FavoritesScreen() {
   const setSlot = useSetTeamSlot();
   const clearSlot = useClearTeamSlot();
 
-  const { data: binders = [] } = useBinders(userId);
+  const { data: binders = [], isLoading: bindersLoading } = useBinders(userId);
   const createBinder = useCreateBinder();
   const createPrefilledBinder = useCreatePrefilledBinder();
   const renameBinder = useRenameBinder();
@@ -134,7 +134,7 @@ export default function FavoritesScreen() {
       .filter(g => g.sets.length > 0);
   }, [allSets, pinnedSetIds, locale]);
 
-  const { data: allArtists = [] } = useTcgArtists();
+  const { data: allArtists = [], isLoading: artistsLoading } = useTcgArtists();
   // Owned count per artist — computed client-side from cards already fetched
   // (no per-artist query needed, unlike per-set progress).
   const ownedCountByArtist = useMemo(() => {
@@ -863,7 +863,9 @@ export default function FavoritesScreen() {
             </Pressable>
           </View>
 
-          {binders.length === 0 ? (
+          {bindersLoading ? (
+            <View style={styles.center}><ActivityIndicator /></View>
+          ) : binders.length === 0 ? (
             <View style={styles.center}>
               <Text style={styles.emptyHint}>{t('favorites.noBindersYet')}</Text>
             </View>
@@ -895,7 +897,9 @@ export default function FavoritesScreen() {
             onChangeText={setArtistSearch}
             style={styles.dupSearchInput}
           />
-          {filteredArtists.length === 0 ? (
+          {artistsLoading ? (
+            <View style={styles.center}><ActivityIndicator /></View>
+          ) : filteredArtists.length === 0 ? (
             <View style={styles.center}>
               <Text style={styles.emptyHint}>{t('favorites.noArtistFound')}</Text>
             </View>
@@ -945,7 +949,9 @@ export default function FavoritesScreen() {
               <Chip label={t('favorites.sortNameAZ')} active={dupSort === 'name'} onPress={() => setDupSort('name')} />
             </View>
           </View>
-          {duplicateCards.length === 0 ? (
+          {ledgerCardsLoading ? (
+            <View style={styles.center}><ActivityIndicator /></View>
+          ) : duplicateCards.length === 0 ? (
             <View style={styles.center}>
               <Text style={styles.emptyHint}>
                 {dupSearch.trim() ? t('favorites.noResults') : t('favorites.noDuplicatesYet')}
