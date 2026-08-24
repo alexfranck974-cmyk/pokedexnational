@@ -3,7 +3,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { toast } from '@/lib/toast';
-import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useT } from '@/lib/locale';
 
 interface Props {
@@ -14,7 +14,6 @@ interface Props {
 }
 
 export function QRCodeModal({ visible, value, label, onClose }: Props) {
-  const { colors } = useTheme();
   const t = useT();
   const styles = useThemedStyles((colors, shadow) => ({
     backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center' as const, justifyContent: 'center' as const, padding: spacing.xl },
@@ -24,9 +23,14 @@ export function QRCodeModal({ visible, value, label, onClose }: Props) {
     },
     title: { fontSize: 16, fontFamily: fonts.display, color: '#171717' },
     hint: { fontSize: 12, fontFamily: fonts.body, color: '#6d5c53', textAlign: 'center' as const, maxWidth: 220 },
+    // Fixed light color, not colors.surfaceAlt — this whole card is deliberately
+    // theme-independent (white background, dark text) so the QR code stays
+    // scannable regardless of the app's palette/mode. Under a dark palette
+    // (e.g. Luxury Ball), surfaceAlt is near-black — a theme-aware button here
+    // would render as a near-invisible dark circle floating on an all-white card.
     close: {
       position: 'absolute' as const, top: spacing.md, right: spacing.md,
-      backgroundColor: colors.surfaceAlt, borderRadius: radius.pill, padding: 6,
+      backgroundColor: '#f0e6df', borderRadius: radius.pill, padding: 6,
     },
     divider: { width: '100%' as const, height: 1, backgroundColor: '#e6d8cd' },
     linkRow: {
@@ -52,7 +56,7 @@ export function QRCodeModal({ visible, value, label, onClose }: Props) {
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.card} onPress={() => {}}>
           <Pressable onPress={onClose} style={styles.close} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('common.close')}>
-            <Ionicons name="close" size={18} color={colors.text} />
+            <Ionicons name="close" size={18} color="#171717" />
           </Pressable>
           <Text style={styles.title}>{label}</Text>
           <QRCode value={value} size={200} backgroundColor="white" color="#171717" />
