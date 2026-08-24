@@ -1080,7 +1080,7 @@ export default function FavoritesScreen() {
         </View>
       </BubbleSheet>
 
-      <BubbleSheet visible={binderWizardStep === 'set'} onClose={() => setBinderWizardStep(null)} tint={colors.primary} title={t('favorites.wizardSetTitle')} sizing="auto">
+      <BubbleSheet visible={binderWizardStep === 'set'} onClose={() => setBinderWizardStep(null)} tint={colors.primary} title={t('favorites.wizardSetTitle')} sizing="standard">
         <View style={[styles.wizardBody, { flex: 1 }]}>
           <Pressable onPress={() => setBinderWizardStep('mode')} style={styles.wizardBackBtn}>
             <Text style={styles.wizardBackBtnText}>{t('common.back')}</Text>
