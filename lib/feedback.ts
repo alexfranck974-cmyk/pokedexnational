@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
+import { toast } from './toast';
 import type { Locale } from './locale';
 
 export type FeedbackKind = 'bug' | 'suggestion';
@@ -89,6 +90,7 @@ export function useSubmitFeedback() {
       qc.invalidateQueries({ queryKey: ['feedback', userId] });
       qc.invalidateQueries({ queryKey: ['public_suggestions'] });
     },
+    onError: () => toast('Impossible d’envoyer ce message, réessaie.'),
   });
 }
 
@@ -261,5 +263,6 @@ export function useAddFeedbackComment() {
       if (error) throw error;
     },
     onSuccess: (_data, { feedbackId }) => qc.invalidateQueries({ queryKey: ['feedback_comments', feedbackId] }),
+    onError: () => toast('Impossible d’envoyer ce message, réessaie.'),
   });
 }
