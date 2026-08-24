@@ -153,8 +153,11 @@ export function useCreateBinder() {
 }
 
 // Same as useCreateBinder, then bulk-fills every position with a card from the
-// chosen set (in the order given — see useCardsForSet, sorted by dex_num) so
-// the binder immediately shows the whole set as a checklist. No new slot
+// chosen set — in the set's own printed order (card_number, numeric-aware —
+// same convention as the full-set browse view, app/(app)/pinned-set/[setId].tsx)
+// so secret rares (numbered past the base set) land after the base run instead
+// of being interleaved by dex_num, which scattered high-numbered alt-art/secret
+// prints next to their base-set counterpart instead of at the end. No new slot
 // state needed: a prefilled position just holds a real card_id like any
 // manually-assigned one, so the existing "not owned" badge in the editor
 // grid (favorites.tsx) already renders it correctly, and tapping a prefilled
@@ -169,16 +172,14 @@ export function useCreatePrefilledBinder() {
   return useMutation({
     mutationFn: async ({ name, layout, setId }: { name: string; layout: BinderLayout; setId: string }) => {
       if (!userId) throw new Error('Not signed in');
-      // Fetched here (not passed in from a separately-called useCardsForSet)
-      // so there's no risk of finalizing the wizard against a stale/still-
-      // loading card list — same query useCardsForSet runs, ordered by
-      // dex_num (groups by evolution line, a reasonable default reading order).
-      const { data: cards, error: cardsErr } = await supabase
+      const { data: unordered, error: cardsErr } = await supabase
         .from('tcg_cards')
-        .select('id')
-        .eq('set_id', setId)
-        .order('dex_num', { ascending: true });
+        .select('id, card_number')
+        .eq('set_id', setId);
       if (cardsErr) throw cardsErr;
+      const cards = [...(unordered ?? [])].sort((a, b) =>
+        a.card_number.localeCompare(b.card_number, undefined, { numeric: true }),
+      );
 
       const { data, error } = await supabase
         .from('user_collections')
