@@ -358,6 +358,11 @@ export function useRemoveBinderSlot() {
 // 051_binder_slot_insert_delete.sql for why this needs an RPC (the same
 // unique-index-collision problem swap_binder_slots (050) has, but for a bulk
 // shift instead of a two-item swap).
+// Optimistically shifts the cached binder_cards list the same way
+// useSwapBinderSlots does — Organiser mode is built for rapid sequential
+// taps (the armed tool stays active across taps), so without this every
+// insert/delete would wait a full round-trip while its sibling swap
+// operation on the same screen feels instant.
 export function useInsertBinderSlot() {
   const qc = useQueryClient();
   const { session } = useSession();
@@ -367,11 +372,25 @@ export function useInsertBinderSlot() {
       const { error } = await supabase.rpc('insert_binder_slot', { p_collection_id: binderId, p_position: position });
       if (error) throw error;
     },
-    onSuccess: (_r, { binderId }) => {
+    onMutate: async ({ binderId, position }) => {
+      const key = ['binder_cards', binderId];
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<BinderSlotItem[]>(key);
+      if (previous) {
+        qc.setQueryData<BinderSlotItem[]>(key, previous.map((item) =>
+          item.position >= position ? { ...item, position: item.position + 1 } : item,
+        ));
+      }
+      return { previous, binderId };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) qc.setQueryData(['binder_cards', context.binderId], context.previous);
+      toast('Impossible d’insérer un emplacement, réessaie.');
+    },
+    onSettled: (_r, _e, { binderId }) => {
       qc.invalidateQueries({ queryKey: ['binders', userId] });
       qc.invalidateQueries({ queryKey: ['binder_cards', binderId] });
     },
-    onError: () => toast('Impossible d’insérer un emplacement, réessaie.'),
   });
 }
 
@@ -387,10 +406,25 @@ export function useDeleteBinderSlot() {
       const { error } = await supabase.rpc('delete_binder_slot', { p_collection_id: binderId, p_position: position });
       if (error) throw error;
     },
-    onSuccess: (_r, { binderId }) => {
+    onMutate: async ({ binderId, position }) => {
+      const key = ['binder_cards', binderId];
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<BinderSlotItem[]>(key);
+      if (previous) {
+        qc.setQueryData<BinderSlotItem[]>(key, previous
+          .filter((item) => item.position !== position)
+          .map((item) => item.position > position ? { ...item, position: item.position - 1 } : item),
+        );
+      }
+      return { previous, binderId };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) qc.setQueryData(['binder_cards', context.binderId], context.previous);
+      toast('Impossible de supprimer cet emplacement, réessaie.');
+    },
+    onSettled: (_r, _e, { binderId }) => {
       qc.invalidateQueries({ queryKey: ['binders', userId] });
       qc.invalidateQueries({ queryKey: ['binder_cards', binderId] });
     },
-    onError: () => toast('Impossible de supprimer cet emplacement, réessaie.'),
   });
 }
