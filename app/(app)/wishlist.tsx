@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSession } from '@/lib/auth';
 import { useAllWishedCards, useAllOwnedCardIds, useToggleWish } from '@/lib/collection';
 import {
@@ -16,8 +16,9 @@ import { Pokeball } from '@/components/Pokeball';
 import { WishlistFilterBar } from '@/components/WishlistFilterBar';
 import { RefreshButton } from '@/components/RefreshButton';
 import { FriendSetGalleryModal, type FriendSetGalleryTarget } from '@/components/FriendSetGalleryModal';
-import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
-import { enterPokemonDetail } from '@/lib/navigation';
+import { PokedexSectionTabs, sectionIndex, hrefToSection } from '@/components/PokedexSectionTabs';
+import { SlideTransition } from '@/components/SlideTransition';
+import { enterPokemonDetail, safeDecodeURIComponent } from '@/lib/navigation';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { getName } from '@/lib/i18n';
 import { useLocale, useT } from '@/lib/locale';
@@ -38,6 +39,7 @@ function numColsFor(width: number): number {
 
 export default function WishlistScreen() {
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const { session } = useSession();
   const { locale } = useLocale();
   const t = useT();
@@ -50,6 +52,22 @@ export default function WishlistScreen() {
   const { refreshing, onRefresh } = usePullToRefresh();
   const hideOnScrollProps = useHideOnScrollProps();
   const [gallery, setGallery] = useState<FriendSetGalleryTarget | null>(null);
+
+  // Slide-in direction for arriving from Pokédex/Collection via PokedexSectionTabs
+  // — see the matching effect in app/(app)/pokedex.tsx for why navToken (not the
+  // raw `from` string) is what SlideTransition keys on.
+  const [sectionDirection, setSectionDirection] = useState<'left' | 'right' | null>(null);
+  const [navToken, setNavToken] = useState(0);
+  useEffect(() => {
+    if (!from) return;
+    const fromSection = hrefToSection(safeDecodeURIComponent(from));
+    const fromIdx = fromSection ? sectionIndex(fromSection) : null;
+    const ownIdx = sectionIndex('wishlist');
+    const dir: 'left' | 'right' | null = fromIdx === null || fromIdx === ownIdx ? null : fromIdx < ownIdx ? 'right' : 'left';
+    setSectionDirection(dir);
+    setNavToken(n => n + 1);
+    router.setParams({ from: undefined });
+  }, [from, router]);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatus] = useState<WishStatusFilter>('all');
@@ -184,6 +202,7 @@ export default function WishlistScreen() {
         </View>
       </LinearGradient>
 
+      <SlideTransition transitionKey={navToken} direction={sectionDirection} style={{ flex: 1 }}>
       {filtered.length === 0 ? (
         <View style={styles.center}>
           <Text style={styles.emptyHint}>{t('wishlist.noResults')}</Text>
@@ -287,6 +306,7 @@ export default function WishlistScreen() {
           }}
         />
       )}
+      </SlideTransition>
       <WishlistFilterBar
         search={search} onSearch={setSearch}
         statusFilter={statusFilter} onStatus={setStatus}

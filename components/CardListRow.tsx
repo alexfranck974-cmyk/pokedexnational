@@ -8,6 +8,7 @@ import { hapticCardAdded } from '@/lib/haptics';
 import { CHASE_GOLD } from '@/lib/rarity-tiers';
 import { useT } from '@/lib/locale';
 import { FINISH_GRADIENT, pickPrimaryFinish } from '@/lib/finish-visuals';
+import { ReverseHoloShimmer } from '@/components/ReverseHoloShimmer';
 import type { OwnedCardFinish } from '@/lib/collection';
 
 interface Props {
@@ -97,6 +98,7 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
               style={styles.holoBorder}>
               <View style={styles.holoInner}>
                 <Image source={{ uri: card.image_small }} style={styles.thumb} resizeMode="contain" />
+                {!isDexCard && primaryFinish === 'reverse_holo' && <ReverseHoloShimmer />}
               </View>
             </LinearGradient>
           </View>

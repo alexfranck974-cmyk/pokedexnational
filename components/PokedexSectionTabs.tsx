@@ -2,6 +2,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useT } from '@/lib/locale';
+import { withReturnTo } from '@/lib/navigation';
 import type { StringKey } from '@/lib/strings';
 
 export type PokedexSection = 'pokedex' | 'collection' | 'wishlist';
@@ -11,6 +12,15 @@ const SECTIONS: { key: PokedexSection; labelKey: StringKey; href: '/pokedex' | '
   { key: 'collection', labelKey: 'tabs.collection', href: '/favorites' },
   { key: 'wishlist', labelKey: 'tabs.wishlist', href: '/wishlist' },
 ];
+
+// Pure index/lookup helpers so the three section screens can compute a slide
+// direction from the `from` param below without duplicating SECTIONS' order.
+export function sectionIndex(key: PokedexSection): number {
+  return SECTIONS.findIndex(s => s.key === key);
+}
+export function hrefToSection(href: string): PokedexSection | null {
+  return SECTIONS.find(s => s.href === href)?.key ?? null;
+}
 
 interface Props {
   active: PokedexSection;
@@ -40,7 +50,11 @@ export function PokedexSectionTabs({ active }: Props) {
       {SECTIONS.map(s => (
         <Pressable
           key={s.key}
-          onPress={() => { if (s.key !== active) router.replace(s.href as never); }}
+          onPress={() => {
+            if (s.key === active) return;
+            const originHref = SECTIONS.find(sec => sec.key === active)?.href ?? '/pokedex';
+            router.replace(withReturnTo(s.href, originHref) as never);
+          }}
           style={[styles.tabBtn, s.key === active && styles.tabBtnActive]}>
           <Text style={[styles.tabText, s.key === active && styles.tabTextActive]}>{t(s.labelKey)}</Text>
         </Pressable>

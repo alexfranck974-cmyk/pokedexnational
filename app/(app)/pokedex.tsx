@@ -9,11 +9,12 @@ import { useSession } from '@/lib/auth';
 import { useUserDex, useOwnedCardImages, useWishedDexNums, useAllOwnedCardsDetailed, useOwnedDexNums } from '@/lib/collection';
 import { useTcgIndex, useTcgSets, useTcgRarities } from '@/lib/tcg-index';
 import { applyPokedexPipeline } from '@/lib/pokedex-list';
-import { withReturnTo } from '@/lib/navigation';
+import { withReturnTo, safeDecodeURIComponent } from '@/lib/navigation';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { PokedexGrid } from '@/components/PokedexGrid';
-import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
+import { PokedexSectionTabs, sectionIndex, hrefToSection } from '@/components/PokedexSectionTabs';
+import { SlideTransition } from '@/components/SlideTransition';
 import { SearchFilterBar } from '@/components/SearchFilterBar';
 import { ProgressRing } from '@/components/ProgressRing';
 import { CardZoomModal } from '@/components/CardZoomModal';
@@ -32,7 +33,7 @@ const POKEDEX = pokedexData as Pokemon[];
 
 export default function PokedexScreen() {
   const router = useRouter();
-  const { newCard } = useLocalSearchParams<{ newCard?: string }>();
+  const { newCard, from } = useLocalSearchParams<{ newCard?: string; from?: string }>();
   const { session } = useSession();
   const userId = session?.user.id;
   const { colors, heroGradient, heroText: heroTextColor, heroTextMuted, heroSurfaceActive, heroTrack } = useTheme();
@@ -109,6 +110,24 @@ export default function PokedexScreen() {
     })();
   }, [newCard, router, refetchOwned, refetchOwnedImages]);
 
+  // Slide-in direction for arriving from Collection/Wishlist via PokedexSectionTabs
+  // (see withReturnTo/from there) — navToken changes on every navigation event
+  // (even repeat visits from the same section) so SlideTransition's effect
+  // reliably replays; a bare `from` string wouldn't change between two
+  // consecutive same-origin visits.
+  const [sectionDirection, setSectionDirection] = useState<'left' | 'right' | null>(null);
+  const [navToken, setNavToken] = useState(0);
+  useEffect(() => {
+    if (!from) return;
+    const fromSection = hrefToSection(safeDecodeURIComponent(from));
+    const fromIdx = fromSection ? sectionIndex(fromSection) : null;
+    const ownIdx = sectionIndex('pokedex');
+    const dir: 'left' | 'right' | null = fromIdx === null || fromIdx === ownIdx ? null : fromIdx < ownIdx ? 'right' : 'left';
+    setSectionDirection(dir);
+    setNavToken(n => n + 1);
+    router.setParams({ from: undefined });
+  }, [from, router]);
+
   const [search, setSearch]         = useState('');
   const [statusFilter, setStatus]   = useState<StatusFilter>('all');
   const [typeFilter, setType]       = useState<PokemonType[]>([]);
@@ -173,19 +192,21 @@ export default function PokedexScreen() {
         <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={heroTextColor} />
       </LinearGradient>
       <PokedexSectionTabs active="pokedex" />
-      <PokedexGrid
-        items={items}
-        ownedImages={ownedImages}
-        wishedInDexSet={wishedInDexSet}
-        columnsOverride={columns}
-        cardPrices={showValues ? dexPrices : undefined}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-        onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
-        onLongSelect={num => {
-          const idx = ownedItems.findIndex(p => p.num === num);
-          if (idx !== -1) setZoomIndex(idx);
-        }}
-      />
+      <SlideTransition transitionKey={navToken} direction={sectionDirection} style={{ flex: 1 }}>
+        <PokedexGrid
+          items={items}
+          ownedImages={ownedImages}
+          wishedInDexSet={wishedInDexSet}
+          columnsOverride={columns}
+          cardPrices={showValues ? dexPrices : undefined}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+          onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
+          onLongSelect={num => {
+            const idx = ownedItems.findIndex(p => p.num === num);
+            if (idx !== -1) setZoomIndex(idx);
+          }}
+        />
+      </SlideTransition>
       <CardZoomModal
         card={zoomCardImage}
         caption={zoomPokemon ? `#${String(zoomPokemon.num).padStart(4, '0')} · ${getName(zoomPokemon, locale)}` : undefined}

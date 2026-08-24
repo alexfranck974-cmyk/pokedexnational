@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, Image, StyleSheet, FlatList, ScrollView, RefreshControl, ActivityIndicator, useWindowDimensions,
   type NativeSyntheticEvent, type NativeScrollEvent, type LayoutChangeEvent,
@@ -8,7 +8,7 @@ import { FlashList } from '@shopify/flash-list';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
@@ -18,8 +18,9 @@ import {
   useAllOwnedCardsLedgerDetailed, useOwnedCardQuantities, type OwnedCardFinish,
 } from '@/lib/collection';
 import { FINISH_GRADIENT } from '@/lib/finish-visuals';
+import { ReverseHoloShimmer } from '@/components/ReverseHoloShimmer';
 import { eurFormatter } from '@/lib/trades';
-import { withReturnTo } from '@/lib/navigation';
+import { withReturnTo, safeDecodeURIComponent } from '@/lib/navigation';
 import {
   useTeams, useCreateTeam, useRenameTeam, useDeleteTeam, useSetTeamSlot, useClearTeamSlot,
 } from '@/lib/teams';
@@ -39,7 +40,8 @@ import { SetGoalTile } from '@/components/SetGoalTile';
 import { TrainersPanel } from '@/components/TrainersPanel';
 import { BackButton } from '@/components/BackButton';
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
-import { PokedexSectionTabs } from '@/components/PokedexSectionTabs';
+import { PokedexSectionTabs, sectionIndex, hrefToSection } from '@/components/PokedexSectionTabs';
+import { SlideTransition } from '@/components/SlideTransition';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
 import { RefreshButton } from '@/components/RefreshButton';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
@@ -52,6 +54,10 @@ import { setFlagLabel } from '@/lib/tcg-set-labels';
 const POKEDEX = pokedexData as Pokemon[];
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
 const TEAM_SIZE = 6;
+// Visual left-to-right chip order (not the subTab type's declaration order) —
+// drives SlideTransition's direction when switching sub-tabs. 'teams' isn't
+// reachable via any visible chip, so it's excluded here on purpose.
+const SUBTAB_ORDER = ['goals', 'binders', 'artists', 'duplicates', 'trainers'] as const;
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -79,6 +85,7 @@ const Chip = ({ label, active, onPress }: { label: string; active: boolean; onPr
 
 export default function FavoritesScreen() {
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const { session } = useSession();
   const { locale } = useLocale();
   const t = useT();
@@ -147,6 +154,38 @@ export default function FavoritesScreen() {
   }, [ownedCardsDetailed]);
 
   const [subTab, setSubTab] = useState<'teams' | 'binders' | 'goals' | 'artists' | 'trainers' | 'duplicates'>('goals');
+
+  // Slide-in direction/replay-token for the sub-tab content below — shared by
+  // two sources so whichever happened most recently wins: arriving here from
+  // Pokédex/Wishlist (section-level, via the `from` param) or switching
+  // sub-tab chips locally. Unlike pokedex.tsx/wishlist.tsx this screen stays
+  // on the same mounted instance across both kinds of change, so a single
+  // navToken/direction pair (not a key-forced remount) is what makes
+  // SlideTransition replay correctly for either trigger.
+  const [subTabTransitionDirection, setSubTabTransitionDirection] = useState<'left' | 'right' | null>(null);
+  const [subTabNavToken, setSubTabNavToken] = useState(0);
+  useEffect(() => {
+    if (!from) return;
+    const fromSection = hrefToSection(safeDecodeURIComponent(from));
+    const fromIdx = fromSection ? sectionIndex(fromSection) : null;
+    const ownIdx = sectionIndex('collection');
+    const dir: 'left' | 'right' | null = fromIdx === null || fromIdx === ownIdx ? null : fromIdx < ownIdx ? 'right' : 'left';
+    setSubTabTransitionDirection(dir);
+    setSubTabNavToken(n => n + 1);
+    router.setParams({ from: undefined });
+  }, [from, router]);
+  const prevSubTabRef = useRef(subTab);
+  useEffect(() => {
+    const prev = prevSubTabRef.current;
+    prevSubTabRef.current = subTab;
+    if (prev === subTab) return;
+    const prevIdx = SUBTAB_ORDER.indexOf(prev as (typeof SUBTAB_ORDER)[number]);
+    const nextIdx = SUBTAB_ORDER.indexOf(subTab as (typeof SUBTAB_ORDER)[number]);
+    const dir: 'left' | 'right' | null = prevIdx === -1 || nextIdx === -1 ? null : nextIdx > prevIdx ? 'right' : 'left';
+    setSubTabTransitionDirection(dir);
+    setSubTabNavToken(n => n + 1);
+  }, [subTab]);
+
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
@@ -204,8 +243,13 @@ export default function FavoritesScreen() {
   const debouncedArtistSearch = useDebouncedValue(artistSearch, 200);
   const filteredArtists = useMemo(() => {
     const q = normalize(debouncedArtistSearch.trim());
-    return q ? allArtists.filter(a => normalize(a.artist).includes(q)) : allArtists;
-  }, [allArtists, debouncedArtistSearch]);
+    const list = q ? allArtists.filter(a => normalize(a.artist).includes(q)) : allArtists;
+    // Most-owned artist first — the query's own alphabetical order otherwise
+    // buries the artists a collector actually has cards from.
+    return [...list].sort((a, b) =>
+      (ownedCountByArtist.get(b.artist) ?? 0) - (ownedCountByArtist.get(a.artist) ?? 0) || a.artist.localeCompare(b.artist),
+    );
+  }, [allArtists, debouncedArtistSearch, ownedCountByArtist]);
 
   const wizardFilteredSets = useMemo(() => {
     const q = normalize(wizardSetSearch.trim());
@@ -504,7 +548,10 @@ export default function FavoritesScreen() {
     wizardBtnText: { fontSize: 15, fontFamily: fonts.bodyBold, color: 'white' },
     wizardBackBtn: { alignSelf: 'flex-start' as const, padding: spacing.xs },
     wizardBackBtnText: { fontSize: 13, fontFamily: fonts.body, color: colors.primary },
-    organizeToolbar: { padding: spacing.md, gap: spacing.sm, backgroundColor: colors.surfaceAlt, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+    // surface, not surfaceAlt — the Chip pills below use surfaceAlt as their own
+    // background, so a matching toolbar backdrop made them invisible (no visible
+    // frame around the "Insérer à gauche/droite / Supprimer" tap targets).
+    organizeToolbar: { padding: spacing.md, gap: spacing.sm, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
     organizeHint: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
     organizeSlot: {
       flex: 1, borderRadius: radius.bubble, borderWidth: 2, borderColor: colors.warning,
@@ -574,6 +621,7 @@ export default function FavoritesScreen() {
         </ScrollView>
       </View>
 
+      <SlideTransition transitionKey={subTabNavToken} direction={subTabTransitionDirection} style={{ flex: 1 }}>
       {subTab === 'teams' ? (
         selectedTeam ? (
           <View style={styles.teamEditor}>
@@ -798,6 +846,7 @@ export default function FavoritesScreen() {
                             style={styles.holoBorder}>
                             <View style={styles.holoInner}>
                               <Image source={{ uri: item.imageUrl }} style={styles.collectionImg} resizeMode="contain" />
+                              {itemFinish === 'reverse_holo' && <ReverseHoloShimmer />}
                             </View>
                           </LinearGradient>
                         ) : (
@@ -1047,6 +1096,7 @@ export default function FavoritesScreen() {
           ))}
         </ScrollView>
       )}
+      </SlideTransition>
 
       <TeamSlotPicker
         visible={pickerSlot !== null}
