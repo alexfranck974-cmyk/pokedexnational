@@ -167,7 +167,10 @@ export default function MarketScreen() {
                     </IconBubble>
                     <Text style={styles.sectionTitle}>{t('market.chooseFriendTitle')}</Text>
                     <View style={{ flex: 1 }} />
-                    <Pressable onPress={() => { setPickingFriend(false); setFriendSearch(''); }} hitSlop={8}>
+                    <Pressable
+                      onPress={() => { setPickingFriend(false); setFriendSearch(''); }}
+                      hitSlop={8}
+                      accessibilityLabel={t('common.close')}>
                       <Ionicons name="close" size={20} color={colors.textMuted} />
                     </Pressable>
                   </View>
