@@ -251,8 +251,20 @@ export default function FavoritesScreen() {
   // tracking would be unreliable across scroll. On release, swaps (or moves,
   // if the target is empty) the dragged slot with whatever's under the finger.
   const buildSlotDragGesture = (position: number) => {
-    const longPress = Gesture.LongPress()
-      .minDuration(250)
+    // A single Pan gated by activateAfterLongPress instead of Simultaneous(LongPress, Pan):
+    // the old composition let Pan's own minDistance(10) claim the touch on any 10px
+    // finger movement — including an ordinary scroll swipe starting on a filled tile —
+    // before the long-press had actually fired, which is what was blocking FlashList's
+    // scroll. activateAfterLongPress makes Pan itself wait out the hold before it can
+    // activate, so a normal swipe scrolls and only a held-then-dragged touch triggers a swap.
+    // On web that alone isn't enough: RNGH statically sets touch-action:none on any element
+    // with a Pan gesture attached (see the GestureDetector's touchAction="pan-y" prop below),
+    // which blocks native scroll outright regardless of activation timing. "pan-y" tells the
+    // browser to keep handling vertical scroll natively; a stationary long-press still gets
+    // its pointerdown/hold delivered to JS since touch-action only governs actual movement.
+    return Gesture.Pan()
+      .activateAfterLongPress(250)
+      .minDistance(10)
       .onStart((e) => {
         activeDragPositionRef.current = position;
         hoverPositionRef.current = position;
@@ -260,10 +272,7 @@ export default function FavoritesScreen() {
         setHoverPosition(position);
         setDragStartAbsolute({ x: e.absoluteX, y: e.absoluteY });
         setDragTranslation({ x: 0, y: 0 });
-      });
-
-    const pan = Gesture.Pan()
-      .minDistance(10)
+      })
       .onUpdate((e) => {
         if (activeDragPositionRef.current !== position || !selectedBinder) return;
         setDragTranslation({ x: e.translationX, y: e.translationY });
@@ -289,8 +298,6 @@ export default function FavoritesScreen() {
         setHoverPosition(null);
         setDragTranslation({ x: 0, y: 0 });
       });
-
-    return Gesture.Simultaneous(longPress, pan);
   };
 
   const onGridLayout = (_e: LayoutChangeEvent) => {
@@ -755,7 +762,7 @@ export default function FavoritesScreen() {
                 const isDragging = draggingPosition === item.position;
                 const isHoverTarget = hoverPosition === item.position && draggingPosition !== item.position;
                 return (
-                  <GestureDetector gesture={buildSlotDragGesture(item.position)}>
+                  <GestureDetector gesture={buildSlotDragGesture(item.position)} touchAction="pan-y">
                     <View
                       onLayout={onTileLayout}
                       style={[styles.binderSlotTile, isDragging && styles.binderSlotDragging, isHoverTarget && styles.binderSlotHover]}>
