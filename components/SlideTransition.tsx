@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, Easing, type StyleProp, type ViewStyle } from 'react-native';
 import { spacing } from '@/lib/theme';
 
-const SLIDE_DURATION = 260; // ms
+const SLIDE_DURATION = 300; // ms
 const SLIDE_OFFSET = spacing.xl; // 24 — reuse an existing token instead of a new magic number
 
 interface Props {
