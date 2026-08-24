@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { useSession } from '@/lib/auth';
 import { useBinders, useBinderCards, BINDER_LAYOUT_COLS } from '@/lib/binders';
-import { useAllOwnedCardIds } from '@/lib/collection';
+import { useOwnedCardFinishes, type OwnedCardFinish } from '@/lib/collection';
 import { Pokeball } from '@/components/Pokeball';
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
 import { useBackTo } from '@/lib/navigation';
@@ -28,7 +28,7 @@ export default function BinderViewerScreen() {
   const { data: binders = [], isLoading: bindersLoading } = useBinders(userId);
   const binder = binders.find((b) => b.id === binderId);
   const { data: slots = [], isLoading: slotsLoading } = useBinderCards(binderId);
-  const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
+  const { data: finishesByCard = new Map<string, OwnedCardFinish[]>() } = useOwnedCardFinishes(userId);
 
   const [pageIndex, setPageIndex] = useState(0);
   const [zoomTarget, setZoomTarget] = useState<ZoomableCard | null>(null);
@@ -71,6 +71,12 @@ export default function BinderViewerScreen() {
       position: 'absolute' as const, top: 4, right: 4, width: 20, height: 20, borderRadius: 10,
       backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
+    reverseHoloBadge: {
+      position: 'absolute' as const, bottom: 4, right: 4, width: 18, height: 18, borderRadius: 9,
+      backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
+      borderWidth: 1, borderColor: '#8fa3b3',
+    },
+    reverseHoloBadgeText: { fontFamily: fonts.bodyBold, fontSize: 11, color: '#8fa3b3' },
     navBtn: {
       position: 'absolute' as const, top: '50%' as const, marginTop: -22, width: 44, height: 44, borderRadius: 22,
       backgroundColor: colors.surface, alignItems: 'center' as const, justifyContent: 'center' as const, opacity: 0.92, ...shadow.md,
@@ -127,7 +133,8 @@ export default function BinderViewerScreen() {
                     );
                   }
                   const isCard = item.kind === 'card';
-                  const isOwned = isCard && ownedCardIds.has(item.cardId as string);
+                  const itemFinish: OwnedCardFinish = item.finish ?? 'normal';
+                  const isOwned = isCard && (finishesByCard.get(item.cardId as string)?.includes(itemFinish) ?? false);
                   return (
                     <Pressable
                       key={position}
@@ -141,6 +148,9 @@ export default function BinderViewerScreen() {
                         />
                         {isCard && !isOwned && (
                           <View style={styles.notOwnedBadge}><Pokeball size={14} muted /></View>
+                        )}
+                        {isCard && itemFinish === 'reverse_holo' && !isOwned && (
+                          <View style={styles.reverseHoloBadge}><Text style={styles.reverseHoloBadgeText}>R</Text></View>
                         )}
                       </View>
                     </Pressable>

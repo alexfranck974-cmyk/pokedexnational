@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { useSession } from './auth';
 import { toast } from './toast';
+import type { OwnedCardFinish } from './collection';
 
 export type BinderLayout = 1 | 4 | 9 | 12 | 16;
 
@@ -48,6 +49,7 @@ export interface BinderSlotItem {
   position: number;
   kind: 'card' | 'image';
   cardId: string | null;
+  finish: OwnedCardFinish | null;
   imagePath: string | null;
   imageUrl: string;
   dexNum: number | null;
@@ -68,7 +70,7 @@ export function useBinderCards(binderId?: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_collection_items')
-        .select('card_id, image_url, position, added_at, tcg_cards(dex_num, name, image_small, image_large, set_name, card_number, rarity)')
+        .select('card_id, finish, image_url, position, added_at, tcg_cards(dex_num, name, image_small, image_large, set_name, card_number, rarity)')
         .eq('collection_id', binderId!)
         .order('position', { ascending: true });
       if (error) throw error;
@@ -93,6 +95,7 @@ export function useBinderCards(binderId?: string) {
             position: r.position as number,
             kind: 'card',
             cardId: r.card_id as string,
+            finish: ((r.finish as OwnedCardFinish | null) ?? 'normal'),
             imagePath: null,
             imageUrl: card.image_small as string,
             dexNum: card.dex_num as number,
@@ -108,6 +111,7 @@ export function useBinderCards(binderId?: string) {
           position: r.position as number,
           kind: 'image',
           cardId: null,
+          finish: null,
           imagePath: path,
           imageUrl: signedByPath.get(path) ?? '',
           dexNum: null,
@@ -157,24 +161,34 @@ export function useCreateBinder() {
 // same convention as the full-set browse view, app/(app)/pinned-set/[setId].tsx)
 // so secret rares (numbered past the base set) land after the base run instead
 // of being interleaved by dex_num, which scattered high-numbered alt-art/secret
-// prints next to their base-set counterpart instead of at the end. No new slot
-// state needed: a prefilled position just holds a real card_id like any
-// manually-assigned one, so the existing "not owned" badge in the editor
-// grid (favorites.tsx) already renders it correctly, and tapping a prefilled
-// slot opens the same picker used to replace any other filled slot. Safe to
-// insert sequentially (create then bulk-insert) since this is a brand new
-// collection with no existing rows to collide with on the (collection_id,
-// position) unique index.
+// prints next to their base-set counterpart instead of at the end. A prefilled
+// position just holds a real card_id like any manually-assigned one, so the
+// existing "not owned" badge in the editor grid (favorites.tsx) already
+// renders it correctly, and tapping a prefilled slot opens the same picker
+// used to replace any other filled slot. Safe to insert sequentially (create
+// then bulk-insert) since this is a brand new collection with no existing
+// rows to collide with on the (collection_id, position) unique index.
+//
+// includeReverse (default false): appends a second full pass after the normal
+// run — one slot per card whose available_finishes includes 'reverse_holo'
+// (047_tcg_cards_available_finishes.sql; NULL/unsynced cards are skipped,
+// never guessed) — in the same card_number order, so a "master set" binder
+// reads "full normal run, then full reverse run", matching how physical
+// collectors organize these. See 052_binder_slot_finish.sql for the schema
+// change (finish column + widened per-finish uniqueness) that makes it legal
+// for the same card_id to occupy two slots in one binder.
 export function useCreatePrefilledBinder() {
   const { session } = useSession();
   const userId = session?.user.id;
   const invalidate = useInvalidateBinders();
   return useMutation({
-    mutationFn: async ({ name, layout, setId }: { name: string; layout: BinderLayout; setId: string }) => {
+    mutationFn: async ({ name, layout, setId, includeReverse = false }: {
+      name: string; layout: BinderLayout; setId: string; includeReverse?: boolean;
+    }) => {
       if (!userId) throw new Error('Not signed in');
       const { data: unordered, error: cardsErr } = await supabase
         .from('tcg_cards')
-        .select('id, card_number')
+        .select('id, card_number, available_finishes')
         .eq('set_id', setId);
       if (cardsErr) throw cardsErr;
       const cards = [...(unordered ?? [])].sort((a, b) =>
@@ -188,8 +202,20 @@ export function useCreatePrefilledBinder() {
         .single();
       if (error) throw error;
       const collectionId = data.id as string;
-      if (cards && cards.length > 0) {
-        const rows = cards.map((c, position) => ({ collection_id: collectionId, card_id: c.id as string, position }));
+
+      const rows: { collection_id: string; card_id: string; finish: OwnedCardFinish; position: number }[] = [];
+      let position = 0;
+      for (const c of cards) {
+        rows.push({ collection_id: collectionId, card_id: c.id as string, finish: 'normal', position: position++ });
+      }
+      if (includeReverse) {
+        for (const c of cards) {
+          const finishes = (c.available_finishes as string[] | null) ?? [];
+          if (!finishes.includes('reverse_holo')) continue;
+          rows.push({ collection_id: collectionId, card_id: c.id as string, finish: 'reverse_holo', position: position++ });
+        }
+      }
+      if (rows.length > 0) {
         const { error: itemsErr } = await supabase.from('user_collection_items').insert(rows);
         if (itemsErr) throw itemsErr;
       }

@@ -14,9 +14,10 @@ import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { useSession } from '@/lib/auth';
 import {
-  useUserDex, useOwnedCardImages, useAllOwnedCardIds, useAllOwnedCardsDetailed,
-  useAllOwnedCardsLedgerDetailed, useOwnedCardQuantities,
+  useUserDex, useOwnedCardImages, useOwnedCardFinishes, useAllOwnedCardsDetailed,
+  useAllOwnedCardsLedgerDetailed, useOwnedCardQuantities, type OwnedCardFinish,
 } from '@/lib/collection';
+import { FINISH_GRADIENT } from '@/lib/finish-visuals';
 import { eurFormatter } from '@/lib/trades';
 import { withReturnTo } from '@/lib/navigation';
 import {
@@ -97,7 +98,7 @@ export default function FavoritesScreen() {
 
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
-  const { data: ownedCardIds = new Set<string>() } = useAllOwnedCardIds(userId);
+  const { data: finishesByCard = new Map<string, OwnedCardFinish[]>() } = useOwnedCardFinishes(userId);
   const { data: ownedCardsDetailed = [] } = useAllOwnedCardsDetailed(userId);
   const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
   const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
@@ -161,6 +162,7 @@ export default function FavoritesScreen() {
   const [wizardMode, setWizardMode] = useState<'free' | 'prefill'>('free');
   const [wizardSetId, setWizardSetId] = useState<string | null>(null);
   const [wizardSetSearch, setWizardSetSearch] = useState('');
+  const [wizardIncludeReverse, setWizardIncludeReverse] = useState(false);
   const [binderRenaming, setBinderRenaming] = useState(false);
   const [binderRenameValue, setBinderRenameValue] = useState('');
   const [pickingPosition, setPickingPosition] = useState<number | null>(null);
@@ -341,6 +343,7 @@ export default function FavoritesScreen() {
     setWizardMode('free');
     setWizardSetId(null);
     setWizardSetSearch('');
+    setWizardIncludeReverse(false);
     setBinderWizardStep('layout');
   };
 
@@ -349,7 +352,7 @@ export default function FavoritesScreen() {
     if (!name) return;
     const effectiveSetId = setId ?? wizardSetId;
     const id = wizardMode === 'prefill' && effectiveSetId
-      ? await createPrefilledBinder.mutateAsync({ name, layout: wizardLayout, setId: effectiveSetId })
+      ? await createPrefilledBinder.mutateAsync({ name, layout: wizardLayout, setId: effectiveSetId, includeReverse: wizardIncludeReverse })
       : await createBinder.mutateAsync({ name, layout: wizardLayout });
     setNewBinderName('');
     setBinderWizardStep(null);
@@ -455,6 +458,16 @@ export default function FavoritesScreen() {
       position: 'absolute' as const, bottom: 4, left: 4, width: 22, height: 22, borderRadius: 11,
       backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
+    // Bottom-right — the only free corner (zoomBtn top-left, removeBtn top-right,
+    // notOwnedBadge bottom-left). Only shown while not yet owned: once owned, the
+    // reverse-holo LinearGradient border alone communicates the finish, same
+    // convention as CardTile elsewhere in the app.
+    reverseHoloBadge: {
+      position: 'absolute' as const, bottom: 4, right: 4, width: 22, height: 22, borderRadius: 11,
+      backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
+      borderWidth: 1, borderColor: '#8fa3b3',
+    },
+    reverseHoloBadgeText: { fontFamily: fonts.bodyBold, fontSize: 12, color: '#8fa3b3' },
     binderSlotTile: { flex: 1, padding: 6, aspectRatio: 0.72 },
     binderSlotDragging: { opacity: 0.35 },
     binderSlotHover: { borderRadius: radius.bubble, borderWidth: 2, borderColor: colors.primary },
@@ -758,7 +771,8 @@ export default function FavoritesScreen() {
                   );
                 }
                 const isCard = item.kind === 'card';
-                const isOwned = isCard && ownedCardIds.has(item.cardId as string);
+                const itemFinish: OwnedCardFinish = item.finish ?? 'normal';
+                const isOwned = isCard && (finishesByCard.get(item.cardId as string)?.includes(itemFinish) ?? false);
                 const isDragging = draggingPosition === item.position;
                 const isHoverTarget = hoverPosition === item.position && draggingPosition !== item.position;
                 return (
@@ -769,7 +783,7 @@ export default function FavoritesScreen() {
                       <View style={styles.collectionImgWrap}>
                         {isOwned ? (
                           <LinearGradient
-                            colors={[colors.primary, colors.warning, colors.primary]}
+                            colors={FINISH_GRADIENT[itemFinish] ?? [colors.primary, colors.warning, colors.primary]}
                             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                             style={styles.holoBorder}>
                             <View style={styles.holoInner}>
@@ -784,6 +798,11 @@ export default function FavoritesScreen() {
                         {isCard && !isOwned && (
                           <View style={styles.notOwnedBadge}>
                             <Pokeball size={16} muted />
+                          </View>
+                        )}
+                        {isCard && itemFinish === 'reverse_holo' && !isOwned && (
+                          <View style={styles.reverseHoloBadge}>
+                            <Text style={styles.reverseHoloBadgeText}>R</Text>
                           </View>
                         )}
                         <Pressable
@@ -1078,6 +1097,15 @@ export default function FavoritesScreen() {
           <Text style={styles.wizardHint}>
             {t(wizardMode === 'free' ? 'favorites.wizardModeFreeHint' : 'favorites.wizardModePrefillHint')}
           </Text>
+          {wizardMode === 'prefill' && (
+            <View style={styles.chipRow}>
+              <Chip
+                label={t('favorites.wizardIncludeReverse')}
+                active={wizardIncludeReverse}
+                onPress={() => setWizardIncludeReverse(v => !v)}
+              />
+            </View>
+          )}
           <Pressable
             onPress={() => wizardMode === 'prefill' ? setBinderWizardStep('set') : finishBinderWizard()}
             disabled={createBinder.isPending}
