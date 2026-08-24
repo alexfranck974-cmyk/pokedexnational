@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-export type ChimeKind = 'type' | 'holo' | 'chase' | 'dex';
+export type ChimeKind = 'type' | 'holo' | 'chase' | 'dex' | 'binderComplete';
 
 // Synthesized in-browser via the Web Audio API — no audio asset to source/ship,
 // and it keeps the effect purely web-only like other web-enhancement patterns in
@@ -61,6 +61,13 @@ export function playChime(kind: ChimeKind) {
     captureFanfare(context, now, 0.9, 0.85);
   } else if (kind === 'type') {
     captureFanfare(context, now, 1, 1);
+  } else if (kind === 'binderComplete') {
+    // Biggest moment in the app — finishing a whole binder — so the chase
+    // fanfare tail gets a third, higher flourish note on top instead of two.
+    const fanfareEnd = captureFanfare(context, now, 1.1, 1.3);
+    tone(context, 1567.98, fanfareEnd - 0.05, 0.20, 0.05, 'triangle');
+    tone(context, 2093.0, fanfareEnd + 0.05, 0.24, 0.05, 'triangle');
+    tone(context, 2637.02, fanfareEnd + 0.15, 0.30, 0.05, 'triangle');
   } else {
     // Chase-tier: the full fanfare plus a sparkly flourish tail on top.
     const fanfareEnd = captureFanfare(context, now, 1.05, 1.2);

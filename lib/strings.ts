@@ -148,6 +148,7 @@ export const STRINGS = {
     'capture.typeSubtitle': 'Tous les Pokémon de type {type} sont capturés dans ce set',
     'capture.milestoneSubtitle': 'Continue comme ça !',
     'capture.raritySubtitle': 'Une pépite pour ta collection',
+    'capture.binderCompleteTitle': 'Binder complet !',
 
     // Shared section tabs (Pokédex / Collection / Wishlist)
     'tabs.pokedex': 'Pokédex national',
@@ -616,6 +617,7 @@ export const STRINGS = {
     'capture.typeSubtitle': 'All {type}-type Pokémon are captured in this set',
     'capture.milestoneSubtitle': 'Keep it up!',
     'capture.raritySubtitle': 'A gem for your collection',
+    'capture.binderCompleteTitle': 'Binder complete!',
 
     'tabs.pokedex': 'National Pokédex',
     'tabs.collection': 'Collection',

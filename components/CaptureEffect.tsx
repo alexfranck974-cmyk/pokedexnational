@@ -24,7 +24,10 @@ export type CaptureEvent =
   // National-Dex-wide milestone for a video-game PokemonType (2nd, 5th, 10th...
   // owned overall) — see lib/type-milestones.ts. Distinct from `type` above,
   // which is set-scoped completion, not a running national count.
-  | { id: string; kind: 'typeMilestone'; type: PokemonType; count: number };
+  | { id: string; kind: 'typeMilestone'; type: PokemonType; count: number }
+  // Every filled card slot in a binder just became owned — see the
+  // completion-tracking effect in app/(app)/favorites.tsx.
+  | { id: string; kind: 'binderComplete'; binderName: string };
 
 interface Props {
   event: CaptureEvent | null;
@@ -81,10 +84,13 @@ export function CaptureEffect({ event, onDone }: Props) {
     const chimeKind: ChimeKind = event.kind === 'type' ? 'type'
       : event.kind === 'dex' ? 'dex'
       : event.kind === 'typeMilestone' ? 'holo'
+      : event.kind === 'binderComplete' ? 'binderComplete'
       : event.tier;
     playChime(chimeKind);
 
-    const holdMs = event.kind === 'rarity' && event.tier === 'holo' ? 1300 : 2300;
+    const holdMs = event.kind === 'rarity' && event.tier === 'holo' ? 1300
+      : event.kind === 'binderComplete' ? 2800
+      : 2300;
     const timer = setTimeout(() => {
       if (!animationsEnabled) {
         appear.setValue(0);
@@ -130,9 +136,10 @@ export function CaptureEffect({ event, onDone }: Props) {
   const isType = event.kind === 'type';
   const isDex = event.kind === 'dex';
   const isTypeMilestone = event.kind === 'typeMilestone';
+  const isBinderComplete = event.kind === 'binderComplete';
   const isChase = event.kind === 'rarity' && event.tier === 'chase';
   // Card-zoom treatment (RarityBurstCard) for anything with an actual card
-  // image; the circular icon badge for the two type-based celebrations.
+  // image; the circular icon badge for the type-based and binder-complete celebrations.
   const isCardZoom = isDex || event.kind === 'rarity';
   // "Colorless" has no video-game type equivalent — falls back to a neutral tint/icon.
   const pokemonType = isType ? tcgTypeAsPokemonType(event.type) : isTypeMilestone ? event.type : undefined;
@@ -144,15 +151,17 @@ export function CaptureEffect({ event, onDone }: Props) {
   const title = isType ? t('capture.typeComplete', { type: getTcgTypeLabel(event.type, locale) })
     : isTypeMilestone ? t('capture.milestoneTitle', { count: event.count, type: getTypeLabel(event.type, locale) })
     : isDex ? t('capture.dexAdded')
+    : isBinderComplete ? t('capture.binderCompleteTitle')
     : t('capture.rarityTitle', { rarityLabel: event.rarityLabel });
   const subtitle = isType ? t('capture.typeSubtitle', { type: getTcgTypeLabel(event.type, locale) })
     : isTypeMilestone ? t('capture.milestoneSubtitle')
     : isDex ? event.pokemonName
+    : isBinderComplete ? event.binderName
     : t('capture.raritySubtitle');
   const imageUri = isDex ? event.imageSmall : event.kind === 'rarity' ? event.imageSmall : null;
   // The card-zoom treatment is bigger than the circular type badge, so
   // particles need a wider radius to clear its edges instead of overlapping it.
-  const particleScale = isChase || isDex ? 1.7 : 1;
+  const particleScale = isChase || isDex || isBinderComplete ? 1.7 : 1;
 
   return (
     <View style={styles.overlay} pointerEvents="box-none">
@@ -183,7 +192,9 @@ export function CaptureEffect({ event, onDone }: Props) {
                   { backgroundColor: accent + '22', borderColor: accent },
                   { opacity: appear, transform: [{ scale: appear.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }] },
                 ]}>
-                {pokemonType ? <TypeIcon type={pokemonType} size={72} /> : <Ionicons name="ellipse" size={56} color={accent} />}
+                {pokemonType ? <TypeIcon type={pokemonType} size={72} />
+                  : isBinderComplete ? <Ionicons name="trophy" size={56} color={accent} />
+                  : <Ionicons name="ellipse" size={56} color={accent} />}
               </Animated.View>
             </>
           )}

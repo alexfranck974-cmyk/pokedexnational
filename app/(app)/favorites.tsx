@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, Image, StyleSheet, FlatList, ScrollView, RefreshControl, ActivityIndicator, useWindowDimensions,
+  View, Text, TextInput, Pressable, Image, StyleSheet, FlatList, ScrollView, RefreshControl, useWindowDimensions,
   type NativeSyntheticEvent, type NativeScrollEvent, type LayoutChangeEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -40,8 +40,10 @@ import { SetGoalTile } from '@/components/SetGoalTile';
 import { TrainersPanel } from '@/components/TrainersPanel';
 import { BackButton } from '@/components/BackButton';
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
+import { CaptureEffect, type CaptureEvent } from '@/components/CaptureEffect';
 import { PokedexSectionTabs, sectionIndex, hrefToSection } from '@/components/PokedexSectionTabs';
 import { SlideTransition } from '@/components/SlideTransition';
+import { SkeletonBlock } from '@/components/SkeletonBlock';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
 import { RefreshButton } from '@/components/RefreshButton';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
@@ -291,6 +293,38 @@ export default function FavoritesScreen() {
     const usedPages = Math.ceil((maxPosition + 1) / layout);
     return (usedPages + 1) * layout;
   }, [selectedBinder, binderCards]);
+
+  // Completion = every FILLED card slot (not the trailing "+" padding from
+  // binderSlotCount above, and not photo slots) is owned in the matching
+  // finish. Deliberately not gated on there being zero empty "+" slots left —
+  // an unused template slot isn't "missing a needed card," it's just unused
+  // capacity, same mental model as a real album with extra blank pages.
+  const binderCompletion = useMemo(() => {
+    if (!selectedBinder) return null;
+    const cardSlots = binderCards.filter(c => c.kind === 'card');
+    if (cardSlots.length === 0) return null;
+    const ownedCount = cardSlots.filter(c => finishesByCard.get(c.cardId as string)?.includes(c.finish ?? 'normal')).length;
+    return { isComplete: ownedCount === cardSlots.length };
+  }, [selectedBinder, binderCards, finishesByCard]);
+
+  // Fires the celebration exactly once per binder, only on a genuine
+  // incomplete->complete transition observed live — never on first sight of
+  // an already-complete binder (a binder someone finished last week
+  // shouldn't celebrate every time they open it). completionSeenRef tracks
+  // "have we recorded ANY state for this binder id yet", not just its value,
+  // so that first-sight case reads as "unknown", not "was incomplete".
+  const completionSeenRef = useRef<Map<string, boolean>>(new Map());
+  const [completionCelebration, setCompletionCelebration] = useState<CaptureEvent | null>(null);
+  useEffect(() => {
+    if (!selectedBinder || !binderCompletion) return;
+    const key = selectedBinder.id;
+    const prev = completionSeenRef.current.get(key);
+    completionSeenRef.current.set(key, binderCompletion.isComplete);
+    if (prev === undefined) return;
+    if (binderCompletion.isComplete && !prev) {
+      setCompletionCelebration({ id: `binder-complete-${key}-${Date.now()}`, kind: 'binderComplete', binderName: selectedBinder.name });
+    }
+  }, [selectedBinder, binderCompletion]);
 
   // Long-press-then-drag gesture for one occupied binder slot. Hit-testing is
   // done by grid geometry (origin + scroll offset + measured tile size), not
@@ -913,7 +947,11 @@ export default function FavoritesScreen() {
           </View>
 
           {bindersLoading ? (
-            <View style={styles.center}><ActivityIndicator /></View>
+            <View>
+              {Array.from({ length: 5 }, (_, i) => (
+                <SkeletonBlock key={i} style={{ height: 56, marginBottom: spacing.sm }} />
+              ))}
+            </View>
           ) : binders.length === 0 ? (
             <View style={styles.center}>
               <Text style={styles.emptyHint}>{t('favorites.noBindersYet')}</Text>
@@ -947,7 +985,11 @@ export default function FavoritesScreen() {
             style={styles.dupSearchInput}
           />
           {artistsLoading ? (
-            <View style={styles.center}><ActivityIndicator /></View>
+            <View>
+              {Array.from({ length: 6 }, (_, i) => (
+                <SkeletonBlock key={i} style={{ height: 48, marginBottom: spacing.xs }} />
+              ))}
+            </View>
           ) : filteredArtists.length === 0 ? (
             <View style={styles.center}>
               <Text style={styles.emptyHint}>{t('favorites.noArtistFound')}</Text>
@@ -999,7 +1041,13 @@ export default function FavoritesScreen() {
             </View>
           </View>
           {ledgerCardsLoading ? (
-            <View style={styles.center}><ActivityIndicator /></View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', padding: 6 }}>
+              {Array.from({ length: numColsFor(width) * 3 }, (_, i) => (
+                <View key={i} style={{ width: `${100 / numColsFor(width)}%`, padding: 6 }}>
+                  <SkeletonBlock style={{ aspectRatio: 0.72 }} />
+                </View>
+              ))}
+            </View>
           ) : duplicateCards.length === 0 ? (
             <View style={styles.center}>
               <Text style={styles.emptyHint}>
@@ -1252,6 +1300,7 @@ export default function FavoritesScreen() {
       />
       <CardZoomModal card={dupZoom} onClose={() => setDupZoom(null)} />
       <CardZoomModal card={binderZoom} onClose={() => setBinderZoom(null)} />
+      <CaptureEffect event={completionCelebration} onDone={() => setCompletionCelebration(null)} />
     </SafeAreaView>
   );
 }
