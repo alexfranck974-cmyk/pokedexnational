@@ -156,8 +156,8 @@ export function useCreateBinder() {
   });
 }
 
-// Same as useCreateBinder, then bulk-fills every position with a card from the
-// chosen set — in the set's own printed order (card_number, numeric-aware —
+// Same as useCreateBinder, then bulk-fills every position with cards from the
+// chosen sets — each set's own printed order (card_number, numeric-aware —
 // same convention as the full-set browse view, app/(app)/pinned-set/[setId].tsx)
 // so secret rares (numbered past the base set) land after the base run instead
 // of being interleaved by dex_num, which scattered high-numbered alt-art/secret
@@ -169,31 +169,49 @@ export function useCreateBinder() {
 // then bulk-insert) since this is a brand new collection with no existing
 // rows to collide with on the (collection_id, position) unique index.
 //
-// includeReverse (default false): appends a second full pass after the normal
-// run — one slot per card whose available_finishes includes 'reverse_holo'
-// (047_tcg_cards_available_finishes.sql; NULL/unsynced cards are skipped,
-// never guessed) — in the same card_number order, so a "master set" binder
-// reads "full normal run, then full reverse run", matching how physical
-// collectors organize these. See 052_binder_slot_finish.sql for the schema
-// change (finish column + widened per-finish uniqueness) that makes it legal
-// for the same card_id to occupy two slots in one binder.
+// setIds (plural): sets are concatenated in the given order (the caller
+// passes them in the user's selection order) — each set gets its own
+// complete run before the next set starts, so a multi-set binder reads as a
+// sequence of self-contained "master set" blocks, not one global run across
+// every selected set. Each print's card_id is already unique and prefixed by
+// its own set_id (e.g. base1-4, neo1-4), so combining sets can never produce
+// the same card_id twice.
+//
+// includeReverse (default false): adds a slot per card whose available_finishes
+// includes 'reverse_holo' (047_tcg_cards_available_finishes.sql; NULL/unsynced
+// cards are skipped, never guessed). reverseMode picks how, per set: 'trailing'
+// (default) appends a full second pass after that set's whole normal run —
+// "001..034, then 001R..020R" — matching how some collectors organize a full
+// base run followed by a full reverse run; 'interleaved' places each card's
+// reverse slot immediately after it — "001, 001R, 002, 002R, 003, ...". See
+// 052_binder_slot_finish.sql for the schema change (finish column + widened
+// per-finish uniqueness) that makes it legal for the same card_id to occupy
+// two slots in one binder.
 export function useCreatePrefilledBinder() {
   const { session } = useSession();
   const userId = session?.user.id;
   const invalidate = useInvalidateBinders();
   return useMutation({
-    mutationFn: async ({ name, layout, setId, includeReverse = false }: {
-      name: string; layout: BinderLayout; setId: string; includeReverse?: boolean;
+    mutationFn: async ({ name, layout, setIds, includeReverse = false, reverseMode = 'trailing' }: {
+      name: string; layout: BinderLayout; setIds: string[];
+      includeReverse?: boolean; reverseMode?: 'trailing' | 'interleaved';
     }) => {
       if (!userId) throw new Error('Not signed in');
       const { data: unordered, error: cardsErr } = await supabase
         .from('tcg_cards')
-        .select('id, card_number, available_finishes')
-        .eq('set_id', setId);
+        .select('id, card_number, set_id, available_finishes')
+        .in('set_id', setIds);
       if (cardsErr) throw cardsErr;
-      const cards = [...(unordered ?? [])].sort((a, b) =>
-        a.card_number.localeCompare(b.card_number, undefined, { numeric: true }),
-      );
+
+      const bySet = new Map<string, NonNullable<typeof unordered>>();
+      for (const c of unordered ?? []) {
+        const arr = bySet.get(c.set_id as string) ?? [];
+        arr.push(c);
+        bySet.set(c.set_id as string, arr);
+      }
+      for (const arr of bySet.values()) {
+        arr.sort((a, b) => a.card_number.localeCompare(b.card_number, undefined, { numeric: true }));
+      }
 
       const { data, error } = await supabase
         .from('user_collections')
@@ -205,14 +223,27 @@ export function useCreatePrefilledBinder() {
 
       const rows: { collection_id: string; card_id: string; finish: OwnedCardFinish; position: number }[] = [];
       let position = 0;
-      for (const c of cards) {
-        rows.push({ collection_id: collectionId, card_id: c.id as string, finish: 'normal', position: position++ });
-      }
-      if (includeReverse) {
-        for (const c of cards) {
-          const finishes = (c.available_finishes as string[] | null) ?? [];
-          if (!finishes.includes('reverse_holo')) continue;
-          rows.push({ collection_id: collectionId, card_id: c.id as string, finish: 'reverse_holo', position: position++ });
+      for (const setId of setIds) {
+        const cards = bySet.get(setId) ?? [];
+        if (reverseMode === 'interleaved' && includeReverse) {
+          for (const c of cards) {
+            rows.push({ collection_id: collectionId, card_id: c.id as string, finish: 'normal', position: position++ });
+            const finishes = (c.available_finishes as string[] | null) ?? [];
+            if (finishes.includes('reverse_holo')) {
+              rows.push({ collection_id: collectionId, card_id: c.id as string, finish: 'reverse_holo', position: position++ });
+            }
+          }
+        } else {
+          for (const c of cards) {
+            rows.push({ collection_id: collectionId, card_id: c.id as string, finish: 'normal', position: position++ });
+          }
+          if (includeReverse) {
+            for (const c of cards) {
+              const finishes = (c.available_finishes as string[] | null) ?? [];
+              if (!finishes.includes('reverse_holo')) continue;
+              rows.push({ collection_id: collectionId, card_id: c.id as string, finish: 'reverse_holo', position: position++ });
+            }
+          }
         }
       }
       if (rows.length > 0) {

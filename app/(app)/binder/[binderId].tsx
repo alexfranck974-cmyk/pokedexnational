@@ -11,6 +11,7 @@ import { Pokeball } from '@/components/Pokeball';
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
 import { useBackTo } from '@/lib/navigation';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useT } from '@/lib/locale';
 
 // Read-only "vitrine" viewer — a real binder, flipped page by page (swipe or
 // arrows), no add/remove affordances. Reached from the editable grid in
@@ -24,6 +25,7 @@ export default function BinderViewerScreen() {
   const userId = session?.user.id;
   const { colors, heroGradient, heroText, heroTextMuted } = useTheme();
   const { width } = useWindowDimensions();
+  const t = useT();
 
   const { data: binders = [], isLoading: bindersLoading } = useBinders(userId);
   const binder = binders.find((b) => b.id === binderId);
@@ -109,7 +111,9 @@ export default function BinderViewerScreen() {
           <Text style={styles.backText}>Retour</Text>
         </Pressable>
         <Text style={styles.heroTitle} numberOfLines={1}>{binder.name}</Text>
-        <Text style={styles.heroPage}>{pageIndex + 1}/{pageCount}</Text>
+        <Text style={styles.heroPage}>
+          {pageIndex + 1}/{pageCount} · {t(slots.length > 1 ? 'favorites.binderCardCountPlural' : 'favorites.binderCardCountSingular', { n: slots.length })}
+        </Text>
       </LinearGradient>
 
       <View style={{ flex: 1 }}>
