@@ -30,15 +30,15 @@ export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCou
   const { locale } = useLocale();
 
   const styles = useThemedStyles((colors, shadow) => ({
-    // 0.85 left too little room below the (square) image for the number +
-    // name lines once tiles got narrow in the 3/4-column grid modes — the
-    // name would render past the tile's box and get covered by the next row.
-    tile: { flex: 1, aspectRatio: 0.68, padding: 6, alignItems: 'center' as const, justifyContent: 'flex-start' as const },
+    // Image region is card-shaped (aspectRatio 0.72, same as binder slots/CardTile)
+    // rather than square, so real card art fills the frame instead of letterboxing.
+    // Tile ratio is derived from that: taller image + the num/name/count lines below.
+    tile: { flex: 1, aspectRatio: 0.54, padding: 6, alignItems: 'center' as const, justifyContent: 'flex-start' as const },
     tileOwned: { ...shadow.sm },
     pressed: { transform: [{ scale: 0.95 }] },
-    spriteWrap: { width: '100%' as const, aspectRatio: 1, position: 'relative' as const, backgroundColor: colors.surfaceAlt, borderRadius: radius.md },
+    spriteWrap: { width: '100%' as const, aspectRatio: 0.72, position: 'relative' as const, backgroundColor: colors.surfaceAlt, borderRadius: radius.md },
     spriteMissing: { opacity: 0.55 },
-    holoBorder: { width: '100%' as const, aspectRatio: 1, borderRadius: radius.md, padding: 2 },
+    holoBorder: { width: '100%' as const, aspectRatio: 0.72, borderRadius: radius.md, padding: 2 },
     holoInner: {
       flex: 1, borderRadius: radius.md - 2, backgroundColor: colors.surfaceAlt,
       overflow: 'hidden' as const, position: 'relative' as const,
