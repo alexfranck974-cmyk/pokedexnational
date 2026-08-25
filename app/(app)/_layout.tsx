@@ -86,7 +86,11 @@ function AppLayoutTabs() {
         tabBar={(props) => <FloatingTabBar {...props} />}
         screenOptions={{
           headerShown: false,
-          animation: 'fade',
+          // SlideTransition (inside pokedex/favorites/wishlist) already
+          // handles the cross-tab transition — the navigator's own built-in
+          // fade was stacking on top of it, two opacity animations with
+          // different timings, which is what actually read as a flash.
+          animation: 'none',
         }}
       >
         {/*
