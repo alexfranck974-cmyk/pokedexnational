@@ -97,7 +97,7 @@ export default function PinnedSetDetail() {
     viewBtnActive: { backgroundColor: heroSurfaceActive },
     columnsLabel: { fontSize: 12, fontFamily: fonts.monoBold, color: heroText },
     heroMain: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md },
-    heroLogo: { height: 36, width: '100%' as const, marginBottom: 2 },
+    heroLogo: { height: 64, width: '100%' as const, alignSelf: 'center' as const },
     heroName: { fontSize: 20, fontFamily: fonts.display, color: heroText },
     heroCaptionRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4, marginTop: 2 },
     heroCaption: { fontSize: 12, fontFamily: fonts.mono, color: heroTextMuted },
@@ -145,17 +145,16 @@ export default function PinnedSetDetail() {
             )}
           </View>
         </View>
+        {set?.logo && (
+          <Image source={{ uri: set.logo }} style={styles.heroLogo} resizeMode="contain" accessibilityLabel={setName} />
+        )}
         <View style={styles.heroMain}>
           <ProgressRing
             pct={pct} size={64} color={tier?.color ?? heroSurfaceActive}
             trackColor={heroTrack} centerLabel={`${pct}%`}
           />
           <View style={{ flex: 1 }}>
-            {set?.logo ? (
-              <Image source={{ uri: set.logo }} style={styles.heroLogo} resizeMode="contain" accessibilityLabel={setName} />
-            ) : (
-              <Text style={styles.heroName} numberOfLines={2}>{setName}</Text>
-            )}
+            {!set?.logo && <Text style={styles.heroName} numberOfLines={2}>{setName}</Text>}
             <View style={styles.heroCaptionRow}>
               {tier && <Ionicons name="trophy" size={14} color={tier.color} />}
               <Text style={styles.heroCaption}>
