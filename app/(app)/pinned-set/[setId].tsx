@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, ActivityIndicator, Pressable, ScrollView } from 'react-native';
+import { View, Text, Image, ActivityIndicator, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -97,8 +97,10 @@ export default function PinnedSetDetail() {
     viewBtnActive: { backgroundColor: heroSurfaceActive },
     columnsLabel: { fontSize: 12, fontFamily: fonts.monoBold, color: heroText },
     heroMain: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md },
+    heroLogo: { height: 36, width: '100%' as const, marginBottom: 2 },
     heroName: { fontSize: 20, fontFamily: fonts.display, color: heroText },
-    heroCaption: { fontSize: 12, fontFamily: fonts.mono, color: heroTextMuted, marginTop: 2 },
+    heroCaptionRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4, marginTop: 2 },
+    heroCaption: { fontSize: 12, fontFamily: fonts.mono, color: heroTextMuted },
     empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: 24, fontStyle: 'italic' as const },
     banner: {
       flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: 8,
@@ -149,12 +151,17 @@ export default function PinnedSetDetail() {
             trackColor={heroTrack} centerLabel={`${pct}%`}
           />
           <View style={{ flex: 1 }}>
-            <Text style={styles.heroName} numberOfLines={2}>
-              {tier && <Ionicons name="trophy" size={16} color={tier.color} />} {setName}
-            </Text>
-            <Text style={styles.heroCaption}>
-              {year ? `${year} · ` : ''}{ownedCount}/{total} cartes
-            </Text>
+            {set?.logo ? (
+              <Image source={{ uri: set.logo }} style={styles.heroLogo} resizeMode="contain" accessibilityLabel={setName} />
+            ) : (
+              <Text style={styles.heroName} numberOfLines={2}>{setName}</Text>
+            )}
+            <View style={styles.heroCaptionRow}>
+              {tier && <Ionicons name="trophy" size={14} color={tier.color} />}
+              <Text style={styles.heroCaption}>
+                {year ? `${year} · ` : ''}{ownedCount}/{total} cartes
+              </Text>
+            </View>
           </View>
         </View>
       </LinearGradient>
