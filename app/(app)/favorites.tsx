@@ -281,7 +281,21 @@ export default function FavoritesScreen() {
   const selectedTeam = teams.find(t => t.id === selectedTeamId) ?? null;
   const selectedBinder = binders.find(b => b.id === selectedBinderId) ?? null;
   const { data: binderCards = [] } = useBinderCards(selectedBinderId ?? undefined);
-  const binderCardIds = useMemo(() => new Set(binderCards.filter(c => c.cardId).map(c => c.cardId as string)), [binderCards]);
+  // Per-finish, not just per-card — the schema allows the same card_id to
+  // occupy two slots (e.g. a normal print and its reverse-holo print), see
+  // 052_binder_slot_finish.sql. Blocking on cardId alone would make it
+  // impossible to ever add a card's reverse-holo copy once its normal copy
+  // was already placed.
+  const binderFinishesByCardId = useMemo(() => {
+    const m = new Map<string, Set<OwnedCardFinish>>();
+    for (const c of binderCards) {
+      if (!c.cardId) continue;
+      const set = m.get(c.cardId) ?? new Set<OwnedCardFinish>();
+      set.add(c.finish ?? 'normal');
+      m.set(c.cardId, set);
+    }
+    return m;
+  }, [binderCards]);
   const binderCardsByPosition = useMemo(() => new Map(binderCards.map(c => [c.position, c])), [binderCards]);
   // Always render at least one full trailing page of empty slots past the
   // highest filled position (not just the card count — removing a card from
@@ -1162,7 +1176,7 @@ export default function FavoritesScreen() {
         visible={pickingPosition !== null}
         binderId={selectedBinderId}
         position={pickingPosition}
-        cardIdsInBinder={binderCardIds}
+        finishesByCardId={binderFinishesByCardId}
         onClose={() => setPickingPosition(null)}
       />
 

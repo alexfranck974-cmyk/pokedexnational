@@ -303,10 +303,12 @@ export function useAssignCardToSlot() {
   const { session } = useSession();
   const userId = session?.user.id;
   return useMutation({
-    mutationFn: async ({ binderId, position, cardId }: { binderId: string; position: number; cardId: string }) => {
+    mutationFn: async ({ binderId, position, cardId, finish = 'normal' }: {
+      binderId: string; position: number; cardId: string; finish?: OwnedCardFinish;
+    }) => {
       const { error } = await supabase
         .from('user_collection_items')
-        .upsert({ collection_id: binderId, card_id: cardId, image_url: null, position }, { onConflict: 'collection_id,position' });
+        .upsert({ collection_id: binderId, card_id: cardId, finish, image_url: null, position }, { onConflict: 'collection_id,position' });
       if (error) throw error;
     },
     onSuccess: (_r, { binderId }) => {

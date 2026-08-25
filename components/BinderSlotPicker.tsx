@@ -8,6 +8,7 @@ import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { useCardsForPokemon } from '@/lib/tcg';
 import { useAssignCardToSlot, useUploadBinderImage } from '@/lib/binders';
+import { getFinishLabel, type OwnedCardFinish } from '@/lib/collection';
 import { toast } from '@/lib/toast';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useLocale, useT } from '@/lib/locale';
@@ -47,17 +48,26 @@ interface Props {
   binderId: string | null;
   /** Slot index being filled — always an empty slot, see favorites.tsx. */
   position: number | null;
-  cardIdsInBinder: Set<string>;
+  /** Finishes already placed per card_id in this binder — a card can occupy
+   * two slots (its normal print and its reverse-holo print), so this is
+   * keyed per-finish, not just per-card. See 052_binder_slot_finish.sql. */
+  finishesByCardId: Map<string, Set<OwnedCardFinish>>;
   onClose: () => void;
 }
 
 type Mode = 'card' | 'photo';
 
+// Binders only ever distinguish normal vs. reverse-holo prints (never plain
+// 'holo' — that's its own separate printed card_id in most sets, not a
+// finish toggle on the same print), matching useCreatePrefilledBinder's
+// includeReverse wizard option.
+const BINDER_FINISHES: OwnedCardFinish[] = ['normal', 'reverse_holo'];
+
 // Same two-step "nom -> exemplaire" flow as the old CollectionCardPicker for
 // cards, plus a "Photo" mode that picks from the camera roll, crops to the
 // binder slot's aspect ratio, and uploads to the user's private Storage
 // folder — either way a tap/pick assigns straight to the target slot and closes.
-export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder, onClose }: Props) {
+export function BinderSlotPicker({ visible, binderId, position, finishesByCardId, onClose }: Props) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const { locale } = useLocale();
@@ -65,14 +75,16 @@ export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder,
   const [mode, setMode] = useState<Mode>('card');
   const [search, setSearch] = useState('');
   const [selectedNum, setSelectedNum] = useState<number | null>(null);
+  const [finish, setFinish] = useState<OwnedCardFinish>('normal');
   const [uploading, setUploading] = useState(false);
   const assignCard = useAssignCardToSlot();
   const uploadImage = useUploadBinderImage();
   const { data: cards = [] } = useCardsForPokemon(selectedNum ?? undefined);
 
   useEffect(() => {
-    if (!visible) { setSearch(''); setSelectedNum(null); setMode('card'); setUploading(false); }
+    if (!visible) { setSearch(''); setSelectedNum(null); setMode('card'); setFinish('normal'); setUploading(false); }
   }, [visible]);
+  useEffect(() => { setFinish('normal'); }, [selectedNum]);
 
   const matches = useMemo(() => {
     const q = normalize(search.trim());
@@ -123,6 +135,11 @@ export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder,
     modeChipActive: { backgroundColor: colors.primary },
     modeChipText: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
     modeChipTextActive: { color: 'white' },
+    finishRow: { flexDirection: 'row' as const, gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
+    finishChip: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, alignItems: 'center' as const },
+    finishChipActive: { backgroundColor: colors.primary },
+    finishChipText: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
+    finishChipTextActive: { color: 'white' },
     search: { margin: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 12, fontSize: 15, fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt },
     empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: spacing.xl, fontStyle: 'italic' as const },
     row: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, paddingHorizontal: 16, height: 52 },
@@ -215,37 +232,59 @@ export function BinderSlotPicker({ visible, binderId, position, cardIdsInBinder,
             ) : cards.length === 0 ? (
               <Text style={styles.empty}>{t('binderPicker.noCardsForPokemon')}</Text>
             ) : (
-              <FlatList
-                data={cards}
-                numColumns={numColsFor(width)}
-                contentContainerStyle={styles.grid}
-                keyExtractor={(c) => c.id}
-                renderItem={({ item }) => {
-                  const taken = cardIdsInBinder.has(item.id);
-                  return (
-                    <Pressable
-                      style={styles.tile}
-                      onPress={() => {
-                        if (taken || binderId == null || position == null) return;
-                        assignCard.mutate({ binderId, position, cardId: item.id });
-                        onClose();
-                      }}>
-                      <View style={styles.tileImgWrap}>
-                        <Image
-                          source={{ uri: item.image_small }}
-                          style={[styles.tileImg, taken && styles.tileImgTaken]}
-                          resizeMode="contain"
-                        />
-                        {taken && (
-                          <View style={styles.takenBadge}>
-                            <Ionicons name="checkmark" size={14} color="white" />
-                          </View>
-                        )}
-                      </View>
-                    </Pressable>
-                  );
-                }}
-              />
+              <>
+                {cards.some(c => !c.available_finishes || c.available_finishes.length === 0 || c.available_finishes.includes('reverse_holo')) && (
+                  <View style={styles.finishRow}>
+                    {BINDER_FINISHES.map(f => (
+                      <Pressable
+                        key={f}
+                        onPress={() => setFinish(f)}
+                        style={[styles.finishChip, finish === f && styles.finishChipActive]}>
+                        <Text style={[styles.finishChipText, finish === f && styles.finishChipTextActive]}>
+                          {getFinishLabel(f, locale)}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+                <FlatList
+                  data={cards}
+                  numColumns={numColsFor(width)}
+                  contentContainerStyle={styles.grid}
+                  keyExtractor={(c) => c.id}
+                  renderItem={({ item }) => {
+                    // available_finishes null/empty means unsynced/unknown — never
+                    // treat that as "doesn't come in this finish", only an explicit
+                    // list that omits reverse_holo does.
+                    const knownFinishes = item.available_finishes;
+                    const unsupported = finish === 'reverse_holo' && !!knownFinishes && knownFinishes.length > 0 && !knownFinishes.includes('reverse_holo');
+                    const taken = !unsupported && (finishesByCardId.get(item.id)?.has(finish) ?? false);
+                    const disabled = taken || unsupported;
+                    return (
+                      <Pressable
+                        style={styles.tile}
+                        onPress={() => {
+                          if (disabled || binderId == null || position == null) return;
+                          assignCard.mutate({ binderId, position, cardId: item.id, finish });
+                          onClose();
+                        }}>
+                        <View style={styles.tileImgWrap}>
+                          <Image
+                            source={{ uri: item.image_small }}
+                            style={[styles.tileImg, disabled && styles.tileImgTaken]}
+                            resizeMode="contain"
+                          />
+                          {taken && (
+                            <View style={styles.takenBadge}>
+                              <Ionicons name="checkmark" size={14} color="white" />
+                            </View>
+                          )}
+                        </View>
+                      </Pressable>
+                    );
+                  }}
+                />
+              </>
             )}
           </Pressable>
         </Pressable>
