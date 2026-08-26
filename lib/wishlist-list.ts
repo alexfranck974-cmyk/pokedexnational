@@ -14,6 +14,15 @@ export interface WishlistCard {
   release_date: string | null;
   series: string | null;
   wished_at?: string;
+  cardmarket_trend_eur?: number | null;
+  is_priority?: boolean;
+  price_alert_eur?: number | null;
+}
+
+// True once the card's current market price has dropped to or below the
+// target the user set — the only two things a "triggered" alert needs.
+export function isPriceAlertTriggered(card: WishlistCard): boolean {
+  return card.price_alert_eur != null && card.cardmarket_trend_eur != null && card.cardmarket_trend_eur <= card.price_alert_eur;
 }
 
 export type WishStatusFilter = 'all' | 'not_owned' | 'owned';
@@ -73,6 +82,12 @@ export function applyWishlistPipeline(
     case 'num-asc':  sorted.sort((a, b) => a.dex_num - b.dex_num); break;
     case 'num-desc': sorted.sort((a, b) => b.dex_num - a.dex_num); break;
   }
+  // Coups de cœur always float to the top, regardless of the chosen sort —
+  // a second, stable pass (Array.sort is spec-guaranteed stable since
+  // ES2019) so within each group (priority / not) the sort above is untouched.
+  // !! first: is_priority is optional, and `NaN - NaN` (from Number(undefined))
+  // is not reliably treated as "equal" across engines the way a real 0 is.
+  sorted.sort((a, b) => (b.is_priority ? 1 : 0) - (a.is_priority ? 1 : 0));
   return sorted;
 }
 

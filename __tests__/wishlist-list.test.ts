@@ -1,4 +1,4 @@
-import { applyWishlistPipeline, groupWishlistByPokemon, type WishlistCard } from '../lib/wishlist-list';
+import { applyWishlistPipeline, groupWishlistByPokemon, isPriceAlertTriggered, type WishlistCard } from '../lib/wishlist-list';
 import type { PokemonType } from '../lib/types';
 
 const cards: WishlistCard[] = [
@@ -88,6 +88,33 @@ describe('applyWishlistPipeline', () => {
     expect(desc.map(c => c.id)).toEqual(['base1-46', 'jungle-1', 'base1-58', 'base1-1']);
     const asc = applyWishlistPipeline(cards, new Set(), typesByDex, { ...noFilters, sort: 'wished-asc' });
     expect(asc.map(c => c.id)).toEqual(['base1-1', 'base1-58', 'jungle-1', 'base1-46']);
+  });
+
+  it('floats priority (coup de cœur) cards to the top regardless of sort, preserving order within each group', () => {
+    const withPriority = cards.map(c => c.id === 'base1-58' ? { ...c, is_priority: true } : c);
+    const r = applyWishlistPipeline(withPriority, new Set(), typesByDex, { ...noFilters, sort: 'num-asc' });
+    expect(r.map(c => c.id)).toEqual(['base1-58', 'base1-1', 'jungle-1', 'base1-46']);
+  });
+});
+
+describe('isPriceAlertTriggered', () => {
+  const base: WishlistCard = cards[0];
+
+  it('is false with no alert set', () => {
+    expect(isPriceAlertTriggered({ ...base, price_alert_eur: null, cardmarket_trend_eur: 5 })).toBe(false);
+  });
+
+  it('is false when the current price is still above the target', () => {
+    expect(isPriceAlertTriggered({ ...base, price_alert_eur: 10, cardmarket_trend_eur: 15 })).toBe(false);
+  });
+
+  it('is true once the current price drops to or below the target', () => {
+    expect(isPriceAlertTriggered({ ...base, price_alert_eur: 10, cardmarket_trend_eur: 10 })).toBe(true);
+    expect(isPriceAlertTriggered({ ...base, price_alert_eur: 10, cardmarket_trend_eur: 8 })).toBe(true);
+  });
+
+  it('is false when the current price is unknown', () => {
+    expect(isPriceAlertTriggered({ ...base, price_alert_eur: 10, cardmarket_trend_eur: null })).toBe(false);
   });
 });
 

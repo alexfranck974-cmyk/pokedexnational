@@ -3,10 +3,10 @@ import { supabase } from './supabase';
 import { useSession } from './auth';
 import { toast } from './toast';
 
-// The 4 "nebula" ring widgets on the Dashboard (app/(app)/dashboard.tsx) —
+// The "nebula" ring widgets on the Dashboard (app/(app)/dashboard.tsx) —
 // reorderable and individually hideable via DashboardLayoutSheet.
-export type RingKey = 'goals' | 'badges' | 'trades' | 'cards';
-export const RING_KEYS: RingKey[] = ['goals', 'badges', 'trades', 'cards'];
+export type RingKey = 'goals' | 'badges' | 'trades' | 'cards' | 'priceAlerts';
+export const RING_KEYS: RingKey[] = ['goals', 'badges', 'trades', 'cards', 'priceAlerts'];
 
 export interface DashboardRingLayout {
   order: RingKey[];

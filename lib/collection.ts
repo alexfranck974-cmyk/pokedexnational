@@ -205,14 +205,82 @@ export function useAllWishedCards(userId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_wishlist')
-        .select('card_id, wished_at, tcg_cards(id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, cardmarket_trend_eur)')
+        .select('card_id, wished_at, is_priority, price_alert_eur, tcg_cards(id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, cardmarket_trend_eur)')
         .eq('user_id', userId!)
         .order('wished_at', { ascending: false });
       if (error) throw error;
       return (data ?? [])
         .filter(r => r.tcg_cards != null)
-        .map(r => ({ ...(r.tcg_cards as any), wished_at: r.wished_at as string }));
+        .map(r => ({
+          ...(r.tcg_cards as any),
+          wished_at: r.wished_at as string,
+          is_priority: r.is_priority as boolean,
+          price_alert_eur: r.price_alert_eur as number | null,
+        }));
     },
+  });
+}
+
+export function useToggleWishPriority() {
+  const qc = useQueryClient();
+  const { session } = useSession();
+  const userId = session?.user.id;
+
+  return useMutation({
+    mutationFn: async ({ cardId, currentlyPriority }: { cardId: string; currentlyPriority: boolean }) => {
+      if (!userId) throw new Error('Not signed in');
+      const { error } = await supabase
+        .from('user_wishlist')
+        .update({ is_priority: !currentlyPriority })
+        .eq('user_id', userId)
+        .eq('card_id', cardId);
+      if (error) throw error;
+    },
+    onMutate: async ({ cardId, currentlyPriority }) => {
+      await qc.cancelQueries({ queryKey: ['user_wishlist_all', userId] });
+      const prev = qc.getQueryData<any[]>(['user_wishlist_all', userId]);
+      if (prev) {
+        qc.setQueryData(['user_wishlist_all', userId], prev.map(c => c.id === cardId ? { ...c, is_priority: !currentlyPriority } : c));
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['user_wishlist_all', userId], ctx.prev);
+      toast('Impossible de mettre à jour, réessaie.');
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['user_wishlist_all', userId] }),
+  });
+}
+
+export function useSetWishPriceAlert() {
+  const qc = useQueryClient();
+  const { session } = useSession();
+  const userId = session?.user.id;
+
+  return useMutation({
+    // priceAlertEur: null clears the alert.
+    mutationFn: async ({ cardId, priceAlertEur }: { cardId: string; priceAlertEur: number | null }) => {
+      if (!userId) throw new Error('Not signed in');
+      const { error } = await supabase
+        .from('user_wishlist')
+        .update({ price_alert_eur: priceAlertEur })
+        .eq('user_id', userId)
+        .eq('card_id', cardId);
+      if (error) throw error;
+    },
+    onMutate: async ({ cardId, priceAlertEur }) => {
+      await qc.cancelQueries({ queryKey: ['user_wishlist_all', userId] });
+      const prev = qc.getQueryData<any[]>(['user_wishlist_all', userId]);
+      if (prev) {
+        qc.setQueryData(['user_wishlist_all', userId], prev.map(c => c.id === cardId ? { ...c, price_alert_eur: priceAlertEur } : c));
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['user_wishlist_all', userId], ctx.prev);
+      toast('Impossible de mettre à jour l’alerte, réessaie.');
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['user_wishlist_all', userId] }),
   });
 }
 

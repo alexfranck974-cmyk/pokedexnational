@@ -13,6 +13,7 @@ import { useDashboardRingLayout, type RingKey } from '@/lib/dashboard-layout';
 import { useTcgSets } from '@/lib/tcg-index';
 import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
 import { totalCollectionValue, computeSetGoalsProgress, averageProgress } from '@/lib/dashboard-stats';
+import { isPriceAlertTriggered, type WishlistCard } from '@/lib/wishlist-list';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { eurFormatter } from '@/lib/trades';
 import { useLocale, useT } from '@/lib/locale';
@@ -43,12 +44,13 @@ const POKEDEX = pokedexData as Pokemon[];
 const OBJECTIVES_TINT = '#38bdf8';
 const TRADE_TINT = '#2dd4bf';
 const CARDS_TINT = '#a78bfa';
+const ALERTS_TINT = '#34d399';
 
 // Zigzag vertical offsets by *position* in the visible, ordered ring list —
 // not tied to which ring is there, so the "nebula" cluster look survives
 // reordering/hiding instead of only looking right in the original order.
-const NEBULA_ITEM_OFFSETS = [0, 26, 10, 22];
-const DEFAULT_RING_LAYOUT = { order: ['goals', 'badges', 'trades', 'cards'] as RingKey[], hidden: new Set<RingKey>() };
+const NEBULA_ITEM_OFFSETS = [0, 26, 10, 22, 14];
+const DEFAULT_RING_LAYOUT = { order: ['goals', 'badges', 'trades', 'cards', 'priceAlerts'] as RingKey[], hidden: new Set<RingKey>() };
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -102,6 +104,7 @@ export default function DashboardScreen() {
   };
 
   const wishedCardIds = useMemo(() => new Set(wishedCards.map((c: { id: string }) => c.id)), [wishedCards]);
+  const triggeredAlertsCount = useMemo(() => (wishedCards as WishlistCard[]).filter(isPriceAlertTriggered).length, [wishedCards]);
   const collectionValue = useMemo(() => totalCollectionValue(ledgerCards, ownedQuantities), [ledgerCards, ownedQuantities]);
   const [zoomIndex, setZoomIndex] = useState<number | null>(null);
   const ownedCardsByDex = useMemo(() => new Map(ownedCards.map(c => [c.dexNum, c])), [ownedCards]);
@@ -185,6 +188,15 @@ export default function DashboardScreen() {
         centerSub={t('dashboard.cardsSub')}
         label={t('dashboard.ownedLabel')}
         onPress={() => router.push('/favorites' as never)}
+      />
+    ),
+    priceAlerts: () => (
+      <RingMenuItem
+        tint={ALERTS_TINT}
+        centerLabel={String(triggeredAlertsCount)}
+        centerSub={t('dashboard.alertsSub')}
+        label={t('dashboard.alertsLabel')}
+        onPress={() => router.push('/wishlist?alerts=1' as never)}
       />
     ),
   };

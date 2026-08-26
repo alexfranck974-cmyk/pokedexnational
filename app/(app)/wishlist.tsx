@@ -6,11 +6,12 @@ import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSession } from '@/lib/auth';
-import { useAllWishedCards, useAllOwnedCardIds, useToggleWish } from '@/lib/collection';
+import { useAllWishedCards, useAllOwnedCardIds, useToggleWish, useToggleWishPriority } from '@/lib/collection';
 import {
-  applyWishlistPipeline, groupWishlistByPokemon,
+  applyWishlistPipeline, groupWishlistByPokemon, isPriceAlertTriggered,
   type WishStatusFilter, type WishSortKey, type WishlistCard, type WishlistGroup,
 } from '@/lib/wishlist-list';
+import { PriceAlertSheet } from '@/components/PriceAlertSheet';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
 import { WishlistFilterBar } from '@/components/WishlistFilterBar';
@@ -39,7 +40,7 @@ function numColsFor(width: number): number {
 
 export default function WishlistScreen() {
   const router = useRouter();
-  const { from } = useLocalSearchParams<{ from?: string }>();
+  const { from, alerts } = useLocalSearchParams<{ from?: string; alerts?: string }>();
   const { session } = useSession();
   const { locale } = useLocale();
   const t = useT();
@@ -47,6 +48,16 @@ export default function WishlistScreen() {
   const { data: cards = [], isLoading } = useAllWishedCards(userId);
   const { data: ownedIds = new Set<string>() } = useAllOwnedCardIds(userId);
   const toggleWish = useToggleWish();
+  const togglePriority = useToggleWishPriority();
+  const [priceAlertTarget, setPriceAlertTarget] = useState<WishlistCard | null>(null);
+  const [showAlertsOnly, setShowAlertsOnly] = useState(false);
+  // Deep link from the Dashboard's price-alerts ring — jump straight into the
+  // filtered view instead of making the user find/tap the pill themselves.
+  useEffect(() => {
+    if (alerts !== '1') return;
+    setShowAlertsOnly(true);
+    router.setParams({ alerts: undefined });
+  }, [alerts, router]);
   const { width } = useWindowDimensions();
   const { colors, heroGradient, heroText, heroSurface, heroSurfaceActive, heroSurfaceActiveText } = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
@@ -93,14 +104,20 @@ export default function WishlistScreen() {
   // Debounced: search can shrink these FlashLists (numColumns > 1) drastically
   // on every keystroke — see lib/use-debounced-value.ts for why that's unsafe.
   const debouncedSearch = useDebouncedValue(search, 200);
-  const filtered = useMemo(
-    () => applyWishlistPipeline(cards as WishlistCard[], ownedIds, TYPES_BY_DEX, {
+  const filtered = useMemo(() => {
+    const base = applyWishlistPipeline(cards as WishlistCard[], ownedIds, TYPES_BY_DEX, {
       search: debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort,
-    }),
-    [cards, ownedIds, debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort],
-  );
+    });
+    // Deliberately not folded into applyWishlistPipeline's own filter options —
+    // this is a one-off view toggle off the alert pill, not a persisted/URL-driven
+    // filter dimension like the others in WishlistFilterBar.
+    return showAlertsOnly ? base.filter(isPriceAlertTriggered) : base;
+  }, [cards, ownedIds, debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort, showAlertsOnly]);
 
   const grouped = useMemo(() => groupWishlistByPokemon(filtered, ownedIds), [filtered, ownedIds]);
+  // Off the unfiltered list on purpose — a triggered card shouldn't vanish
+  // from this count just because the active filters happen to hide it.
+  const triggeredCount = useMemo(() => (cards as WishlistCard[]).filter(isPriceAlertTriggered).length, [cards]);
 
   const reset = () => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); };
 
@@ -133,6 +150,31 @@ export default function WishlistScreen() {
       borderRadius: radius.pill, backgroundColor: colors.overlay,
       alignItems: 'center' as const, justifyContent: 'center' as const,
     },
+    priorityBtn: {
+      position: 'absolute' as const, bottom: 4, left: 4, width: 26, height: 26,
+      borderRadius: radius.pill, backgroundColor: colors.overlay,
+      alignItems: 'center' as const, justifyContent: 'center' as const,
+    },
+    alertBtn: {
+      position: 'absolute' as const, bottom: 4, right: 4, width: 26, height: 26,
+      borderRadius: radius.pill, backgroundColor: colors.overlay,
+      alignItems: 'center' as const, justifyContent: 'center' as const,
+    },
+    alertTriggeredBadge: {
+      marginTop: 2, alignSelf: 'flex-start' as const, paddingHorizontal: 6, paddingVertical: 2,
+      borderRadius: radius.pill, backgroundColor: colors.success,
+    },
+    alertTriggeredBadgeText: { fontSize: 10, fontFamily: fonts.bodyBold, color: 'white' },
+    // A compact, self-sized pill (not a full-bleed banner) — an important
+    // heads-up, deliberately not the first/dominant thing on the screen.
+    alertPillRow: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, alignItems: 'flex-start' as const },
+    alertPill: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6,
+      paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.successBg,
+    },
+    alertPillActive: { backgroundColor: colors.success },
+    alertPillText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.success },
+    alertPillTextActive: { color: 'white' },
     pokemonRow: {
       flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, padding: spacing.sm,
       borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, backgroundColor: colors.surface,
@@ -189,11 +231,15 @@ export default function WishlistScreen() {
           <View style={styles.heroToggle}>
             <Pressable
               onPress={() => setViewMode('cards')}
+              accessibilityRole="button"
+              accessibilityLabel={t('wishlist.a11yViewCards')}
               style={[styles.viewBtn, viewMode === 'cards' && styles.viewBtnActive]}>
               <Ionicons name="albums" size={15} color={viewMode === 'cards' ? heroSurfaceActiveText : heroText} />
             </Pressable>
             <Pressable
               onPress={() => setViewMode('pokemon')}
+              accessibilityRole="button"
+              accessibilityLabel={t('wishlist.a11yViewPokemon')}
               style={[styles.viewBtn, viewMode === 'pokemon' && styles.viewBtnActive]}>
               <Ionicons name="list" size={15} color={viewMode === 'pokemon' ? heroSurfaceActiveText : heroText} />
             </Pressable>
@@ -201,6 +247,19 @@ export default function WishlistScreen() {
           <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
         </View>
       </LinearGradient>
+
+      {triggeredCount > 0 && (
+        <View style={styles.alertPillRow}>
+          <Pressable
+            onPress={() => setShowAlertsOnly(v => !v)}
+            style={[styles.alertPill, showAlertsOnly && styles.alertPillActive]}>
+            <Ionicons name="notifications" size={13} color={showAlertsOnly ? 'white' : colors.success} />
+            <Text style={[styles.alertPillText, showAlertsOnly && styles.alertPillTextActive]}>
+              {t(triggeredCount > 1 ? 'wishlist.alertBannerPlural' : 'wishlist.alertBannerSingular', { n: triggeredCount })}
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       <SlideTransition transitionKey={navToken} direction={sectionDirection} style={{ flex: 1 }}>
       {filtered.length === 0 ? (
@@ -265,6 +324,7 @@ export default function WishlistScreen() {
           renderItem={({ item }) => {
             if (!item) return null;
             const owned = ownedIds.has(item.id);
+            const triggered = isPriceAlertTriggered(item);
             return (
               <Pressable
                 onPress={() => enterPokemonDetail(router, `/pokemon/${item.dex_num}`, '/wishlist')}
@@ -298,9 +358,31 @@ export default function WishlistScreen() {
                     style={styles.heartBtn}>
                     <Text style={styles.heartFilled}>♥</Text>
                   </Pressable>
+                  <Pressable
+                    hitSlop={8}
+                    accessibilityLabel={t('wishlist.a11yTogglePriority')}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      togglePriority.mutate({ cardId: item.id, currentlyPriority: !!item.is_priority });
+                    }}
+                    style={styles.priorityBtn}>
+                    <Ionicons name={item.is_priority ? 'star' : 'star-outline'} size={15} color={item.is_priority ? colors.warning : 'white'} />
+                  </Pressable>
+                  <Pressable
+                    hitSlop={8}
+                    accessibilityLabel={t('wishlist.a11yPriceAlert')}
+                    onPress={(e) => { e.stopPropagation(); setPriceAlertTarget(item); }}
+                    style={styles.alertBtn}>
+                    <Ionicons name={item.price_alert_eur != null ? 'notifications' : 'notifications-outline'} size={15} color={triggered ? colors.success : 'white'} />
+                  </Pressable>
                 </View>
                 <Text style={styles.set} numberOfLines={1}>{item.set_name} · {item.card_number}</Text>
                 {item.rarity && <Text style={styles.rarity} numberOfLines={1}>{item.rarity}</Text>}
+                {triggered && (
+                  <View style={styles.alertTriggeredBadge}>
+                    <Text style={styles.alertTriggeredBadgeText}>{t('wishlist.alertTriggeredBadge')}</Text>
+                  </View>
+                )}
               </Pressable>
             );
           }}
@@ -319,6 +401,7 @@ export default function WishlistScreen() {
         onReset={reset}
       />
       <FriendSetGalleryModal target={gallery} onClose={() => setGallery(null)} />
+      <PriceAlertSheet card={priceAlertTarget} onClose={() => setPriceAlertTarget(null)} />
     </SafeAreaView>
   );
 }

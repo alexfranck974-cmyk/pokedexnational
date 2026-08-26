@@ -17,6 +17,7 @@ const RING_LABEL_KEY: Record<RingKey, StringKey> = {
   badges: 'dashboard.badgesLabel',
   trades: 'dashboard.tradesLabel',
   cards: 'dashboard.ownedLabel',
+  priceAlerts: 'dashboard.alertsLabel',
 };
 
 // Reorder/show-hide sheet for the Dashboard's 4 ring widgets — up/down

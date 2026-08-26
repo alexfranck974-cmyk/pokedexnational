@@ -15,7 +15,7 @@ import { getName } from '@/lib/i18n';
 import { useSession } from '@/lib/auth';
 import {
   useUserDex, useOwnedCardImages, useOwnedCardFinishes, useAllOwnedCardsDetailed,
-  useAllOwnedCardsLedgerDetailed, useOwnedCardQuantities, type OwnedCardFinish,
+  useAllOwnedCardsLedgerDetailed, useOwnedCardQuantities, useAllWishedCards, useToggleWish, type OwnedCardFinish,
 } from '@/lib/collection';
 import { FINISH_GRADIENT } from '@/lib/finish-visuals';
 import { ReverseHoloShimmer } from '@/components/ReverseHoloShimmer';
@@ -111,6 +111,9 @@ export default function FavoritesScreen() {
   const { data: ownedCardsDetailed = [] } = useAllOwnedCardsDetailed(userId);
   const { data: ledgerCards = [], isLoading: ledgerCardsLoading } = useAllOwnedCardsLedgerDetailed(userId);
   const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
+  const { data: wishedCards = [] } = useAllWishedCards(userId);
+  const wishedIds = useMemo(() => new Set(wishedCards.map(c => c.id)), [wishedCards]);
+  const toggleWish = useToggleWish();
 
   const { data: teams = [] } = useTeams(userId);
   const createTeam = useCreateTeam();
@@ -639,6 +642,12 @@ export default function FavoritesScreen() {
       backgroundColor: colors.primary, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
     dupQtyText: { fontSize: 11, fontFamily: fonts.bodyBold, color: 'white' },
+    dupHeartBtn: {
+      position: 'absolute' as const, bottom: 4, right: 4, width: 24, height: 24, borderRadius: 12,
+      backgroundColor: colors.overlay, alignItems: 'center' as const, justifyContent: 'center' as const,
+    },
+    dupHeart: { fontSize: 15, color: colors.textDim, lineHeight: 18 },
+    dupHeartFilled: { color: colors.danger },
     dupValueText: { fontSize: 11, fontFamily: fonts.monoBold, color: colors.success, marginTop: 4 },
     dupName: { fontSize: 11, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const, marginTop: 1 },
   }));
@@ -1080,6 +1089,7 @@ export default function FavoritesScreen() {
               renderItem={({ item }) => {
                 if (!item) return null;
                 const qty = quantities.get(item.cardId) ?? 0;
+                const wished = wishedIds.has(item.cardId);
                 return (
                   <Pressable
                     style={styles.dupTile}
@@ -1089,6 +1099,16 @@ export default function FavoritesScreen() {
                       <View style={styles.dupQtyBadge}>
                         <Text style={styles.dupQtyText}>×{qty}</Text>
                       </View>
+                      <Pressable
+                        hitSlop={8}
+                        accessibilityLabel={t('favorites.a11yToggleWish')}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          toggleWish.mutate({ cardId: item.cardId, currentlyWished: wished, dexNum: item.dexNum });
+                        }}
+                        style={styles.dupHeartBtn}>
+                        <Text style={[styles.dupHeart, wished && styles.dupHeartFilled]}>{wished ? '♥' : '♡'}</Text>
+                      </Pressable>
                     </View>
                     {item.cardmarketTrendEur != null && (
                       <Text style={styles.dupValueText}>{eurFormatter(locale).format(item.cardmarketTrendEur)}</Text>
