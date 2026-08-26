@@ -19,16 +19,24 @@ jobs:
 
       - run: npm ci
 
+      # sync:tcgdex chains the TCGPlayer image backfill (sync:tcgplayer-images)
+      # after the raw TCGdex crawl itself — the crawl blindly re-writes the
+      # sprite fallback for gap-fill sets every run (it doesn't know about the
+      # backfill), so the two must never run one without the other. That's
+      # enforced in package.json now, not just here — see 2026-08-24 incident:
+      # a manual sync:tcgdex-only run (back when the two were separate npm
+      # scripts) wiped mep + several JP sets' real card art back to sprite
+      # placeholders for two days with nothing to catch it.
       - run: npm run sync:tcgdex
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
-      # Re-applies TCGPlayer image backfill for sets TCGdex has no art for —
-      # sync:tcgdex above re-writes the sprite fallback for those same rows
-      # every run (it doesn't know about this backfill), so this must run
-      # right after it, every time.
-      - run: npm run sync:tcgplayer-images
+      # Tripwire for everything the chaining above can't catch by construction
+      # (a future refactor that breaks it, tcgcsv.com/TCGdex changing shape so
+      # the backfill silently matches nothing) — fails the workflow loudly
+      # instead of a green checkmark hiding a quiet image regression.
+      - run: npm run check:image-fallback
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

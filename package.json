@@ -58,10 +58,12 @@
     "sync:tcg": "ts-node --project tsconfig.scripts.json scripts/sync-tcg-cards.ts",
     "sync:tcg:prices": "ts-node --project tsconfig.scripts.json scripts/sync-tcg-prices.ts",
     "sync:tcg:finishes": "ts-node --project tsconfig.scripts.json scripts/sync-tcg-finishes.ts",
-    "sync:tcgdex": "ts-node --project tsconfig.scripts.json scripts/sync-tcgdex-cards.ts",
+    "sync:tcgdex:cards": "ts-node --project tsconfig.scripts.json scripts/sync-tcgdex-cards.ts",
+    "sync:tcgdex": "npm run sync:tcgdex:cards && npm run sync:tcgplayer-images",
     "sync:tcgplayer-images": "ts-node --project tsconfig.scripts.json scripts/sync-tcgplayer-images.ts",
     "sync:tcgplayer-prices": "ts-node --project tsconfig.scripts.json scripts/sync-tcgplayer-prices.ts",
-    "sync:tcgdex:prices": "ts-node --project tsconfig.scripts.json scripts/sync-tcgdex-prices.ts"
+    "sync:tcgdex:prices": "ts-node --project tsconfig.scripts.json scripts/sync-tcgdex-prices.ts",
+    "check:image-fallback": "ts-node --project tsconfig.scripts.json scripts/check-image-fallback.ts"
   },
   "jest": {
     "preset": "jest-expo",

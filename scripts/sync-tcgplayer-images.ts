@@ -29,7 +29,7 @@ const supabase = createClient(url, SUPABASE_SERVICE_ROLE_KEY, {
 // deliberately left out — TCGdex bundles multiple distinct starter-deck
 // products under that one set_id, and no single TCGPlayer group lines up
 // with it cleanly enough to trust a card_number match.
-const SET_TO_TCGPLAYER_GROUP: Record<string, { categoryId: number; groupId: number }> = {
+export const SET_TO_TCGPLAYER_GROUP: Record<string, { categoryId: number; groupId: number }> = {
   mep: { categoryId: 3, groupId: 24451 }, // ME: Mega Evolution Promo
   'jp-M1L': { categoryId: 85, groupId: 24399 }, // m1L: Mega Brave
   'jp-M1S': { categoryId: 85, groupId: 24400 }, // m1S: Mega Symphonia
@@ -217,4 +217,8 @@ async function main() {
   console.log('\nDone.');
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
+// Guarded so check-image-fallback.ts can import SET_TO_TCGPLAYER_GROUP above
+// without triggering a full sync as an import side effect.
+if (require.main === module) {
+  main().catch(e => { console.error(e); process.exit(1); });
+}
