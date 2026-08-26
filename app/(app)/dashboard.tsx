@@ -9,6 +9,7 @@ import { useSession } from '@/lib/auth';
 import { useUserDex, useAllOwnedCardsDetailed, useAllOwnedCardsLedgerDetailed, useAllWishedCards, useOwnedCardQuantities } from '@/lib/collection';
 import { useShowcase } from '@/lib/favorites';
 import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
+import { useDashboardRingLayout, type RingKey } from '@/lib/dashboard-layout';
 import { useTcgSets } from '@/lib/tcg-index';
 import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
 import { totalCollectionValue, computeSetGoalsProgress, averageProgress } from '@/lib/dashboard-stats';
@@ -21,6 +22,7 @@ import { BadgesSection } from '@/components/BadgesSection';
 import { VitrineCarousel } from '@/components/VitrineCarousel';
 import { CardZoomModal } from '@/components/CardZoomModal';
 import { RingMenuItem } from '@/components/RingMenuItem';
+import { DashboardLayoutSheet } from '@/components/DashboardLayoutSheet';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { SetGoalPicker } from '@/components/SetGoalPicker';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -41,6 +43,12 @@ const POKEDEX = pokedexData as Pokemon[];
 const OBJECTIVES_TINT = '#38bdf8';
 const TRADE_TINT = '#2dd4bf';
 const CARDS_TINT = '#a78bfa';
+
+// Zigzag vertical offsets by *position* in the visible, ordered ring list —
+// not tied to which ring is there, so the "nebula" cluster look survives
+// reordering/hiding instead of only looking right in the original order.
+const NEBULA_ITEM_OFFSETS = [0, 26, 10, 22];
+const DEFAULT_RING_LAYOUT = { order: ['goals', 'badges', 'trades', 'cards'] as RingKey[], hidden: new Set<RingKey>() };
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -63,6 +71,8 @@ export default function DashboardScreen() {
   );
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
   const [tradeHistoryOpen, setTradeHistoryOpen] = useState(false);
+  const [layoutSheetOpen, setLayoutSheetOpen] = useState(false);
+  const { data: ringLayout = DEFAULT_RING_LAYOUT } = useDashboardRingLayout(userId);
   const [unpinTarget, setUnpinTarget] = useState<{ setId: string; setName: string } | null>(null);
   const { data: completedTradesCount = 0 } = useCompletedTradesCount(userId);
   const { data: goals = [] } = useSetGoals(userId);
@@ -114,6 +124,7 @@ export default function DashboardScreen() {
     center: { flex: 1, justifyContent: 'center' as const, alignItems: 'center' as const },
     scroll: { padding: spacing.lg, paddingBottom: spacing.lg + TAB_BAR_CLEARANCE, gap: spacing.lg },
     titleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
+    titleActions: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md },
     h1: { fontSize: 30, fontFamily: fonts.display, color: colors.text },
     collectionValue: { fontSize: 15, fontFamily: fonts.monoBold, color: colors.success },
 
@@ -133,15 +144,51 @@ export default function DashboardScreen() {
       flexDirection: 'row' as const, flexWrap: 'wrap' as const, justifyContent: 'center' as const,
       alignItems: 'flex-start' as const, rowGap: spacing.lg, columnGap: spacing.lg,
     },
-    nebulaItemMid: { marginTop: 26 },
-    nebulaItemThird: { marginTop: 10 },
-    nebulaItemLast: { marginTop: 22 },
     addBadge: {
       position: 'absolute' as const, bottom: -2, right: -2, width: 22, height: 22, borderRadius: 11,
       backgroundColor: colors.primary, alignItems: 'center' as const, justifyContent: 'center' as const,
       borderWidth: 2, borderColor: colors.bg,
     },
   }));
+
+  const ringRenderers: Record<RingKey, () => React.ReactNode> = {
+    goals: () => (
+      <RingMenuItem
+        tint={OBJECTIVES_TINT}
+        pct={goals.length > 0 ? collectionAvgPct : undefined}
+        centerLabel={goals.length > 0 ? `${collectionAvgPct}%` : '+'}
+        label={t('dashboard.collectionLabel')}
+        onPress={() => goals.length === 0 ? setGoalPickerOpen(true) : toggleCollectionExpanded()}
+        badge={
+          <Pressable onPress={() => setGoalPickerOpen(true)} hitSlop={6} style={styles.addBadge}>
+            <Ionicons name="add" size={13} color="white" />
+          </Pressable>
+        }
+      />
+    ),
+    badges: () => (
+      <BadgesSection userId={userId} wishedCardIds={wishedCardIds} wishlistCount={wishedCards.length} />
+    ),
+    trades: () => (
+      <RingMenuItem
+        tint={TRADE_TINT}
+        centerLabel={String(completedTradesCount)}
+        centerSub={t('dashboard.tradesSub')}
+        label={t('dashboard.tradesLabel')}
+        onPress={() => setTradeHistoryOpen(true)}
+      />
+    ),
+    cards: () => (
+      <RingMenuItem
+        tint={CARDS_TINT}
+        centerLabel={String(totalCardsOwned)}
+        centerSub={t('dashboard.cardsSub')}
+        label={t('dashboard.ownedLabel')}
+        onPress={() => router.push('/favorites' as never)}
+      />
+    ),
+  };
+  const visibleRings = ringLayout.order.filter(k => !ringLayout.hidden.has(k));
 
   if (dexLoading) {
     return (
@@ -159,7 +206,16 @@ export default function DashboardScreen() {
         {...hideOnScrollProps}>
         <View style={styles.titleRow}>
           <Text style={styles.h1}>{t('dashboard.title')}</Text>
-          <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
+          <View style={styles.titleActions}>
+            <Pressable
+              onPress={() => setLayoutSheetOpen(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('dashboard.a11yCustomize')}>
+              <Ionicons name="options-outline" size={20} color={colors.textMuted} />
+            </Pressable>
+            <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
+          </View>
         </View>
         <Text style={styles.collectionValue}>
           {t('dashboard.collectionValueLabel', { value: eurFormatter(locale).format(collectionValue) })}
@@ -175,43 +231,11 @@ export default function DashboardScreen() {
         />
 
         <View style={styles.nebula}>
-          <RingMenuItem
-            tint={OBJECTIVES_TINT}
-            pct={goals.length > 0 ? collectionAvgPct : undefined}
-            centerLabel={goals.length > 0 ? `${collectionAvgPct}%` : '+'}
-            label={t('dashboard.collectionLabel')}
-            onPress={() => goals.length === 0 ? setGoalPickerOpen(true) : toggleCollectionExpanded()}
-            badge={
-              <Pressable onPress={() => setGoalPickerOpen(true)} hitSlop={6} style={styles.addBadge}>
-                <Ionicons name="add" size={13} color="white" />
-              </Pressable>
-            }
-          />
-          <View style={styles.nebulaItemMid}>
-            <BadgesSection
-              userId={userId}
-              wishedCardIds={wishedCardIds}
-              wishlistCount={wishedCards.length}
-            />
-          </View>
-          <View style={styles.nebulaItemThird}>
-            <RingMenuItem
-              tint={TRADE_TINT}
-              centerLabel={String(completedTradesCount)}
-              centerSub={t('dashboard.tradesSub')}
-              label={t('dashboard.tradesLabel')}
-              onPress={() => setTradeHistoryOpen(true)}
-            />
-          </View>
-          <View style={styles.nebulaItemLast}>
-            <RingMenuItem
-              tint={CARDS_TINT}
-              centerLabel={String(totalCardsOwned)}
-              centerSub={t('dashboard.cardsSub')}
-              label={t('dashboard.ownedLabel')}
-              onPress={() => router.push('/favorites' as never)}
-            />
-          </View>
+          {visibleRings.map((key, i) => (
+            <View key={key} style={{ marginTop: NEBULA_ITEM_OFFSETS[i] ?? 0 }}>
+              {ringRenderers[key]()}
+            </View>
+          ))}
         </View>
 
         {goals.length > 0 && (
@@ -245,6 +269,7 @@ export default function DashboardScreen() {
         onSwipePrev={() => setZoomIndex(i => i === null ? null : (i - 1 + vitrineCards.length) % vitrineCards.length)}
       />
       <SetGoalPicker visible={goalPickerOpen} pinnedSetIds={pinnedSetIds} tint={OBJECTIVES_TINT} onClose={() => setGoalPickerOpen(false)} />
+      <DashboardLayoutSheet visible={layoutSheetOpen} layout={ringLayout} onClose={() => setLayoutSheetOpen(false)} />
       <ConfirmDialog
         target={unpinTarget ? { title: t('dashboard.unpinTitle'), message: t('dashboard.unpinMessage', { name: unpinTarget.setName }) } : null}
         confirmLabel={t('common.unpin')}

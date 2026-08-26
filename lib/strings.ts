@@ -190,6 +190,13 @@ export const STRINGS = {
     'dashboard.variantGigamax': 'Dynamax / Gigamax',
     'dashboard.badgesLabel': 'Badges',
     'dashboard.vitrineTitle': 'Vitrine',
+    'dashboard.a11yCustomize': 'Personnaliser le dashboard',
+    'dashboard.layoutSheetTitle': 'Personnaliser le dashboard',
+    'dashboard.layoutSheetHint': 'Réordonne ou masque les statistiques affichées.',
+    'dashboard.layoutSheetReset': 'Réinitialiser',
+    'dashboard.a11yMoveUp': 'Monter',
+    'dashboard.a11yMoveDown': 'Descendre',
+    'dashboard.a11yToggleVisible': 'Afficher/masquer',
 
     // New-set banner
     'newSetBanner.newSet': 'Nouvelle extension : {label}',
@@ -657,6 +664,13 @@ export const STRINGS = {
     'dashboard.variantGigamax': 'Dynamax / Gigamax',
     'dashboard.badgesLabel': 'Badges',
     'dashboard.vitrineTitle': 'Showcase',
+    'dashboard.a11yCustomize': 'Customize dashboard',
+    'dashboard.layoutSheetTitle': 'Customize dashboard',
+    'dashboard.layoutSheetHint': 'Reorder or hide the stats shown below.',
+    'dashboard.layoutSheetReset': 'Reset',
+    'dashboard.a11yMoveUp': 'Move up',
+    'dashboard.a11yMoveDown': 'Move down',
+    'dashboard.a11yToggleVisible': 'Show/hide',
 
     'newSetBanner.newSet': 'New set: {label}',
     'newSetBanner.view': 'View',
