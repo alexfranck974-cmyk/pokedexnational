@@ -581,7 +581,7 @@ export function useAllOwnedCardsLedgerDetailed(userId?: string) {
 export type OwnedCardFinish = 'normal' | 'holo' | 'reverse_holo';
 export type OwnedCardCondition = 'mint' | 'near_mint' | 'excellent' | 'good' | 'played' | 'poor';
 
-export const FINISH_LABELS: Record<OwnedCardFinish, string> = {
+const FINISH_LABELS: Record<OwnedCardFinish, string> = {
   normal: 'Normale',
   holo: 'Holo',
   reverse_holo: 'Reverse Holo',
