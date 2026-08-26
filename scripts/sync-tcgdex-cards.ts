@@ -25,6 +25,16 @@ const CUTOFF_DATE = '2022-01-01';
 const MAX_RETRIES = 5;
 const CONCURRENCY = 5;
 const BATCH_SIZE = 200;
+// A card that still fails after fetchJson's own 5 retries isn't necessarily
+// gone for good — a long crawl (thousands of cards back to back) can run
+// into a sustained rate-limit window that no amount of immediate retrying
+// gets past. These sweeps re-attempt the leftovers after a real cooldown,
+// giving that window time to clear, instead of mapLimit's old behavior of
+// silently dropping the card forever after one failed attempt. See the
+// 2026-08 audit: ~2000 cards missing across every JP/CN set, ~60% of them
+// real Pokémon cards TCGdex had all along — not a data-source gap.
+const RETRY_SWEEPS = 3;
+const SWEEP_COOLDOWN_MS = 8000;
 
 const LOCALES: { locale: string; region: 'jp' | 'cn' }[] = [
   { locale: 'ja', region: 'jp' },
@@ -43,6 +53,13 @@ const EN_GAP_SET_IDS = [
 ];
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+// Tripwire for the exact failure class this whole retry-sweep mechanism
+// exists for: cards TCGdex genuinely has that we still failed to write after
+// every sweep. Drives main()'s exit code — a non-zero exit here fails the
+// GitHub Actions run loudly (see sync-tcgdex-cards.yml) instead of the old
+// behavior, a green checkmark over a silently incomplete set.
+let totalPermanentFailures = 0;
 
 async function fetchJson<T>(url: string): Promise<T> {
   let lastErr: unknown = null;
@@ -66,8 +83,11 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 // Small concurrency-limited map — avoids hammering the API with thousands of
 // simultaneous requests while still being much faster than fully sequential.
-async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R | null>): Promise<R[]> {
+// Failed items are returned (not swallowed) so the caller can retry them —
+// see fetchAllCards, the only real consumer of that.
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R | null>): Promise<{ results: R[]; failed: T[] }> {
   const results: R[] = [];
+  const failed: T[] = [];
   let index = 0;
   async function worker() {
     while (index < items.length) {
@@ -76,12 +96,42 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
         const r = await fn(items[i]);
         if (r !== null) results.push(r);
       } catch (err) {
-        console.error(`Item ${i} failed, skipping:`, err instanceof Error ? err.message : err);
+        console.error(`Item ${i} failed:`, err instanceof Error ? err.message : err);
+        failed.push(items[i]);
       }
     }
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return results;
+  return { results, failed };
+}
+
+// Fetches every card in a set, sweeping back over whatever failed (with a
+// real cooldown in between, not just fetchJson's sub-second backoff) up to
+// RETRY_SWEEPS times before giving up on what's left. toRow returning null
+// (Trainer/Energy, no dex link) is a correct exclusion, not a failure —
+// mapLimit only ever puts genuinely-errored fetches in `failed`.
+async function fetchAllCards(
+  cardRefs: { id: string }[], locale: string, region: 'jp' | 'cn' | 'global', releaseDate: string | null,
+): Promise<NonNullable<ReturnType<typeof toRow>>[]> {
+  const rows: NonNullable<ReturnType<typeof toRow>>[] = [];
+  let pending = cardRefs;
+  for (let sweep = 0; sweep <= RETRY_SWEEPS && pending.length > 0; sweep++) {
+    if (sweep > 0) {
+      console.log(`    retry sweep ${sweep}/${RETRY_SWEEPS} for ${pending.length} card(s), cooling down ${SWEEP_COOLDOWN_MS}ms...`);
+      await sleep(SWEEP_COOLDOWN_MS);
+    }
+    const { results, failed } = await mapLimit(pending, CONCURRENCY, async (cardRef) => {
+      const card = await fetchJson<CardDetail>(`https://api.tcgdex.net/v2/${locale}/cards/${cardRef.id}`);
+      return toRow(card, region, releaseDate);
+    });
+    rows.push(...results);
+    pending = failed;
+  }
+  if (pending.length > 0) {
+    console.error(`    ⚠️ ${pending.length} card(s) permanently failed after ${RETRY_SWEEPS} retry sweeps: ${pending.map(c => c.id).join(', ')}`);
+    totalPermanentFailures += pending.length;
+  }
+  return rows;
 }
 
 interface SeriesListEntry { id: string; name: string; }
@@ -176,10 +226,7 @@ async function syncLocale(locale: string, region: 'jp' | 'cn') {
 
   let done = 0;
   for (const set of qualifyingSets) {
-    const rows = await mapLimit(set.cards, CONCURRENCY, async (cardRef) => {
-      const card = await fetchJson<CardDetail>(`https://api.tcgdex.net/v2/${locale}/cards/${cardRef.id}`);
-      return toRow(card, region, set.releaseDate);
-    });
+    const rows = await fetchAllCards(set.cards, locale, region, set.releaseDate);
     if (rows.length) await upsertBatch(rows);
     done += set.cards.length;
     console.log(`  ${set.id}: ${rows.length}/${set.cards.length} cards written (${done}/${totalCards} processed)`);
@@ -193,10 +240,7 @@ async function syncEnGapSets() {
   console.log(`\n=== en gap-fill sets: ${EN_GAP_SET_IDS.join(', ')} ===`);
   for (const setId of EN_GAP_SET_IDS) {
     const set = await fetchJson<SetDetail>(`https://api.tcgdex.net/v2/en/sets/${setId}`);
-    const rows = await mapLimit(set.cards, CONCURRENCY, async (cardRef) => {
-      const card = await fetchJson<CardDetail>(`https://api.tcgdex.net/v2/en/cards/${cardRef.id}`);
-      return toRow(card, 'global', set.releaseDate);
-    });
+    const rows = await fetchAllCards(set.cards, 'en', 'global', set.releaseDate);
     if (rows.length) await upsertBatch(rows);
     console.log(`  ${set.id}: ${rows.length}/${set.cards.length} cards written`);
   }
@@ -207,6 +251,10 @@ async function main() {
     await syncLocale(locale, region);
   }
   await syncEnGapSets();
+  if (totalPermanentFailures > 0) {
+    console.error(`\n${totalPermanentFailures} card(s) across this run could not be fetched even after ${RETRY_SWEEPS} retry sweeps — see the ⚠️ lines above for which ones.`);
+    process.exit(1);
+  }
   console.log('\nDone.');
 }
 
