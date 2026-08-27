@@ -13,6 +13,9 @@ import { CardFilterTree } from '@/components/CardFilterTree';
 import { CardZoomModal } from '@/components/CardZoomModal';
 import { CardCopySheet, EditCopyFooterButton } from '@/components/CardCopySheet';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { EmptyState } from '@/components/EmptyState';
+import { TYPE_COLORS } from '@/lib/types-colors';
+import { withAlpha } from '@/lib/color-utils';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForPokemon } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
@@ -29,6 +32,15 @@ import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { BackButton } from '@/components/BackButton';
 
 const POKEDEX = pokedexData as Pokemon[];
+
+// Per-Pokémon colored glow on the hero sprite (primary type) — dynamic per
+// screen instance, same pattern as the Pokedex grid's generation headers.
+function shadowGlow(color: string) {
+  return {
+    shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 10,
+    elevation: 6,
+  };
+}
 
 export default function PokemonDetail() {
   const { num: numStr, wishes, from } = useLocalSearchParams<{ num: string; wishes?: string; from?: string }>();
@@ -169,12 +181,15 @@ export default function PokemonDetail() {
     viewBtnActive: { backgroundColor: heroSurfaceActive },
     heroToggleDivider: { width: 1, alignSelf: 'stretch' as const, backgroundColor: heroSurface, marginHorizontal: 2 },
     heroMain: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
-    heroSprite: { width: 64, height: 64 },
+    heroSpriteWrap: {
+      width: 92, height: 92, alignItems: 'center' as const, justifyContent: 'center' as const,
+    },
+    heroSpriteGlow: { position: 'absolute' as const, width: 92, height: 92, borderRadius: 46 },
+    heroSprite: { width: 84, height: 84 },
     heroDex: { fontSize: 12, fontFamily: fonts.mono, color: heroTextMuted },
     heroName: { fontSize: 20, fontFamily: fonts.display, color: heroText },
     heroCount: { fontSize: 16, fontFamily: fonts.monoBold, color: heroText },
     heroAcquired: { fontSize: 10, fontFamily: fonts.body, color: heroTextMuted },
-    empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: 24, fontStyle: 'italic' as const },
     regionRow: { flexDirection: 'row' as const, gap: spacing.xs, padding: spacing.sm, paddingBottom: 0 },
     regionChip: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, alignItems: 'center' as const },
     regionChipActive: { backgroundColor: colors.primary },
@@ -246,7 +261,14 @@ export default function PokemonDetail() {
           </View>
         </View>
         <View style={styles.heroMain}>
-          <Image source={{ uri: p.sprite_url }} style={styles.heroSprite} resizeMode="contain" />
+          <View style={styles.heroSpriteWrap}>
+            <View style={[styles.heroSpriteGlow, { backgroundColor: withAlpha(TYPE_COLORS[p.types[0]] ?? '#888888', 0.35) }]} />
+            <Image
+              source={{ uri: p.sprite_url }}
+              style={[styles.heroSprite, shadowGlow(TYPE_COLORS[p.types[0]] ?? '#888888')]}
+              resizeMode="contain"
+            />
+          </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.heroDex}>#{String(p.num).padStart(4, '0')}</Text>
             <Text style={styles.heroName}>{getName(p, locale)}</Text>
@@ -277,9 +299,9 @@ export default function PokemonDetail() {
       {cardsLoading ? (
         <ActivityIndicator style={{ marginTop: 24 }} />
       ) : cards.length === 0 ? (
-        <Text style={styles.empty}>{t('pokemon.noCardsKnown')}</Text>
+        <EmptyState icon="albums-outline" hint={t('pokemon.noCardsKnown')} />
       ) : regionCards.length === 0 ? (
-        <Text style={styles.empty}>{t('pokemon.noRegionCards', { region: REGIONS.find(r => r.id === region)?.label ?? '' })}</Text>
+        <EmptyState icon="albums-outline" hint={t('pokemon.noRegionCards', { region: REGIONS.find(r => r.id === region)?.label ?? '' })} />
       ) : (
         <>
           <CardFilterTree
@@ -308,7 +330,7 @@ export default function PokemonDetail() {
             <Text style={styles.infoBannerText}>{t('pokemon.infoBanner')}</Text>
           </View>
           {sortedCards.length === 0 ? (
-            <Text style={styles.empty}>{t('pokemon.noCardsInSelectedSets')}</Text>
+            <EmptyState icon="filter-outline" hint={t('pokemon.noCardsInSelectedSets')} />
           ) : (
             <CardGallery
               cards={sortedCards}
