@@ -4,11 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useSession, signOut } from '@/lib/auth';
+import { useSession, signOut, deleteAccount } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import * as Clipboard from 'expo-clipboard';
 import { IconBubble } from '@/components/IconBubble';
 import { QRCodeModal } from '@/components/QRCodeModal';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE, PALETTE_ORDER, PALETTE_META } from '@/lib/theme';
 import { useMotion } from '@/lib/motion';
 import { useLocale, useT } from '@/lib/locale';
@@ -19,6 +20,8 @@ export default function Settings() {
   const router = useRouter();
   const { session } = useSession();
   const [qrOpen, setQrOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const userId = session?.user.id;
   const { colors, mode, toggleMode, palette, setPalette, heroGradient, heroText, heroTextMuted, heroSurface } = useTheme();
   const { animationsEnabled, setAnimationsEnabled } = useMotion();
@@ -50,6 +53,10 @@ export default function Settings() {
     btnSecondaryText: { fontFamily: fonts.body, color: colors.text, fontSize: 13 },
     btnDanger: { flexDirection: 'row' as const, gap: 6, backgroundColor: colors.danger, padding: spacing.md, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const },
     btnText: { fontFamily: fonts.bodyBold, color: 'white' },
+    // Deliberately quieter than btnDanger — irreversible and destroys every
+    // bit of data, so it shouldn't read as equally "easy to tap" as sign out.
+    deleteAccountLink: { alignItems: 'center' as const, padding: spacing.sm },
+    deleteAccountLinkText: { fontFamily: fonts.body, fontSize: 13, color: colors.textDim },
     legalRow: { flexDirection: 'row' as const, justifyContent: 'center' as const, gap: spacing.md, marginTop: spacing.xs },
     legalLink: { fontSize: 13, fontFamily: fonts.body, color: colors.textDim, textDecorationLine: 'underline' as const },
     paletteSwatches: { flexDirection: 'row' as const, gap: spacing.sm },
@@ -266,6 +273,10 @@ export default function Settings() {
           <Text style={styles.btnText}>{t('settings.logout')}</Text>
         </Pressable>
 
+        <Pressable onPress={() => setDeleteConfirmOpen(true)} style={styles.deleteAccountLink}>
+          <Text style={styles.deleteAccountLinkText}>{t('settings.deleteAccount')}</Text>
+        </Pressable>
+
         <View style={styles.legalRow}>
           <Pressable onPress={() => router.push('/legal/terms')}>
             <Text style={styles.legalLink}>{t('settings.terms')}</Text>
@@ -276,6 +287,26 @@ export default function Settings() {
         </View>
       </ScrollView>
       <QRCodeModal visible={qrOpen} value={shareUrl} label="Mon Pokédex" onClose={() => setQrOpen(false)} />
+      <ConfirmDialog
+        target={deleteConfirmOpen ? { title: t('settings.deleteAccountConfirmTitle'), message: t('settings.deleteAccountConfirmMessage') } : null}
+        confirmLabel={deletingAccount ? '…' : t('settings.deleteAccountConfirmCta')}
+        cancelLabel={t('common.cancel')}
+        tone="danger"
+        onConfirm={async () => {
+          if (deletingAccount) return;
+          setDeletingAccount(true);
+          try {
+            await deleteAccount();
+            setDeleteConfirmOpen(false);
+            router.replace('/login');
+          } catch {
+            toast(t('settings.deleteAccountError'));
+          } finally {
+            setDeletingAccount(false);
+          }
+        }}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
     </SafeAreaView>
   );
 }

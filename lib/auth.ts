@@ -50,6 +50,19 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
+// Irreversible — deletes auth.users, which cascades (ON DELETE CASCADE) to
+// profiles and every other user-owned table from there. See
+// 057_delete_own_account.sql for why this is a SECURITY DEFINER RPC rather
+// than an Edge Function calling the admin API (no Supabase CLI workflow set
+// up for this project). Signs out client-side right after — the row is gone
+// server-side, but the current session's access token would otherwise keep
+// working locally until it naturally expires.
+export async function deleteAccount() {
+  const { error } = await supabase.rpc('delete_own_account');
+  if (error) throw error;
+  await supabase.auth.signOut();
+}
+
 // Native mobile isn't wired up for deep links yet (no EAS build/scheme handling
 // in place) — restrict the redirect to web, where Supabase's detectSessionInUrl
 // picks the recovery token back up automatically on /reset-password.
