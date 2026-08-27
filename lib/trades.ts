@@ -20,6 +20,24 @@ export function eurFormatter(locale: Locale = 'fr'): Intl.NumberFormat {
   return EUR_FORMATTERS[locale];
 }
 
+// Plain (no currency symbol) 2-decimal number, locale-correct separator — used
+// for the low end of a price range so the € only appears once, at the end.
+const PLAIN_NUMBER_FORMATTERS: Record<Locale, Intl.NumberFormat> = {
+  fr: new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+  en: new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+};
+
+// Cardmarket's trendPrice is a single algorithmic estimate, not a per-condition
+// price — Cardmarket doesn't expose condition-specific pricing at all. Pairing
+// it with lowPrice as a range gives a truer sense of the real spread than one
+// number alone. Falls back to the trend price alone when there's no low price
+// or the two are within a few cents (nothing meaningful to show as a range).
+export function formatCardPriceRange(low: number | null | undefined, trend: number | null | undefined, locale: Locale = 'fr'): string | null {
+  if (trend == null) return null;
+  if (low == null || trend - low < 0.05) return eurFormatter(locale).format(trend);
+  return `${PLAIN_NUMBER_FORMATTERS[locale].format(low)}–${eurFormatter(locale).format(trend)}`;
+}
+
 export interface TradeOfferItem {
   id: string;
   direction: 'incoming' | 'outgoing';

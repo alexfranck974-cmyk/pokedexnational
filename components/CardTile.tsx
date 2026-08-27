@@ -10,7 +10,7 @@ import { useT } from '@/lib/locale';
 import { FINISH_GRADIENT, pickPrimaryFinish } from '@/lib/finish-visuals';
 import { ReverseHoloShimmer } from '@/components/ReverseHoloShimmer';
 import type { OwnedCardFinish } from '@/lib/collection';
-import { eurFormatter } from '@/lib/trades';
+import { formatCardPriceRange } from '@/lib/trades';
 import { useLocale } from '@/lib/locale';
 
 interface Props {
@@ -40,6 +40,7 @@ export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, o
   const t = useT();
   const { locale } = useLocale();
   const primaryFinish = pickPrimaryFinish(finishes);
+  const priceLabel = formatCardPriceRange(card.cardmarket_low_eur, card.cardmarket_trend_eur, locale);
   const styles = useThemedStyles((colors, shadow) => ({
     tile: { flex: 1, padding: spacing.sm, borderRadius: radius.lg, ...shadow.sm },
     imgWrap: { position: 'relative' as const },
@@ -166,8 +167,8 @@ export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, o
       </View>
       <Text style={styles.set} numberOfLines={1}>{card.set_name} · {card.card_number}</Text>
       {card.rarity && <Text style={styles.rarity} numberOfLines={1}>{card.rarity}</Text>}
-      {card.cardmarket_trend_eur != null && (
-        <Text style={styles.price} numberOfLines={1}>{eurFormatter(locale).format(card.cardmarket_trend_eur)}</Text>
+      {priceLabel != null && (
+        <Text style={styles.price} numberOfLines={1}>{priceLabel}</Text>
       )}
     </Pressable>
   );

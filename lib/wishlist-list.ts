@@ -15,6 +15,7 @@ export interface WishlistCard {
   series: string | null;
   wished_at?: string;
   cardmarket_trend_eur?: number | null;
+  cardmarket_low_eur?: number | null;
   is_priority?: boolean;
   price_alert_eur?: number | null;
 }

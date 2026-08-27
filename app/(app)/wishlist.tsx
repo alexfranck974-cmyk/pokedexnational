@@ -24,7 +24,7 @@ import { enterPokemonDetail, safeDecodeURIComponent } from '@/lib/navigation';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { getName } from '@/lib/i18n';
 import { useLocale, useT } from '@/lib/locale';
-import { eurFormatter } from '@/lib/trades';
+import { formatCardPriceRange } from '@/lib/trades';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 import type { Pokemon, PokemonType } from '@/lib/types';
@@ -192,9 +192,10 @@ export default function WishlistScreen() {
     pokemonName: { fontSize: 14, fontFamily: fonts.bodyBold, color: colors.text },
     pokemonSub: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
     pokemonThumbs: { maxWidth: 120, flexGrow: 0 },
-    pokemonThumbWrap: { borderRadius: radius.sm, marginRight: 4 },
+    pokemonThumbWrap: { borderRadius: radius.sm, marginRight: 4, alignItems: 'center' as const },
     pokemonThumbWrapOwned: { borderWidth: 1.5, borderColor: colors.success },
     pokemonThumb: { width: 28, height: 40 },
+    pokemonThumbPrice: { fontSize: 8, fontFamily: fonts.monoBold, color: colors.success },
     heartFilled: { fontSize: 18, color: colors.danger, lineHeight: 22 },
   }));
 
@@ -304,6 +305,9 @@ export default function WishlistScreen() {
                   {item.cards.slice(0, 4).map(c => (
                     <View key={c.id} style={[styles.pokemonThumbWrap, ownedIds.has(c.id) && styles.pokemonThumbWrapOwned]}>
                       <Image source={{ uri: c.image_small }} style={styles.pokemonThumb} resizeMode="contain" />
+                      {formatCardPriceRange(c.cardmarket_low_eur, c.cardmarket_trend_eur, locale) != null && (
+                        <Text style={styles.pokemonThumbPrice} numberOfLines={1}>{formatCardPriceRange(c.cardmarket_low_eur, c.cardmarket_trend_eur, locale)}</Text>
+                      )}
                     </View>
                   ))}
                 </ScrollView>
@@ -378,8 +382,8 @@ export default function WishlistScreen() {
                 </View>
                 <Text style={styles.set} numberOfLines={1}>{item.set_name} · {item.card_number}</Text>
                 {item.rarity && <Text style={styles.rarity} numberOfLines={1}>{item.rarity}</Text>}
-                {item.cardmarket_trend_eur != null && (
-                  <Text style={styles.price} numberOfLines={1}>{eurFormatter(locale).format(item.cardmarket_trend_eur)}</Text>
+                {formatCardPriceRange(item.cardmarket_low_eur, item.cardmarket_trend_eur, locale) != null && (
+                  <Text style={styles.price} numberOfLines={1}>{formatCardPriceRange(item.cardmarket_low_eur, item.cardmarket_trend_eur, locale)}</Text>
                 )}
                 {triggered && (
                   <View style={styles.alertTriggeredBadge}>
