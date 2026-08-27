@@ -123,7 +123,7 @@ describe('totalCollectionValue', () => {
 
 describe('computeSetGoalsProgress', () => {
   const allSets: TcgSetInfo[] = [
-    { id: 'base1', name: 'Base', releaseDate: '1999-01-09', cardCount: 102, symbol: null, logo: null, region: 'global' },
+    { id: 'base1', name: 'Base', releaseDate: '1999-01-09', cardCount: 102, symbol: null, logo: null, region: 'global', series: 'Base' },
   ];
 
   it('computes progress from the ledger and skips goals whose set is unknown', () => {

@@ -1,5 +1,6 @@
 import { useMemo, type ReactElement } from 'react';
-import { View, Text, Image, useWindowDimensions, type RefreshControlProps } from 'react-native';
+import { View, Text, Image, StyleSheet, useWindowDimensions, type RefreshControlProps } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
 import { PokemonTile } from './PokemonTile';
 import pokedexData from '@/data/pokedex.json';
@@ -34,6 +35,16 @@ type GridRow =
   | { type: 'header'; key: string; gen: number; label: string; owned: number; total: number }
   | { type: 'pokemon'; key: string; item: PokemonWithState };
 
+// Per-generation colored glow on the starter sprites — dynamic per row, so it
+// can't live in the static useThemedStyles factory below (that only reruns
+// on theme change, not per generation).
+function shadowGlow(color: string) {
+  return {
+    shadowColor: color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 5,
+    elevation: 4,
+  };
+}
+
 function numColsFor(width: number): number {
   if (width < 600) return 3;
   if (width < 1024) return 5;
@@ -53,14 +64,14 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, co
     headerPill: {
       flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6,
       paddingHorizontal: spacing.md, paddingVertical: 5,
-      borderRadius: radius.pill, borderWidth: 1.5,
+      borderRadius: radius.pill, borderWidth: 1.5, overflow: 'hidden' as const,
     },
     starterCluster: { flexDirection: 'row' as const },
     starterBubble: {
-      width: 18, height: 18, borderRadius: 9, backgroundColor: colors.surfaceAlt,
+      width: 26, height: 26, borderRadius: 13, backgroundColor: colors.surfaceAlt,
       borderWidth: 1.5, borderColor: colors.bg, overflow: 'hidden' as const,
     },
-    starterBubbleOverlap: { marginLeft: -7 },
+    starterBubbleOverlap: { marginLeft: -9 },
     starterImg: { width: '100%' as const, height: '100%' as const },
     headerLabel: { fontSize: 12, fontFamily: fonts.display, color: colors.text },
     headerCount: { fontSize: 11, fontFamily: fonts.mono, color: colors.textMuted },
@@ -102,13 +113,20 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, co
         !row ? null :
         row.type === 'header' ? (
           <View style={styles.headerRow}>
-            <View style={[
-              styles.headerPill,
-              { backgroundColor: withAlpha(GEN_COLORS[row.gen] ?? '#888888', 0.16), borderColor: GEN_COLORS[row.gen] ?? '#888888' },
-            ]}>
+            <View style={[styles.headerPill, { borderColor: GEN_COLORS[row.gen] ?? '#888888' }]}>
+              <LinearGradient
+                colors={[withAlpha(GEN_COLORS[row.gen] ?? '#888888', 0.32), withAlpha(GEN_COLORS[row.gen] ?? '#888888', 0.08)]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFillObject}
+              />
               <View style={styles.starterCluster}>
                 {(GEN_STARTERS[row.gen] ?? []).map((dexNum, i) => (
-                  <View key={dexNum} style={[styles.starterBubble, i > 0 && styles.starterBubbleOverlap]}>
+                  <View
+                    key={dexNum}
+                    style={[
+                      styles.starterBubble, i > 0 && styles.starterBubbleOverlap,
+                      shadowGlow(GEN_COLORS[row.gen] ?? '#888888'),
+                    ]}>
                     <Image source={{ uri: SPRITE_BY_DEX.get(dexNum) }} style={styles.starterImg} resizeMode="contain" />
                   </View>
                 ))}

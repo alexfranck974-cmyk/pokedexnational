@@ -140,15 +140,44 @@ export default function FavoritesScreen() {
   const pinnedSetIds = useMemo(() => new Set(goals.map(g => g.setId)), [goals]);
   // Unpinned sets, grouped by region and kept in useTcgSets()'s own release-date-desc
   // order within each group — no stats shown here, that's what pinning unlocks.
+  // Two-level: region, then (global only) era/series within it — e.g. "Mega
+  // Evolution" groups Pitch Black/Chaos Rising/Perfect Order/... instead of
+  // one flat 126-set list. JP/CN only ever carry a flat region label in
+  // `series` (see TcgSetInfo), not a real per-era value, so they get a
+  // single unlabeled subgroup — same flat list as before this feature.
   const catalogGroups = useMemo(() => {
     return REGION_ORDER
-      .map(r => ({ ...r, sets: allSets.filter(s => (s.region || 'global') === r.id && !pinnedSetIds.has(s.id)) }))
-      .filter(g => g.sets.length > 0);
+      .map(r => {
+        const sets = allSets.filter(s => (s.region || 'global') === r.id && !pinnedSetIds.has(s.id));
+        if (r.id !== 'global') return { ...r, subgroups: [{ id: r.id, label: null as string | null, sets }] };
+
+        // `sets` is already newest-first (useTcgSets' own query order), so the
+        // first set encountered for a given series is that series' most
+        // recent — subgroup order falls out of that for free, no extra sort.
+        const bySeries = new Map<string, typeof sets>();
+        const order: string[] = [];
+        for (const s of sets) {
+          const key = s.series ?? t('favorites.seriesOther');
+          if (!bySeries.has(key)) { bySeries.set(key, []); order.push(key); }
+          bySeries.get(key)!.push(s);
+        }
+        return { ...r, subgroups: order.map(key => ({ id: key, label: key as string | null, sets: bySeries.get(key)! })) };
+      })
+      .filter(g => g.subgroups.some(sg => sg.sets.length > 0));
   }, [allSets, pinnedSetIds, locale]);
   // Per-region collapse, independent toggles (not an accordion) — collapsing
   // the regions you don't care about is how you narrow the list down to just
   // the one you want, e.g. hide jp+cn to browse only Global.
   const [collapsedRegions, setCollapsedRegions] = useState<Set<string>>(new Set());
+  // Per-series collapse, within the (expanded) global region — same
+  // independent-toggle spirit, keyed by series name since that's unique
+  // enough within global's own subgroup list.
+  const [collapsedSeries, setCollapsedSeries] = useState<Set<string>>(new Set());
+  const toggleSeriesCollapsed = (seriesId: string) => setCollapsedSeries(prev => {
+    const next = new Set(prev);
+    if (next.has(seriesId)) next.delete(seriesId); else next.add(seriesId);
+    return next;
+  });
   const toggleRegionCollapsed = (regionId: string) => setCollapsedRegions(prev => {
     const next = new Set(prev);
     if (next.has(regionId)) next.delete(regionId); else next.add(regionId);
@@ -626,6 +655,11 @@ export default function FavoritesScreen() {
       paddingVertical: 4,
     },
     catalogSectionTitle: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted, textTransform: 'uppercase' as const, marginBottom: 2 },
+    catalogSeriesHeader: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
+      paddingVertical: 4, paddingLeft: spacing.sm,
+    },
+    catalogSeriesTitle: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.textDim },
     catalogRow: {
       flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm,
       backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm, ...shadow.sm,
@@ -1165,6 +1199,7 @@ export default function FavoritesScreen() {
 
           {catalogGroups.map(group => {
             const collapsed = collapsedRegions.has(group.id);
+            const totalSets = group.subgroups.reduce((n, sg) => n + sg.sets.length, 0);
             return (
               <View key={group.id} style={styles.catalogSection}>
                 <Pressable
@@ -1172,34 +1207,51 @@ export default function FavoritesScreen() {
                   style={styles.catalogSectionHeader}
                   accessibilityRole="button"
                   accessibilityLabel={t(collapsed ? 'favorites.a11yExpandRegion' : 'favorites.a11yCollapseRegion', { region: group.label })}>
-                  <Text style={styles.catalogSectionTitle}>{group.label} · {group.sets.length}</Text>
+                  <Text style={styles.catalogSectionTitle}>{group.label} · {totalSets}</Text>
                   <Ionicons name={collapsed ? 'chevron-forward' : 'chevron-down'} size={16} color={colors.textMuted} />
                 </Pressable>
-                {!collapsed && group.sets.map(set => {
-                  const year = set.releaseDate ? new Date(set.releaseDate).getFullYear() : null;
+                {!collapsed && group.subgroups.map(subgroup => {
+                  const seriesCollapsed = subgroup.label != null && collapsedSeries.has(subgroup.id);
                   return (
-                    <Pressable
-                      key={set.id}
-                      onPress={() => router.push(withReturnTo(`/pinned-set/${set.id}`, '/favorites') as never)}
-                      style={({ pressed }) => [styles.catalogRow, pressed && styles.catalogRowPressed]}>
-                      {set.symbol ? (
-                        <Image source={{ uri: set.symbol }} style={styles.catalogRowIcon} resizeMode="contain" />
-                      ) : (
-                        <View style={styles.catalogRowIcon} />
+                    <View key={subgroup.id}>
+                      {subgroup.label != null && (
+                        <Pressable
+                          onPress={() => toggleSeriesCollapsed(subgroup.id)}
+                          style={styles.catalogSeriesHeader}
+                          accessibilityRole="button"
+                          accessibilityLabel={t(seriesCollapsed ? 'favorites.a11yExpandSeries' : 'favorites.a11yCollapseSeries', { series: subgroup.label })}>
+                          <Text style={styles.catalogSeriesTitle}>{subgroup.label} · {subgroup.sets.length}</Text>
+                          <Ionicons name={seriesCollapsed ? 'chevron-forward' : 'chevron-down'} size={14} color={colors.textDim} />
+                        </Pressable>
                       )}
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.catalogRowLabel} numberOfLines={1}>{setFlagLabel(set.name, set.region)}</Text>
-                        <Text style={styles.catalogRowCaption}>
-                          {year ? `${year} · ` : ''}{t('favorites.setCardsCount', { n: set.cardCount })}
-                        </Text>
-                      </View>
-                      <Pressable
-                        hitSlop={8}
-                        onPress={(e) => { e.stopPropagation(); toggleGoal.mutate({ setId: set.id, currentlyPinned: false }); }}
-                        style={styles.catalogRowPin}>
-                        <Text style={styles.catalogRowPinText}>{t('favorites.startPin')}</Text>
-                      </Pressable>
-                    </Pressable>
+                      {!seriesCollapsed && subgroup.sets.map(set => {
+                        const year = set.releaseDate ? new Date(set.releaseDate).getFullYear() : null;
+                        return (
+                          <Pressable
+                            key={set.id}
+                            onPress={() => router.push(withReturnTo(`/pinned-set/${set.id}`, '/favorites') as never)}
+                            style={({ pressed }) => [styles.catalogRow, pressed && styles.catalogRowPressed]}>
+                            {set.symbol ? (
+                              <Image source={{ uri: set.symbol }} style={styles.catalogRowIcon} resizeMode="contain" />
+                            ) : (
+                              <View style={styles.catalogRowIcon} />
+                            )}
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.catalogRowLabel} numberOfLines={1}>{setFlagLabel(set.name, set.region)}</Text>
+                              <Text style={styles.catalogRowCaption}>
+                                {year ? `${year} · ` : ''}{t('favorites.setCardsCount', { n: set.cardCount })}
+                              </Text>
+                            </View>
+                            <Pressable
+                              hitSlop={8}
+                              onPress={(e) => { e.stopPropagation(); toggleGoal.mutate({ setId: set.id, currentlyPinned: false }); }}
+                              style={styles.catalogRowPin}>
+                              <Text style={styles.catalogRowPinText}>{t('favorites.startPin')}</Text>
+                            </Pressable>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
                   );
                 })}
               </View>

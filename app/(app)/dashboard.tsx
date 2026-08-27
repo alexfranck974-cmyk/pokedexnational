@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Animated, Easing, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, Image, ScrollView, Pressable, Animated, Easing, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import pokedexData from '@/data/pokedex.json';
@@ -14,6 +15,7 @@ import { useTcgSets } from '@/lib/tcg-index';
 import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
 import { totalCollectionValue, computeSetGoalsProgress, averageProgress } from '@/lib/dashboard-stats';
 import { isPriceAlertTriggered, type WishlistCard } from '@/lib/wishlist-list';
+import { withAlpha } from '@/lib/color-utils';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { eurFormatter } from '@/lib/trades';
 import { useLocale, useT } from '@/lib/locale';
@@ -30,7 +32,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { TradeHistoryModal } from '@/components/TradeHistoryModal';
 import { RefreshButton } from '@/components/RefreshButton';
 import { useCompletedTradesCount } from '@/lib/trades';
-import { useTheme, useThemedStyles, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useMotion } from '@/lib/motion';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
@@ -126,6 +128,17 @@ export default function DashboardScreen() {
     screen: { flex: 1, backgroundColor: colors.bg },
     center: { flex: 1, justifyContent: 'center' as const, alignItems: 'center' as const },
     scroll: { padding: spacing.lg, paddingBottom: spacing.lg + TAB_BAR_CLEARANCE, gap: spacing.lg },
+    // Blurred art from the vitrine's lead card behind the title/value block —
+    // a bit of "this is a real collection" presence right at the top, instead
+    // of the whole opening screen being rings and text. Rounded + contained
+    // (not full-bleed to the screen edge) so it doesn't fight the ScrollView's
+    // own padding; falls back to a flat colors.surface backdrop when there's
+    // no vitrine card yet (new account) rather than showing nothing.
+    heroBackdropWrap: {
+      borderRadius: radius.xl, overflow: 'hidden' as const, padding: spacing.md, gap: 2,
+      backgroundColor: colors.surface,
+    },
+    heroBackdropImg: { ...StyleSheet.absoluteFillObject, opacity: 0.55 },
     titleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
     titleActions: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md },
     h1: { fontSize: 30, fontFamily: fonts.display, color: colors.text },
@@ -216,22 +229,39 @@ export default function DashboardScreen() {
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         {...hideOnScrollProps}>
-        <View style={styles.titleRow}>
-          <Text style={styles.h1}>{t('dashboard.title')}</Text>
-          <View style={styles.titleActions}>
-            <Pressable
-              onPress={() => setLayoutSheetOpen(true)}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={t('dashboard.a11yCustomize')}>
-              <Ionicons name="options-outline" size={20} color={colors.textMuted} />
-            </Pressable>
-            <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
+        <View style={styles.heroBackdropWrap}>
+          {vitrineCards[0] && (
+            <>
+              <Image
+                source={{ uri: vitrineCards[0].imageLarge ?? vitrineCards[0].imageSmall }}
+                style={styles.heroBackdropImg}
+                resizeMode="cover"
+                blurRadius={30}
+              />
+              <LinearGradient
+                colors={[withAlpha(colors.surface, 0), colors.surface]}
+                start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+            </>
+          )}
+          <View style={styles.titleRow}>
+            <Text style={styles.h1}>{t('dashboard.title')}</Text>
+            <View style={styles.titleActions}>
+              <Pressable
+                onPress={() => setLayoutSheetOpen(true)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('dashboard.a11yCustomize')}>
+                <Ionicons name="options-outline" size={20} color={colors.textMuted} />
+              </Pressable>
+              <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
+            </View>
           </View>
+          <Text style={styles.collectionValue}>
+            {t('dashboard.collectionValueLabel', { value: eurFormatter(locale).format(collectionValue) })}
+          </Text>
         </View>
-        <Text style={styles.collectionValue}>
-          {t('dashboard.collectionValueLabel', { value: eurFormatter(locale).format(collectionValue) })}
-        </Text>
 
         <NewSetBanner userId={userId} joinedAt={joinedAt} />
 

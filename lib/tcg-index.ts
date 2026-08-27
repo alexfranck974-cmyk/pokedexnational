@@ -30,6 +30,10 @@ export interface TcgSetInfo {
   symbol: string | null;
   logo: string | null;
   region: string;
+  /** Era grouping ("Mega Evolution", "Scarlet & Violet"...) for global sets.
+   * JP/CN carry a flat region label here ("Japon"/"Chine"), not a real
+   * per-era value — see 056_tcg_sets_series.sql. */
+  series: string | null;
 }
 
 export function useTcgSets() {
@@ -39,7 +43,7 @@ export function useTcgSets() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tcg_sets')
-        .select('set_id, set_name, release_date, card_count, set_symbol, set_logo, region')
+        .select('set_id, set_name, release_date, card_count, set_symbol, set_logo, region, series')
         .order('release_date', { ascending: false, nullsFirst: false });
       if (error) throw error;
       return (data ?? []).map(row => ({
@@ -50,6 +54,7 @@ export function useTcgSets() {
         symbol: (row.set_symbol as string | null) ?? null,
         logo: (row.set_logo as string | null) ?? null,
         region: (row.region as string | null) ?? 'global',
+        series: (row.series as string | null) ?? null,
       })) as TcgSetInfo[];
     },
   });
