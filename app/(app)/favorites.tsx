@@ -145,6 +145,15 @@ export default function FavoritesScreen() {
       .map(r => ({ ...r, sets: allSets.filter(s => (s.region || 'global') === r.id && !pinnedSetIds.has(s.id)) }))
       .filter(g => g.sets.length > 0);
   }, [allSets, pinnedSetIds, locale]);
+  // Per-region collapse, independent toggles (not an accordion) — collapsing
+  // the regions you don't care about is how you narrow the list down to just
+  // the one you want, e.g. hide jp+cn to browse only Global.
+  const [collapsedRegions, setCollapsedRegions] = useState<Set<string>>(new Set());
+  const toggleRegionCollapsed = (regionId: string) => setCollapsedRegions(prev => {
+    const next = new Set(prev);
+    if (next.has(regionId)) next.delete(regionId); else next.add(regionId);
+    return next;
+  });
 
   const { data: allArtists = [], isLoading: artistsLoading } = useTcgArtists();
   // Owned count per artist — computed client-side from cards already fetched
@@ -612,6 +621,10 @@ export default function FavoritesScreen() {
     goalsGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm },
     catalogList: { padding: spacing.md, gap: spacing.lg, paddingBottom: TAB_BAR_CLEARANCE },
     catalogSection: { gap: spacing.xs },
+    catalogSectionHeader: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
+      paddingVertical: 4,
+    },
     catalogSectionTitle: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted, textTransform: 'uppercase' as const, marginBottom: 2 },
     catalogRow: {
       flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm,
@@ -987,7 +1000,10 @@ export default function FavoritesScreen() {
               {...hideOnScrollProps}
               keyExtractor={c => c.id}
               renderItem={({ item }) => (
-                <Pressable onPress={() => setSelectedBinderId(item.id)} style={({ pressed }) => [styles.teamRow, pressed && styles.teamRowPressed]}>
+                <Pressable
+                  onPress={() => setSelectedBinderId(item.id)}
+                  onLongPress={() => setDeleteTarget({ kind: 'binder', id: item.id, name: item.name })}
+                  style={({ pressed }) => [styles.teamRow, pressed && styles.teamRowPressed]}>
                   <Text style={styles.teamRowName} numberOfLines={1}>{item.name}</Text>
                   <Text style={styles.teamRowCount}>
                     {t(item.itemCount > 1 ? 'favorites.binderCardCountPlural' : 'favorites.binderCardCountSingular', { n: item.itemCount })}
@@ -1147,35 +1163,48 @@ export default function FavoritesScreen() {
             </View>
           )}
 
-          {catalogGroups.map(group => (
-            <View key={group.id} style={styles.catalogSection}>
-              <Text style={styles.catalogSectionTitle}>{group.label}</Text>
-              {group.sets.map(set => {
-                const year = set.releaseDate ? new Date(set.releaseDate).getFullYear() : null;
-                return (
-                  <Pressable
-                    key={set.id}
-                    onPress={() => toggleGoal.mutate({ setId: set.id, currentlyPinned: false })}
-                    style={({ pressed }) => [styles.catalogRow, pressed && styles.catalogRowPressed]}>
-                    {set.symbol ? (
-                      <Image source={{ uri: set.symbol }} style={styles.catalogRowIcon} resizeMode="contain" />
-                    ) : (
-                      <View style={styles.catalogRowIcon} />
-                    )}
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.catalogRowLabel} numberOfLines={1}>{setFlagLabel(set.name, set.region)}</Text>
-                      <Text style={styles.catalogRowCaption}>
-                        {year ? `${year} · ` : ''}{t('favorites.setCardsCount', { n: set.cardCount })}
-                      </Text>
-                    </View>
-                    <View style={styles.catalogRowPin}>
-                      <Text style={styles.catalogRowPinText}>{t('favorites.startPin')}</Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-          ))}
+          {catalogGroups.map(group => {
+            const collapsed = collapsedRegions.has(group.id);
+            return (
+              <View key={group.id} style={styles.catalogSection}>
+                <Pressable
+                  onPress={() => toggleRegionCollapsed(group.id)}
+                  style={styles.catalogSectionHeader}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(collapsed ? 'favorites.a11yExpandRegion' : 'favorites.a11yCollapseRegion', { region: group.label })}>
+                  <Text style={styles.catalogSectionTitle}>{group.label} · {group.sets.length}</Text>
+                  <Ionicons name={collapsed ? 'chevron-forward' : 'chevron-down'} size={16} color={colors.textMuted} />
+                </Pressable>
+                {!collapsed && group.sets.map(set => {
+                  const year = set.releaseDate ? new Date(set.releaseDate).getFullYear() : null;
+                  return (
+                    <Pressable
+                      key={set.id}
+                      onPress={() => router.push(withReturnTo(`/pinned-set/${set.id}`, '/favorites') as never)}
+                      style={({ pressed }) => [styles.catalogRow, pressed && styles.catalogRowPressed]}>
+                      {set.symbol ? (
+                        <Image source={{ uri: set.symbol }} style={styles.catalogRowIcon} resizeMode="contain" />
+                      ) : (
+                        <View style={styles.catalogRowIcon} />
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.catalogRowLabel} numberOfLines={1}>{setFlagLabel(set.name, set.region)}</Text>
+                        <Text style={styles.catalogRowCaption}>
+                          {year ? `${year} · ` : ''}{t('favorites.setCardsCount', { n: set.cardCount })}
+                        </Text>
+                      </View>
+                      <Pressable
+                        hitSlop={8}
+                        onPress={(e) => { e.stopPropagation(); toggleGoal.mutate({ setId: set.id, currentlyPinned: false }); }}
+                        style={styles.catalogRowPin}>
+                        <Text style={styles.catalogRowPinText}>{t('favorites.startPin')}</Text>
+                      </Pressable>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            );
+          })}
         </ScrollView>
       )}
       </SlideTransition>
