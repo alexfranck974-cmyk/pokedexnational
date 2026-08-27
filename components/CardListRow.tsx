@@ -6,10 +6,11 @@ import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
 import { hapticCardAdded } from '@/lib/haptics';
 import { CHASE_GOLD } from '@/lib/rarity-tiers';
-import { useT } from '@/lib/locale';
+import { useLocale, useT } from '@/lib/locale';
 import { FINISH_GRADIENT, pickPrimaryFinish } from '@/lib/finish-visuals';
 import { ReverseHoloShimmer } from '@/components/ReverseHoloShimmer';
 import type { OwnedCardFinish } from '@/lib/collection';
+import { eurFormatter } from '@/lib/trades';
 
 interface Props {
   card: TcgCardRow;
@@ -34,6 +35,7 @@ interface Props {
 export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails, finishes }: Props) {
   const { colors } = useTheme();
   const t = useT();
+  const { locale } = useLocale();
   const primaryFinish = pickPrimaryFinish(finishes);
   const styles = useThemedStyles((colors) => ({
     row: {
@@ -67,6 +69,7 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
     nameMissing: { color: colors.textMuted },
     meta: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
     rarity: { fontSize: 11, fontFamily: fonts.body, color: colors.textDim },
+    price: { fontSize: 11, fontFamily: fonts.monoBold, color: colors.success },
     actions: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
     heart: { fontSize: 22, color: colors.textDim },
     heartFilled: { color: colors.danger },
@@ -120,6 +123,9 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
         <Text style={[styles.name, !owned && styles.nameMissing]} numberOfLines={1}>{card.name}</Text>
         <Text style={styles.meta} numberOfLines={1}>{card.set_name} · {card.card_number}</Text>
         {card.rarity && <Text style={styles.rarity} numberOfLines={1}>{card.rarity}</Text>}
+        {card.cardmarket_trend_eur != null && (
+          <Text style={styles.price} numberOfLines={1}>{eurFormatter(locale).format(card.cardmarket_trend_eur)}</Text>
+        )}
       </View>
       <View style={styles.actions}>
         {owned && onIncrement && onDecrement ? (

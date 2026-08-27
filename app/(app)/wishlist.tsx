@@ -24,6 +24,7 @@ import { enterPokemonDetail, safeDecodeURIComponent } from '@/lib/navigation';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { getName } from '@/lib/i18n';
 import { useLocale, useT } from '@/lib/locale';
+import { eurFormatter } from '@/lib/trades';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 import type { Pokemon, PokemonType } from '@/lib/types';
@@ -143,6 +144,7 @@ export default function WishlistScreen() {
     img: { width: '100%' as const, aspectRatio: 0.72 },
     set: { fontSize: 12, fontFamily: fonts.bodyBold, marginTop: 4, color: colors.text },
     rarity: { fontSize: 11, fontFamily: fonts.body, color: colors.textMuted },
+    price: { fontSize: 11, fontFamily: fonts.monoBold, color: colors.success },
     pokeballOverlay: { position: 'absolute' as const, top: 4, left: 4, backgroundColor: colors.overlay, borderRadius: radius.pill, padding: 2 },
     heartBtn: {
       position: 'absolute' as const, top: 4, right: 4, width: 28, height: 28,
@@ -376,6 +378,9 @@ export default function WishlistScreen() {
                 </View>
                 <Text style={styles.set} numberOfLines={1}>{item.set_name} · {item.card_number}</Text>
                 {item.rarity && <Text style={styles.rarity} numberOfLines={1}>{item.rarity}</Text>}
+                {item.cardmarket_trend_eur != null && (
+                  <Text style={styles.price} numberOfLines={1}>{eurFormatter(locale).format(item.cardmarket_trend_eur)}</Text>
+                )}
                 {triggered && (
                   <View style={styles.alertTriggeredBadge}>
                     <Text style={styles.alertTriggeredBadgeText}>{t('wishlist.alertTriggeredBadge')}</Text>

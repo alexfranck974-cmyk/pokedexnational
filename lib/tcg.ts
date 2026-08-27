@@ -21,6 +21,7 @@ export interface TcgCardRow {
    * TCGplayer — null/undefined means unknown (not yet synced, or no TCGplayer
    * data for this print), never treat that as "no finishes exist". */
   available_finishes?: string[] | null;
+  cardmarket_trend_eur?: number | null;
 }
 
 export function useCardsForPokemon(dexNum: number | undefined) {
@@ -31,7 +32,7 @@ export function useCardsForPokemon(dexNum: number | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tcg_cards')
-        .select('id, name, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region, available_finishes')
+        .select('id, name, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region, available_finishes, cardmarket_trend_eur')
         .eq('dex_num', dexNum!)
         .order('release_date', { ascending: true });
       if (error) throw error;
@@ -54,7 +55,7 @@ export function useTrainerCards() {
         // Orders...) — Items/Stadiums/Tools are objects/places, not trainers themselves.
         const { data, error } = await supabase
           .from('tcg_cards')
-          .select('id, name, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region, subtypes, available_finishes')
+          .select('id, name, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region, subtypes, available_finishes, cardmarket_trend_eur')
           .eq('supertype', 'Trainer')
           .contains('subtypes', ['Supporter'])
           .order('release_date', { ascending: false })
@@ -82,7 +83,7 @@ export function useCardsForArtist(artist: string | undefined) {
       while (true) {
         const { data, error } = await supabase
           .from('tcg_cards')
-          .select('id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region, available_finishes')
+          .select('id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region, available_finishes, cardmarket_trend_eur')
           .eq('artist', artist!)
           .order('release_date', { ascending: false })
           .range(from, from + PAGE_SIZE - 1);
@@ -104,7 +105,7 @@ export function useCardsForSet(setId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tcg_cards')
-        .select('id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region, types, available_finishes')
+        .select('id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region, types, available_finishes, cardmarket_trend_eur')
         .eq('set_id', setId!)
         .order('dex_num', { ascending: true });
       if (error) throw error;
