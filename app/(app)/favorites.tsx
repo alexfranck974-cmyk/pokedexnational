@@ -31,7 +31,7 @@ import {
   BINDER_LAYOUTS, BINDER_LAYOUT_COLS, type BinderLayout, type BinderSlotItem,
 } from '@/lib/binders';
 import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
-import { useTcgSets, useTcgArtists } from '@/lib/tcg-index';
+import { useTcgSets, useTcgArtists, type TcgSetInfo } from '@/lib/tcg-index';
 import { Pokeball } from '@/components/Pokeball';
 import { BubbleSheet } from '@/components/BubbleSheet';
 import { TeamSlotPicker } from '@/components/TeamSlotPicker';
@@ -136,7 +136,6 @@ export default function FavoritesScreen() {
   const { data: goals = [] } = useSetGoals(userId);
   const toggleGoal = useToggleSetGoal();
   const { data: allSets = [] } = useTcgSets();
-  const setsById = useMemo(() => new Map(allSets.map(s => [s.id, s])), [allSets]);
   const pinnedSetIds = useMemo(() => new Set(goals.map(g => g.setId)), [goals]);
   // Unpinned sets, grouped by region and kept in useTcgSets()'s own release-date-desc
   // order within each group — no stats shown here, that's what pinning unlocks.
@@ -145,33 +144,50 @@ export default function FavoritesScreen() {
   // one flat 126-set list. JP/CN only ever carry a flat region label in
   // `series` (see TcgSetInfo), not a real per-era value, so they get a
   // single unlabeled subgroup — same flat list as before this feature.
-  const catalogGroups = useMemo(() => {
-    return REGION_ORDER
-      .map(r => {
-        const sets = allSets.filter(s => (s.region || 'global') === r.id && !pinnedSetIds.has(s.id));
-        if (r.id !== 'global') return { ...r, subgroups: [{ id: r.id, label: null as string | null, sets }] };
+  // Shared by both the pinned-goals grid and the unpinned catalog below it —
+  // same era grouping in both places, kept as two separate sections (rather
+  // than merged into one) so "what am I actively working on" stays a quick
+  // glance at the top instead of buried in the full list.
+  const groupByRegionAndSeries = (sets: TcgSetInfo[]) => REGION_ORDER
+    .map(r => {
+      const regionSets = sets.filter(s => (s.region || 'global') === r.id);
+      if (r.id !== 'global') return { ...r, subgroups: [{ id: r.id, label: null as string | null, sets: regionSets }] };
 
-        // `sets` is already newest-first (useTcgSets' own query order), so the
-        // first set encountered for a given series is that series' most
-        // recent — subgroup order falls out of that for free, no extra sort.
-        const bySeries = new Map<string, typeof sets>();
-        const order: string[] = [];
-        for (const s of sets) {
-          const key = s.series ?? t('favorites.seriesOther');
-          if (!bySeries.has(key)) { bySeries.set(key, []); order.push(key); }
-          bySeries.get(key)!.push(s);
-        }
-        return { ...r, subgroups: order.map(key => ({ id: key, label: key as string | null, sets: bySeries.get(key)! })) };
-      })
-      .filter(g => g.subgroups.some(sg => sg.sets.length > 0));
-  }, [allSets, pinnedSetIds, locale]);
+      // `sets` is already newest-first (useTcgSets' own query order), so the
+      // first set encountered for a given series is that series' most
+      // recent — subgroup order falls out of that for free, no extra sort.
+      const bySeries = new Map<string, typeof regionSets>();
+      const order: string[] = [];
+      for (const s of regionSets) {
+        const key = s.series ?? t('favorites.seriesOther');
+        if (!bySeries.has(key)) { bySeries.set(key, []); order.push(key); }
+        bySeries.get(key)!.push(s);
+      }
+      return { ...r, subgroups: order.map(key => ({ id: key, label: key as string | null, sets: bySeries.get(key)! })) };
+    })
+    .filter(g => g.subgroups.some(sg => sg.sets.length > 0));
+
+  const catalogGroups = useMemo(
+    () => groupByRegionAndSeries(allSets.filter(s => !pinnedSetIds.has(s.id))),
+    [allSets, pinnedSetIds, locale],
+  );
+  const pinnedGroups = useMemo(
+    () => groupByRegionAndSeries(allSets.filter(s => pinnedSetIds.has(s.id))),
+    [allSets, pinnedSetIds, locale],
+  );
   // Per-region collapse, independent toggles (not an accordion) — collapsing
   // the regions you don't care about is how you narrow the list down to just
-  // the one you want, e.g. hide jp+cn to browse only Global.
+  // the one you want, e.g. hide jp+cn to browse only Global. Shared between
+  // the pinned and catalog sections — collapsing e.g. JP in one place means
+  // you don't want to see JP right now anywhere on this screen.
   const [collapsedRegions, setCollapsedRegions] = useState<Set<string>>(new Set());
   // Per-series collapse, within the (expanded) global region — same
   // independent-toggle spirit, keyed by series name since that's unique
-  // enough within global's own subgroup list.
+  // enough within global's own subgroup list. Series ids can repeat between
+  // the pinned and catalog sections (both group by the same era names), so a
+  // pinned-section key is prefixed to keep the two toggles independent —
+  // collapsing "Mega Evolution" among your pinned sets shouldn't also
+  // collapse it in the full catalog below.
   const [collapsedSeries, setCollapsedSeries] = useState<Set<string>>(new Set());
   const toggleSeriesCollapsed = (seriesId: string) => setCollapsedSeries(prev => {
     const next = new Set(prev);
@@ -1175,27 +1191,59 @@ export default function FavoritesScreen() {
           contentContainerStyle={styles.catalogList}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           {...hideOnScrollProps}>
-          {goals.length > 0 && (
-            <View style={styles.goalsGrid}>
-              {goals.map(g => {
-                const set = setsById.get(g.setId);
-                if (!set) return null;
-                const setName = setFlagLabel(set.name, set.region);
-                return (
-                  <SetGoalTile
-                    key={g.setId}
-                    userId={userId}
-                    setId={g.setId}
-                    setName={setName}
-                    total={set.cardCount}
-                    symbol={set.symbol}
-                    onPress={() => router.push(withReturnTo(`/pinned-set/${g.setId}`, '/favorites') as never)}
-                    onUnpin={() => setDeleteTarget({ kind: 'setGoal', id: g.setId, name: setName })}
-                  />
-                );
-              })}
-            </View>
-          )}
+          {pinnedGroups.map(group => {
+            const collapsed = collapsedRegions.has(group.id);
+            const totalPinned = group.subgroups.reduce((n, sg) => n + sg.sets.length, 0);
+            return (
+              <View key={`pinned-${group.id}`} style={styles.catalogSection}>
+                <Pressable
+                  onPress={() => toggleRegionCollapsed(group.id)}
+                  style={styles.catalogSectionHeader}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(collapsed ? 'favorites.a11yExpandRegion' : 'favorites.a11yCollapseRegion', { region: group.label })}>
+                  <Text style={styles.catalogSectionTitle}>{group.label} · {totalPinned}</Text>
+                  <Ionicons name={collapsed ? 'chevron-forward' : 'chevron-down'} size={16} color={colors.textMuted} />
+                </Pressable>
+                {!collapsed && group.subgroups.map(subgroup => {
+                  const seriesKey = `pinned:${subgroup.id}`;
+                  const seriesCollapsed = subgroup.label != null && collapsedSeries.has(seriesKey);
+                  return (
+                    <View key={subgroup.id}>
+                      {subgroup.label != null && (
+                        <Pressable
+                          onPress={() => toggleSeriesCollapsed(seriesKey)}
+                          style={styles.catalogSeriesHeader}
+                          accessibilityRole="button"
+                          accessibilityLabel={t(seriesCollapsed ? 'favorites.a11yExpandSeries' : 'favorites.a11yCollapseSeries', { series: subgroup.label })}>
+                          <Text style={styles.catalogSeriesTitle}>{subgroup.label} · {subgroup.sets.length}</Text>
+                          <Ionicons name={seriesCollapsed ? 'chevron-forward' : 'chevron-down'} size={14} color={colors.textDim} />
+                        </Pressable>
+                      )}
+                      {!seriesCollapsed && (
+                        <View style={styles.goalsGrid}>
+                          {subgroup.sets.map(set => {
+                            const setName = setFlagLabel(set.name, set.region);
+                            return (
+                              <SetGoalTile
+                                key={set.id}
+                                userId={userId}
+                                setId={set.id}
+                                setName={setName}
+                                total={set.cardCount}
+                                symbol={set.symbol}
+                                onPress={() => router.push(withReturnTo(`/pinned-set/${set.id}`, '/favorites') as never)}
+                                onUnpin={() => setDeleteTarget({ kind: 'setGoal', id: set.id, name: setName })}
+                              />
+                            );
+                          })}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })}
 
           {catalogGroups.map(group => {
             const collapsed = collapsedRegions.has(group.id);
