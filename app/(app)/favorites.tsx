@@ -44,6 +44,7 @@ import { CaptureEffect, type CaptureEvent } from '@/components/CaptureEffect';
 import { PokedexSectionTabs, sectionIndex, hrefToSection } from '@/components/PokedexSectionTabs';
 import { SlideTransition } from '@/components/SlideTransition';
 import { SkeletonBlock } from '@/components/SkeletonBlock';
+import { EmptyState } from '@/components/EmptyState';
 import { ConfirmDialog, type ConfirmTarget } from '@/components/ConfirmDialog';
 import { RefreshButton } from '@/components/RefreshButton';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
@@ -554,7 +555,6 @@ export default function FavoritesScreen() {
     titleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
     title: { fontSize: 22, fontFamily: fonts.display, color: colors.text },
     chipRow: { flexDirection: 'row' as const, gap: spacing.xs },
-    emptyHint: { fontSize: 14, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
 
     teamList: { flex: 1, padding: spacing.md, gap: spacing.md },
     newTeamRow: { flexDirection: 'row' as const, gap: spacing.sm },
@@ -823,7 +823,7 @@ export default function FavoritesScreen() {
 
             {teams.length === 0 ? (
               <View style={styles.center}>
-                <Text style={styles.emptyHint}>Aucune équipe pour l’instant — crée-en une ci-dessus.</Text>
+                <EmptyState icon="people-outline" hint="Aucune équipe pour l’instant — crée-en une ci-dessus." />
               </View>
             ) : (
               <FlatList
@@ -1040,7 +1040,7 @@ export default function FavoritesScreen() {
             </View>
           ) : binders.length === 0 ? (
             <View style={styles.center}>
-              <Text style={styles.emptyHint}>{t('favorites.noBindersYet')}</Text>
+              <EmptyState icon="albums-outline" hint={t('favorites.noBindersYet')} />
             </View>
           ) : (
             <FlatList
@@ -1081,7 +1081,7 @@ export default function FavoritesScreen() {
             </View>
           ) : filteredArtists.length === 0 ? (
             <View style={styles.center}>
-              <Text style={styles.emptyHint}>{t('favorites.noArtistFound')}</Text>
+              <EmptyState icon="search-outline" hint={t('favorites.noArtistFound')} />
             </View>
           ) : (
             <FlatList
@@ -1139,9 +1139,10 @@ export default function FavoritesScreen() {
             </View>
           ) : duplicateCards.length === 0 ? (
             <View style={styles.center}>
-              <Text style={styles.emptyHint}>
-                {dupSearch.trim() ? t('favorites.noResults') : t('favorites.noDuplicatesYet')}
-              </Text>
+              <EmptyState
+                icon={dupSearch.trim() ? 'search-outline' : 'copy-outline'}
+                hint={dupSearch.trim() ? t('favorites.noResults') : t('favorites.noDuplicatesYet')}
+              />
             </View>
           ) : (
             <FlashList
@@ -1419,7 +1420,7 @@ export default function FavoritesScreen() {
           />
           {wizardFilteredSets.length === 0 ? (
             <View style={styles.center}>
-              <Text style={styles.emptyHint}>{t('favorites.noResults')}</Text>
+              <EmptyState icon="search-outline" hint={t('favorites.noResults')} />
             </View>
           ) : (
             <FlatList

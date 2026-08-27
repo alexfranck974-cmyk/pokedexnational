@@ -9,6 +9,7 @@ import { CardGallery } from '@/components/CardGallery';
 import { CardZoomModal } from '@/components/CardZoomModal';
 import { CardCopySheet, EditCopyFooterButton } from '@/components/CardCopySheet';
 import { ProgressRing } from '@/components/ProgressRing';
+import { EmptyState } from '@/components/EmptyState';
 import { CaptureEffect, type CaptureEvent } from '@/components/CaptureEffect';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForSet } from '@/lib/tcg';
@@ -101,7 +102,6 @@ export default function PinnedSetDetail() {
     heroName: { fontSize: 20, fontFamily: fonts.display, color: heroText },
     heroCaptionRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4, marginTop: 2 },
     heroCaption: { fontSize: 12, fontFamily: fonts.mono, color: heroTextMuted },
-    empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: 24, fontStyle: 'italic' as const },
     banner: {
       flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: 8,
       margin: spacing.sm, marginBottom: 0, padding: spacing.sm,
@@ -177,7 +177,7 @@ export default function PinnedSetDetail() {
       {cardsLoading ? (
         <ActivityIndicator style={{ marginTop: 24 }} />
       ) : cards.length === 0 ? (
-        <Text style={styles.empty}>Aucune carte connue pour cette extension.</Text>
+        <EmptyState icon="albums-outline" hint="Aucune carte connue pour cette extension." />
       ) : (
         <CardGallery
           cards={sortedCards}

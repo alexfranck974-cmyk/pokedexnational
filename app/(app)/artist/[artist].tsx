@@ -8,6 +8,7 @@ import { CardGallery } from '@/components/CardGallery';
 import { CardZoomModal } from '@/components/CardZoomModal';
 import { CardCopySheet, EditCopyFooterButton } from '@/components/CardCopySheet';
 import { ProgressRing } from '@/components/ProgressRing';
+import { EmptyState } from '@/components/EmptyState';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForArtist } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
@@ -71,7 +72,6 @@ export default function ArtistGallery() {
     heroMain: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md },
     heroName: { fontSize: 20, fontFamily: fonts.display, color: heroText },
     heroCaption: { fontSize: 12, fontFamily: fonts.mono, color: heroTextMuted, marginTop: 2 },
-    empty: { textAlign: 'center' as const, fontFamily: fonts.body, color: colors.textMuted, padding: 24, fontStyle: 'italic' as const },
     banner: {
       flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: 8,
       margin: spacing.sm, marginBottom: 0, padding: spacing.sm,
@@ -135,7 +135,7 @@ export default function ArtistGallery() {
       {cardsLoading ? (
         <ActivityIndicator style={{ marginTop: 24 }} />
       ) : cards.length === 0 ? (
-        <Text style={styles.empty}>Aucune carte connue pour cet artiste.</Text>
+        <EmptyState icon="brush-outline" hint="Aucune carte connue pour cet artiste." />
       ) : (
         <CardGallery
           cards={sortedCards}

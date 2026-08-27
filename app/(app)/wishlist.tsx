@@ -14,6 +14,7 @@ import {
 import { PriceAlertSheet } from '@/components/PriceAlertSheet';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
+import { EmptyState } from '@/components/EmptyState';
 import { WishlistFilterBar } from '@/components/WishlistFilterBar';
 import { RefreshButton } from '@/components/RefreshButton';
 import { FriendSetGalleryModal, type FriendSetGalleryTarget } from '@/components/FriendSetGalleryModal';
@@ -134,8 +135,6 @@ export default function WishlistScreen() {
     heroToggle: { flexDirection: 'row' as const, gap: 6 },
     viewBtn: { width: 30, height: 30, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: heroSurface },
     viewBtnActive: { backgroundColor: heroSurfaceActive },
-    emptyTitle: { fontSize: 20, fontFamily: fonts.display, textAlign: 'center' as const, color: colors.text },
-    emptyHint: { fontSize: 14, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center' as const },
     tile: { flex: 1, padding: spacing.sm, borderRadius: radius.bubble, ...shadow.sm, backgroundColor: colors.surface, margin: 4 },
     imgWrap: { position: 'relative' as const },
     holoBorder: { borderRadius: radius.bubble, padding: 2 },
@@ -211,8 +210,7 @@ export default function WishlistScreen() {
       <SafeAreaView style={styles.screen}>
         <PokedexSectionTabs active="wishlist" />
         <View style={styles.center}>
-          <Text style={styles.emptyTitle}>{t('wishlist.emptyTitle')}</Text>
-          <Text style={styles.emptyHint}>{t('wishlist.emptyHint')}</Text>
+          <EmptyState icon="heart-outline" title={t('wishlist.emptyTitle')} hint={t('wishlist.emptyHint')} />
         </View>
       </SafeAreaView>
     );
@@ -264,7 +262,7 @@ export default function WishlistScreen() {
       <SlideTransition transitionKey={navToken} direction={sectionDirection} style={{ flex: 1 }}>
       {filtered.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyHint}>{t('wishlist.noResults')}</Text>
+          <EmptyState icon="search-outline" hint={t('wishlist.noResults')} />
         </View>
       ) : viewMode === 'pokemon' ? (
         <FlashList
