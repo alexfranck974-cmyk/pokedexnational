@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -39,6 +39,16 @@ function numColsFor(width: number): number {
   if (width < 1024) return 4;
   return 6;
 }
+
+// Hoisted to module scope so these stay referentially identical across every
+// render — an inline `{...}`/`(g) => ...` prop is a fresh object/function on
+// every render, and FlashList treats that as "the list changed" and resets
+// scroll to the top on relayout (maintainVisibleContentPosition is disabled
+// list-wide, see e0a3635, so nothing preserves the offset through that).
+const LIST_CONTENT_STYLE = { paddingBottom: TAB_BAR_CLEARANCE };
+const MAINTAIN_VISIBLE_DISABLED = { disabled: true };
+function dexGroupKeyExtractor(g: WishlistGroup): string { return String(g.dexNum); }
+function cardKeyExtractor(c: WishlistCard): string { return c.id; }
 
 export default function WishlistScreen() {
   const router = useRouter();
@@ -199,6 +209,137 @@ export default function WishlistScreen() {
     heartFilled: { fontSize: 18, color: colors.danger, lineHeight: 22 },
   }));
 
+  // Stable across re-renders triggered by unrelated state (e.g. opening the
+  // card gallery sheet) — an inline renderItem is a fresh function every
+  // render, and FlashList treats that as "the list changed", re-laying out
+  // and resetting scroll to the top (maintainVisibleContentPosition is
+  // disabled list-wide, see e0a3635, so nothing preserves the offset through
+  // that relayout). `t`'s own reference isn't a dep since its behavior is
+  // fully determined by `locale`, which is.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const renderPokemonRow = useCallback(({ item }: { item: WishlistGroup }) => {
+    if (!item) return null;
+    const mon = POKEDEX_BY_DEX.get(item.dexNum);
+    const ownedCount = item.cards.filter(c => ownedIds.has(c.id)).length;
+    return (
+      <Pressable
+        onPress={() => setGallery({
+          setName: mon ? getName(mon, locale) : `#${String(item.dexNum).padStart(4, '0')}`,
+          owned: ownedCount,
+          total: item.cards.length,
+          cards: item.cards.map(c => ({ key: c.id, imageSmall: c.image_small, imageLarge: c.image_large })),
+        })}
+        style={({ pressed }) => [styles.pokemonRow, ownedCount > 0 && styles.pokemonRowOwned, pressed && { backgroundColor: colors.surfaceAlt }]}>
+        <View style={styles.pokemonSpriteWrap}>
+          {mon && <Image source={{ uri: mon.sprite_url }} style={styles.pokemonSprite} resizeMode="contain" />}
+          {ownedCount > 0 && <View style={styles.pokemonOwnedBadge}><Pokeball size={13} /></View>}
+        </View>
+        <View style={styles.pokemonInfo}>
+          <Text style={styles.pokemonName} numberOfLines={1}>
+            #{String(item.dexNum).padStart(4, '0')} · {mon ? getName(mon, locale) : item.dexNum}
+          </Text>
+          <Text style={styles.pokemonSub}>
+            {t(item.cards.length > 1 ? 'wishlist.cardsInWishlistPlural' : 'wishlist.cardsInWishlistSingular', { n: item.cards.length })}
+            {ownedCount > 0 ? t(ownedCount > 1 ? 'wishlist.alreadyOwnedPlural' : 'wishlist.alreadyOwnedSingular', { n: ownedCount }) : ''}
+          </Text>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pokemonThumbs}>
+          {item.cards.slice(0, 4).map(c => (
+            <View key={c.id} style={[styles.pokemonThumbWrap, ownedIds.has(c.id) && styles.pokemonThumbWrapOwned]}>
+              <Image source={{ uri: c.image_small }} style={styles.pokemonThumb} resizeMode="contain" />
+              {formatCardPriceRange(c.cardmarket_low_eur, c.cardmarket_trend_eur, locale) != null && (
+                <Text style={styles.pokemonThumbPrice} numberOfLines={1}>{formatCardPriceRange(c.cardmarket_low_eur, c.cardmarket_trend_eur, locale)}</Text>
+              )}
+            </View>
+          ))}
+        </ScrollView>
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+      </Pressable>
+    );
+  }, [ownedIds, locale, styles, colors]);
+
+  // Same reasoning as renderPokemonRow above — a fresh element every render
+  // reads to FlashList as a changed prop, not just re-rendered.
+  const refreshControlEl = useMemo(
+    () => <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />,
+    [refreshing, onRefresh, colors.primary],
+  );
+
+  // .mutate is stable across renders (react-query), unlike the toggleWish/
+  // togglePriority mutation objects themselves — depending on those directly
+  // would defeat this useCallback the same way an inline renderItem did.
+  const wishMutate = toggleWish.mutate;
+  const priorityMutate = togglePriority.mutate;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const renderCardTile = useCallback(({ item }: { item: WishlistCard }) => {
+    if (!item) return null;
+    const owned = ownedIds.has(item.id);
+    const triggered = isPriceAlertTriggered(item);
+    return (
+      <Pressable
+        onPress={() => enterPokemonDetail(router, `/pokemon/${item.dex_num}`, '/wishlist')}
+        style={({ pressed }) => [styles.tile, pressed && { transform: [{ scale: 0.97 }] }]}>
+        <View style={styles.imgWrap}>
+          {owned ? (
+            <LinearGradient
+              colors={[colors.primary, colors.warning, colors.primary]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={styles.holoBorder}>
+              <View style={styles.holoInner}>
+                <Image source={{ uri: item.image_small }} style={styles.img} resizeMode="contain" />
+              </View>
+            </LinearGradient>
+          ) : (
+            <View style={styles.plainInner}>
+              <Image source={{ uri: item.image_small }} style={styles.img} resizeMode="contain" />
+            </View>
+          )}
+          {owned && (
+            <View style={styles.pokeballOverlay}>
+              <Pokeball size={22} />
+            </View>
+          )}
+          <Pressable
+            hitSlop={8}
+            onPress={(e) => {
+              e.stopPropagation();
+              wishMutate({ cardId: item.id, currentlyWished: true, dexNum: item.dex_num });
+            }}
+            style={styles.heartBtn}>
+            <Text style={styles.heartFilled}>♥</Text>
+          </Pressable>
+          <Pressable
+            hitSlop={8}
+            accessibilityLabel={t('wishlist.a11yTogglePriority')}
+            onPress={(e) => {
+              e.stopPropagation();
+              priorityMutate({ cardId: item.id, currentlyPriority: !!item.is_priority });
+            }}
+            style={styles.priorityBtn}>
+            <Ionicons name={item.is_priority ? 'star' : 'star-outline'} size={15} color={item.is_priority ? colors.warning : 'white'} />
+          </Pressable>
+          <Pressable
+            hitSlop={8}
+            accessibilityLabel={t('wishlist.a11yPriceAlert')}
+            onPress={(e) => { e.stopPropagation(); setPriceAlertTarget(item); }}
+            style={styles.alertBtn}>
+            <Ionicons name={item.price_alert_eur != null ? 'notifications' : 'notifications-outline'} size={15} color={triggered ? colors.success : 'white'} />
+          </Pressable>
+        </View>
+        <Text style={styles.set} numberOfLines={1}>{item.set_name} · {item.card_number}</Text>
+        {item.rarity && <Text style={styles.rarity} numberOfLines={1}>{item.rarity}</Text>}
+        {formatCardPriceRange(item.cardmarket_low_eur, item.cardmarket_trend_eur, locale) != null && (
+          <Text style={styles.price} numberOfLines={1}>{formatCardPriceRange(item.cardmarket_low_eur, item.cardmarket_trend_eur, locale)}</Text>
+        )}
+        {triggered && (
+          <View style={styles.alertTriggeredBadge}>
+            <Text style={styles.alertTriggeredBadgeText}>{t('wishlist.alertTriggeredBadge')}</Text>
+          </View>
+        )}
+      </Pressable>
+    );
+  }, [ownedIds, locale, styles, colors, router, wishMutate, priorityMutate]);
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.screen}>
@@ -270,129 +411,23 @@ export default function WishlistScreen() {
       ) : viewMode === 'pokemon' ? (
         <FlashList
           data={grouped}
-          contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
-          maintainVisibleContentPosition={{ disabled: true }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+          contentContainerStyle={LIST_CONTENT_STYLE}
+          maintainVisibleContentPosition={MAINTAIN_VISIBLE_DISABLED}
+          refreshControl={refreshControlEl}
           {...hideOnScrollProps}
-          keyExtractor={(g: WishlistGroup) => String(g.dexNum)}
-          renderItem={({ item }: { item: WishlistGroup }) => {
-            if (!item) return null;
-            const mon = POKEDEX_BY_DEX.get(item.dexNum);
-            const ownedCount = item.cards.filter(c => ownedIds.has(c.id)).length;
-            return (
-              <Pressable
-                onPress={() => setGallery({
-                  setName: mon ? getName(mon, locale) : `#${String(item.dexNum).padStart(4, '0')}`,
-                  owned: ownedCount,
-                  total: item.cards.length,
-                  cards: item.cards.map(c => ({ key: c.id, imageSmall: c.image_small, imageLarge: c.image_large })),
-                })}
-                style={({ pressed }) => [styles.pokemonRow, ownedCount > 0 && styles.pokemonRowOwned, pressed && { backgroundColor: colors.surfaceAlt }]}>
-                <View style={styles.pokemonSpriteWrap}>
-                  {mon && <Image source={{ uri: mon.sprite_url }} style={styles.pokemonSprite} resizeMode="contain" />}
-                  {ownedCount > 0 && <View style={styles.pokemonOwnedBadge}><Pokeball size={13} /></View>}
-                </View>
-                <View style={styles.pokemonInfo}>
-                  <Text style={styles.pokemonName} numberOfLines={1}>
-                    #{String(item.dexNum).padStart(4, '0')} · {mon ? getName(mon, locale) : item.dexNum}
-                  </Text>
-                  <Text style={styles.pokemonSub}>
-                    {t(item.cards.length > 1 ? 'wishlist.cardsInWishlistPlural' : 'wishlist.cardsInWishlistSingular', { n: item.cards.length })}
-                    {ownedCount > 0 ? t(ownedCount > 1 ? 'wishlist.alreadyOwnedPlural' : 'wishlist.alreadyOwnedSingular', { n: ownedCount }) : ''}
-                  </Text>
-                </View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pokemonThumbs}>
-                  {item.cards.slice(0, 4).map(c => (
-                    <View key={c.id} style={[styles.pokemonThumbWrap, ownedIds.has(c.id) && styles.pokemonThumbWrapOwned]}>
-                      <Image source={{ uri: c.image_small }} style={styles.pokemonThumb} resizeMode="contain" />
-                      {formatCardPriceRange(c.cardmarket_low_eur, c.cardmarket_trend_eur, locale) != null && (
-                        <Text style={styles.pokemonThumbPrice} numberOfLines={1}>{formatCardPriceRange(c.cardmarket_low_eur, c.cardmarket_trend_eur, locale)}</Text>
-                      )}
-                    </View>
-                  ))}
-                </ScrollView>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-              </Pressable>
-            );
-          }}
+          keyExtractor={dexGroupKeyExtractor}
+          renderItem={renderPokemonRow}
         />
       ) : (
         <FlashList
           data={filtered}
           numColumns={numColsFor(width)}
-          contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
-          maintainVisibleContentPosition={{ disabled: true }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+          contentContainerStyle={LIST_CONTENT_STYLE}
+          maintainVisibleContentPosition={MAINTAIN_VISIBLE_DISABLED}
+          refreshControl={refreshControlEl}
           {...hideOnScrollProps}
-          keyExtractor={c => c.id}
-          renderItem={({ item }) => {
-            if (!item) return null;
-            const owned = ownedIds.has(item.id);
-            const triggered = isPriceAlertTriggered(item);
-            return (
-              <Pressable
-                onPress={() => enterPokemonDetail(router, `/pokemon/${item.dex_num}`, '/wishlist')}
-                style={({ pressed }) => [styles.tile, pressed && { transform: [{ scale: 0.97 }] }]}>
-                <View style={styles.imgWrap}>
-                  {owned ? (
-                    <LinearGradient
-                      colors={[colors.primary, colors.warning, colors.primary]}
-                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                      style={styles.holoBorder}>
-                      <View style={styles.holoInner}>
-                        <Image source={{ uri: item.image_small }} style={styles.img} resizeMode="contain" />
-                      </View>
-                    </LinearGradient>
-                  ) : (
-                    <View style={styles.plainInner}>
-                      <Image source={{ uri: item.image_small }} style={styles.img} resizeMode="contain" />
-                    </View>
-                  )}
-                  {owned && (
-                    <View style={styles.pokeballOverlay}>
-                      <Pokeball size={22} />
-                    </View>
-                  )}
-                  <Pressable
-                    hitSlop={8}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      toggleWish.mutate({ cardId: item.id, currentlyWished: true, dexNum: item.dex_num });
-                    }}
-                    style={styles.heartBtn}>
-                    <Text style={styles.heartFilled}>♥</Text>
-                  </Pressable>
-                  <Pressable
-                    hitSlop={8}
-                    accessibilityLabel={t('wishlist.a11yTogglePriority')}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      togglePriority.mutate({ cardId: item.id, currentlyPriority: !!item.is_priority });
-                    }}
-                    style={styles.priorityBtn}>
-                    <Ionicons name={item.is_priority ? 'star' : 'star-outline'} size={15} color={item.is_priority ? colors.warning : 'white'} />
-                  </Pressable>
-                  <Pressable
-                    hitSlop={8}
-                    accessibilityLabel={t('wishlist.a11yPriceAlert')}
-                    onPress={(e) => { e.stopPropagation(); setPriceAlertTarget(item); }}
-                    style={styles.alertBtn}>
-                    <Ionicons name={item.price_alert_eur != null ? 'notifications' : 'notifications-outline'} size={15} color={triggered ? colors.success : 'white'} />
-                  </Pressable>
-                </View>
-                <Text style={styles.set} numberOfLines={1}>{item.set_name} · {item.card_number}</Text>
-                {item.rarity && <Text style={styles.rarity} numberOfLines={1}>{item.rarity}</Text>}
-                {formatCardPriceRange(item.cardmarket_low_eur, item.cardmarket_trend_eur, locale) != null && (
-                  <Text style={styles.price} numberOfLines={1}>{formatCardPriceRange(item.cardmarket_low_eur, item.cardmarket_trend_eur, locale)}</Text>
-                )}
-                {triggered && (
-                  <View style={styles.alertTriggeredBadge}>
-                    <Text style={styles.alertTriggeredBadgeText}>{t('wishlist.alertTriggeredBadge')}</Text>
-                  </View>
-                )}
-              </Pressable>
-            );
-          }}
+          keyExtractor={cardKeyExtractor}
+          renderItem={renderCardTile}
         />
       )}
       </SlideTransition>
