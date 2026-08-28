@@ -68,6 +68,9 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "setupFiles": [
+      "<rootDir>/jest.setup.js"
+    ],
     "transformIgnorePatterns": [
       "node_modules/(?!(jest-)?react-native|@react-native|@react-navigation|expo(nent)?|expo-router|@expo(nent)?/.*|@expo-google-fonts/.*|react-native-svg|@shopify/flash-list)"
     ]
