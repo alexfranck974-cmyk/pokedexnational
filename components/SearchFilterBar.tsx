@@ -26,6 +26,12 @@ interface Props {
   /** Optional 4th FAB toggling a per-card €-value overlay — omit to keep the
    * 3-button stack (e.g. Wishlist, which doesn't wire this yet). */
   showValues?: boolean;                 onToggleValues?: () => void;
+  /** Binder-style paged view toggle (Pokédex national only). When in page
+   * mode, the columns-cycle FAB is repurposed to cycle the page layout
+   * (9/12/16) instead of scroll-mode column overrides — same slot, different
+   * meaning, avoids growing the FAB stack further. Omit to keep scroll-only. */
+  viewMode?: 'scroll' | 'page';         onToggleViewMode?: () => void;
+  pageLayout?: 9 | 12 | 16;             onCyclePageLayout?: () => void;
 }
 
 const COLUMN_CYCLE: (2 | 3 | 4 | null)[] = [null, 2, 3, 4];
@@ -239,13 +245,16 @@ export function SearchFilterBar(p: Props) {
         </Pressable>
         <Pressable
           onPress={() => {
+            if (p.viewMode === 'page') { p.onCyclePageLayout?.(); return; }
             const idx = COLUMN_CYCLE.indexOf(p.columns);
             p.onColumns(COLUMN_CYCLE[(idx + 1) % COLUMN_CYCLE.length]);
           }}
           style={styles.fab}
           accessibilityRole="button"
-          accessibilityLabel={t('search.a11yCycleColumns')}>
-          {p.columns === null ? (
+          accessibilityLabel={t(p.viewMode === 'page' ? 'search.a11yCyclePageLayout' : 'search.a11yCycleColumns')}>
+          {p.viewMode === 'page' ? (
+            <Text style={styles.columnsLabel}>×{p.pageLayout}</Text>
+          ) : p.columns === null ? (
             <Ionicons name="grid-outline" size={22} color={colors.text} />
           ) : (
             <Text style={styles.columnsLabel}>×{p.columns}</Text>
@@ -254,6 +263,11 @@ export function SearchFilterBar(p: Props) {
         {p.onToggleValues && (
           <Pressable onPress={p.onToggleValues} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yTogglePrice')}>
             <Ionicons name="pricetag" size={20} color={p.showValues ? colors.primary : colors.text} />
+          </Pressable>
+        )}
+        {p.onToggleViewMode && (
+          <Pressable onPress={p.onToggleViewMode} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleViewMode')}>
+            <Ionicons name={p.viewMode === 'page' ? 'book' : 'book-outline'} size={20} color={p.viewMode === 'page' ? colors.primary : colors.text} />
           </Pressable>
         )}
       </View>

@@ -143,6 +143,7 @@ function AppLayoutTabs() {
         <Tabs.Screen name="wishlist" options={{ href: null }} />
         <Tabs.Screen name="favorites" options={{ href: null }} />
         <Tabs.Screen name="market" options={{ href: null }} />
+        <Tabs.Screen name="news" options={{ href: null }} />
         <Tabs.Screen name="settings" options={{ href: null }} />
         <Tabs.Screen name="feedback" options={{ href: null }} />
         <Tabs.Screen name="pokemon/[num]" options={{ href: null }} />

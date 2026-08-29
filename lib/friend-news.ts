@@ -2,9 +2,12 @@ import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tansta
 import { supabase } from './supabase';
 import { useSession } from './auth';
 import { classifyRarity } from './rarity-tiers';
+import { toast } from './toast';
 
-// Single fixed reaction (user's choice — a "bravo" tap, not a multi-emoji picker).
+// Kept as the default/first option in the palette below — many existing
+// reveals still read naturally as "Bravo !" on the live capture moment.
 export const BRAVO_EMOJI = '👏';
+export const REACTION_EMOJI_PALETTE = ['👏', '🔥', '😍', '😮', '❤️'] as const;
 
 export type FriendNewsEventType = 'chase_card' | 'sealed_product' | 'trade_completed' | 'binder_completed' | 'set_goal_completed';
 
@@ -58,7 +61,9 @@ export interface FriendNewsItem {
   authorId: string;
   authorName: string;
   createdAt: string;
-  reactionCount: number;
+  reactionCounts: Record<string, number>;
+  myReaction: string | null;
+  commentCount: number;
   // chase_card only
   cardId: string | null;
   cardName: string;
@@ -84,7 +89,7 @@ export interface FriendNewsItem {
 }
 
 const FRIEND_NEWS_SELECT =
-  'id, user_id, event_type, card_id, rarity_label, created_at, sealed_set_id, sealed_set_name, sealed_product_type, trade_offer_id, binder_id, binder_name, set_goal_set_id, set_goal_set_name, author:profiles!friend_news_user_id_fkey(username, display_name), card:tcg_cards(name, image_small, image_large, dex_num, set_id, set_name, card_number), reactions:friend_news_reactions(emoji)';
+  'id, user_id, event_type, card_id, rarity_label, created_at, sealed_set_id, sealed_set_name, sealed_product_type, trade_offer_id, binder_id, binder_name, set_goal_set_id, set_goal_set_name, author:profiles!friend_news_user_id_fkey(username, display_name), card:tcg_cards(name, image_small, image_large, dex_num, set_id, set_name, card_number), reactions:friend_news_reactions(emoji, user_id), comments:friend_news_comments(id)';
 
 // chase_card is the only type whose row is unusable without its card join
 // resolving (the card could since have been removed from tcg_cards) — every
@@ -93,14 +98,23 @@ function isValidNewsRow(row: any): boolean {
   return row.event_type !== 'chase_card' || !!row.card;
 }
 
-function mapFriendNewsRow(row: any): FriendNewsItem {
+function mapFriendNewsRow(row: any, viewerId: string | undefined): FriendNewsItem {
+  const reactions: { emoji: string; user_id: string }[] = row.reactions ?? [];
+  const reactionCounts: Record<string, number> = {};
+  let myReaction: string | null = null;
+  for (const r of reactions) {
+    reactionCounts[r.emoji] = (reactionCounts[r.emoji] ?? 0) + 1;
+    if (r.user_id === viewerId) myReaction = r.emoji;
+  }
   return {
     id: row.id,
     eventType: row.event_type as FriendNewsEventType,
     authorId: row.user_id,
     authorName: row.author?.display_name || row.author?.username || '?',
     createdAt: row.created_at,
-    reactionCount: row.reactions?.length ?? 0,
+    reactionCounts,
+    myReaction,
+    commentCount: row.comments?.length ?? 0,
     cardId: row.card_id,
     cardName: row.card?.name ?? '',
     imageSmall: row.card?.image_small ?? '',
@@ -142,7 +156,7 @@ export function useFriendNewsFeed(userId?: string) {
       if (error) throw error;
       return (data ?? [])
         .filter((row: any) => (row.dismissed?.length ?? 0) === 0 && isValidNewsRow(row))
-        .map(mapFriendNewsRow);
+        .map((row: any) => mapFriendNewsRow(row, userId));
     },
   });
 }
@@ -169,7 +183,7 @@ export function useFriendNewsHistory(userId?: string, enabled = true) {
       if (pageParam) query = query.lt('created_at', pageParam);
       const { data, error } = await query;
       if (error) throw error;
-      const items = (data ?? []).filter(isValidNewsRow).map(mapFriendNewsRow);
+      const items = (data ?? []).filter(isValidNewsRow).map((row: any) => mapFriendNewsRow(row, userId));
       return { items, nextCursor: items.length === HISTORY_PAGE_SIZE ? items[items.length - 1].createdAt : null };
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor,
@@ -193,21 +207,70 @@ export function useDismissFriendNews() {
   });
 }
 
+// One active reaction per (news, user) — tapping a different emoji swaps it
+// via upsert, it doesn't stack a second reaction alongside the first.
 export function useReactToFriendNews() {
   const qc = useQueryClient();
   const { session } = useSession();
   const userId = session?.user.id;
   return useMutation({
-    mutationFn: async (newsId: string) => {
+    mutationFn: async ({ newsId, emoji }: { newsId: string; emoji: string }) => {
       if (!userId) throw new Error('Not signed in');
       const { error } = await supabase
         .from('friend_news_reactions')
-        .upsert({ news_id: newsId, user_id: userId, emoji: BRAVO_EMOJI }, { onConflict: 'news_id,user_id' });
+        .upsert({ news_id: newsId, user_id: userId, emoji }, { onConflict: 'news_id,user_id' });
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['friend_news_feed', userId] });
       qc.invalidateQueries({ queryKey: ['friend_news_history', userId] });
     },
+  });
+}
+
+export interface FriendNewsComment {
+  id: string;
+  newsId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+export function useFriendNewsComments(newsId: string | null) {
+  return useQuery({
+    queryKey: ['friend_news_comments', newsId],
+    enabled: !!newsId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('friend_news_comments')
+        .select('id, news_id, author_id, body, created_at, author:profiles!friend_news_comments_author_id_fkey(username, display_name)')
+        .eq('news_id', newsId!)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map((row: any): FriendNewsComment => ({
+        id: row.id,
+        newsId: row.news_id,
+        authorId: row.author_id,
+        authorName: row.author?.display_name || row.author?.username || '?',
+        body: row.body,
+        createdAt: row.created_at,
+      }));
+    },
+  });
+}
+
+export function useAddFriendNewsComment() {
+  const qc = useQueryClient();
+  const { session } = useSession();
+  const userId = session?.user.id;
+  return useMutation({
+    mutationFn: async ({ newsId, body }: { newsId: string; body: string }) => {
+      if (!userId) throw new Error('Not signed in');
+      const { error } = await supabase.from('friend_news_comments').insert({ news_id: newsId, author_id: userId, body: body.trim() });
+      if (error) throw error;
+    },
+    onSuccess: (_data, { newsId }) => qc.invalidateQueries({ queryKey: ['friend_news_comments', newsId] }),
+    onError: () => toast('Impossible d’envoyer ce message, réessaie.'),
   });
 }

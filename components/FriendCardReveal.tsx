@@ -75,7 +75,7 @@ export function FriendCardReveal({ item, mode, onClose }: Props) {
   if (!item) return null;
 
   const onBravo = () => {
-    react.mutate(item.id);
+    react.mutate({ newsId: item.id, emoji: BRAVO_EMOJI });
     close();
   };
 

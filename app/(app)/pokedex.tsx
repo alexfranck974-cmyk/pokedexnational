@@ -13,6 +13,8 @@ import { withReturnTo, safeDecodeURIComponent } from '@/lib/navigation';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { PokedexGrid } from '@/components/PokedexGrid';
+import { PokedexPager } from '@/components/PokedexPager';
+import { usePokedexViewMode } from '@/lib/pokedex-view-mode';
 import { PokedexSectionTabs, sectionIndex, hrefToSection } from '@/components/PokedexSectionTabs';
 import { SlideTransition } from '@/components/SlideTransition';
 import { SearchFilterBar } from '@/components/SearchFilterBar';
@@ -136,6 +138,7 @@ export default function PokedexScreen() {
   const [generationFilter, setGeneration] = useState<number[]>([]);
   const [sort, setSort]             = useState<SortKey>('num-asc');
   const [columns, setColumns]       = useState<2 | 3 | 4 | null>(null);
+  const { viewMode, toggleViewMode, pageLayout, cyclePageLayout } = usePokedexViewMode();
 
   // Debounced: search can shrink the grid (FlashList, numColumns > 1) drastically
   // on every keystroke — see lib/use-debounced-value.ts for why that's unsafe.
@@ -193,19 +196,34 @@ export default function PokedexScreen() {
       </LinearGradient>
       <PokedexSectionTabs active="pokedex" />
       <SlideTransition transitionKey={navToken} direction={sectionDirection} style={{ flex: 1 }}>
-        <PokedexGrid
-          items={items}
-          ownedImages={ownedImages}
-          wishedInDexSet={wishedInDexSet}
-          columnsOverride={columns}
-          cardPrices={showValues ? dexPrices : undefined}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-          onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
-          onLongSelect={num => {
-            const idx = ownedItems.findIndex(p => p.num === num);
-            if (idx !== -1) setZoomIndex(idx);
-          }}
-        />
+        {viewMode === 'page' ? (
+          <PokedexPager
+            items={items}
+            pageLayout={pageLayout}
+            ownedImages={ownedImages}
+            wishedInDexSet={wishedInDexSet}
+            cardPrices={showValues ? dexPrices : undefined}
+            onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
+            onLongSelect={num => {
+              const idx = ownedItems.findIndex(p => p.num === num);
+              if (idx !== -1) setZoomIndex(idx);
+            }}
+          />
+        ) : (
+          <PokedexGrid
+            items={items}
+            ownedImages={ownedImages}
+            wishedInDexSet={wishedInDexSet}
+            columnsOverride={columns}
+            cardPrices={showValues ? dexPrices : undefined}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+            onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
+            onLongSelect={num => {
+              const idx = ownedItems.findIndex(p => p.num === num);
+              if (idx !== -1) setZoomIndex(idx);
+            }}
+          />
+        )}
       </SlideTransition>
       <CardZoomModal
         card={zoomCardImage}
@@ -226,6 +244,8 @@ export default function PokedexScreen() {
         onReset={reset}
         columns={columns} onColumns={setColumns}
         showValues={showValues} onToggleValues={() => setShowValues(v => !v)}
+        viewMode={viewMode} onToggleViewMode={toggleViewMode}
+        pageLayout={pageLayout} onCyclePageLayout={cyclePageLayout}
       />
       <CaptureEffect event={currentCapture} onDone={() => setCaptureQueue(q => q.slice(1))} />
     </SafeAreaView>
