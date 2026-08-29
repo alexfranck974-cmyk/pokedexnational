@@ -205,7 +205,6 @@ export default function WishlistScreen() {
     pokemonThumbWrap: { borderRadius: radius.sm, marginRight: 4, alignItems: 'center' as const },
     pokemonThumbWrapOwned: { borderWidth: 1.5, borderColor: colors.success },
     pokemonThumb: { width: 28, height: 40 },
-    pokemonThumbPrice: { fontSize: 8, fontFamily: fonts.monoBold, color: colors.success },
     heartFilled: { fontSize: 18, color: colors.danger, lineHeight: 22 },
   }));
 
@@ -227,7 +226,10 @@ export default function WishlistScreen() {
           setName: mon ? getName(mon, locale) : `#${String(item.dexNum).padStart(4, '0')}`,
           owned: ownedCount,
           total: item.cards.length,
-          cards: item.cards.map(c => ({ key: c.id, imageSmall: c.image_small, imageLarge: c.image_large })),
+          cards: item.cards.map(c => ({
+            key: c.id, imageSmall: c.image_small, imageLarge: c.image_large,
+            cardmarketLowEur: c.cardmarket_low_eur, cardmarketTrendEur: c.cardmarket_trend_eur,
+          })),
         })}
         style={({ pressed }) => [styles.pokemonRow, ownedCount > 0 && styles.pokemonRowOwned, pressed && { backgroundColor: colors.surfaceAlt }]}>
         <View style={styles.pokemonSpriteWrap}>
@@ -247,9 +249,6 @@ export default function WishlistScreen() {
           {item.cards.slice(0, 4).map(c => (
             <View key={c.id} style={[styles.pokemonThumbWrap, ownedIds.has(c.id) && styles.pokemonThumbWrapOwned]}>
               <Image source={{ uri: c.image_small }} style={styles.pokemonThumb} resizeMode="contain" />
-              {formatCardPriceRange(c.cardmarket_low_eur, c.cardmarket_trend_eur, locale) != null && (
-                <Text style={styles.pokemonThumbPrice} numberOfLines={1}>{formatCardPriceRange(c.cardmarket_low_eur, c.cardmarket_trend_eur, locale)}</Text>
-              )}
             </View>
           ))}
         </ScrollView>

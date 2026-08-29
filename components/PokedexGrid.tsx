@@ -1,4 +1,4 @@
-import { useMemo, useRef, type ReactElement } from 'react';
+import { useEffect, useMemo, useRef, type ReactElement } from 'react';
 import { View, Text, Image, StyleSheet, Animated, useWindowDimensions, type NativeSyntheticEvent, type NativeScrollEvent, type RefreshControlProps } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
@@ -21,9 +21,9 @@ import { useMotion } from '@/lib/motion';
 // iOS — just a higher threshold here than its SCROLL_JITTER_PX=4 tab-bar
 // trigger, since this needs to ignore normal browsing scroll and only catch
 // a genuine fast fling.
-const FAST_SCROLL_PX = 24;
-const FADE_IDLE_MS = 220;
-const FADE_OPACITY = 0.35;
+const FAST_SCROLL_PX = 40;
+const FADE_IDLE_MS = 200;
+const FADE_OPACITY = 0.6;
 
 const POKEDEX = pokedexData as Pokemon[];
 const SPRITE_BY_DEX = new Map<number, string>(POKEDEX.map(p => [p.num, p.sprite_url]));
@@ -92,6 +92,19 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, co
     hideOnScrollProps.onScroll(e);
     handleFadeScroll(e);
   };
+  // This screen is kept mounted across section switches (no unmountOnBlur),
+  // so fadeOpacity's ref persists too — without this, a fling right before
+  // navigating away could still be mid-fade (or mid-settle-timer) when the
+  // user comes back, showing a dim grid instead of the real content. Belt
+  // and suspenders: also covers the case where it genuinely does unmount.
+  useEffect(() => {
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      fadedRef.current = false;
+      fadeOpacity.setValue(1);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const styles = useThemedStyles((colors) => ({
     headerRow: {
       alignItems: 'center' as const, justifyContent: 'center' as const,

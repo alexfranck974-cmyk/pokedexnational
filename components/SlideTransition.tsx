@@ -53,16 +53,25 @@ export function SlideTransition({ transitionKey, direction, style, children }: P
     // Deferring two frames lets that paint land first. Reset has to be
     // deferred right alongside the start (not fired eagerly) so there's no
     // window where the browser paints "reset but not yet animating".
+    // Triple-rAF, not double — PokedexGrid's scroll-fade state (added
+    // alongside the binder-style page view) made the content this wraps
+    // heavier to mount, which was enough to occasionally push the first
+    // paint past the previous 2-frame margin and reintroduce the exact
+    // flash this deferral exists to prevent. One more frame of headroom.
     let anim: Animated.CompositeAnimation | null = null;
     let raf2 = 0;
+    let raf3 = 0;
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
-        anim = start();
+        raf3 = requestAnimationFrame(() => {
+          anim = start();
+        });
       });
     });
     return () => {
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
+      cancelAnimationFrame(raf3);
       anim?.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -10,7 +10,11 @@ export interface FriendSetGalleryTarget {
   setName: string;
   owned: number;
   total: number;
-  cards: { key: string; imageSmall: string; imageLarge: string | null }[];
+  cards: {
+    key: string; imageSmall: string; imageLarge: string | null;
+    /** Omit where price isn't relevant/available (e.g. a friend's public gallery) — ReadonlyCardGrid just skips the price line. */
+    cardmarketLowEur?: number | null; cardmarketTrendEur?: number | null;
+  }[];
 }
 
 interface Props {
@@ -54,7 +58,10 @@ export function FriendSetGalleryModal({ target, onClose }: Props) {
               </View>
               <View style={styles.body}>
                 <ReadonlyCardGrid
-                  cards={target.cards.map(c => ({ key: c.key, image: c.imageSmall }))}
+                  cards={target.cards.map(c => ({
+                    key: c.key, image: c.imageSmall,
+                    cardmarketLowEur: c.cardmarketLowEur, cardmarketTrendEur: c.cardmarketTrendEur,
+                  }))}
                   onZoom={(key) => {
                     const card = target.cards.find(c => c.key === key);
                     if (card) setZoomCard({ image_small: card.imageSmall, image_large: card.imageLarge });
