@@ -104,7 +104,7 @@ function AppLayoutTabs() {
         <Tabs.Screen
           name="dashboard"
           options={{
-            title: 'Dashboard',
+            title: 'Accueil',
             tabBarIcon: ({ focused, color, size }) => (
               <Ionicons name={focused ? 'trophy' : 'trophy-outline'} size={size} color={color} />
             ),

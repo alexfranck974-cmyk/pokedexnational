@@ -34,6 +34,20 @@ export default function Root({ children }: PropsWithChildren) {
         */}
         <style>{`
           img { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+
+          /*
+            Without this, html/body default to the browser's white background.
+            React Native Web doesn't paint over that until the app (or, with
+            asyncRoutes, a given route's own JS chunk) has fetched and mounted —
+            near-instant on a cached localhost dev server, but a real gap on a
+            real mobile network, seen as a white flash on every navigation
+            (installed PWA, real device — not reproducible on localhost, which
+            is why this went unnoticed until now). Matches manifest.json's own
+            background_color (the default Poké Ball dark palette) — light-mode/
+            other-palette users get a brief dark flash instead of white, a
+            smaller regression than the status quo for everyone else.
+          */
+          html, body { background-color: #14100f; }
         `}</style>
       </head>
       <body>{children}</body>

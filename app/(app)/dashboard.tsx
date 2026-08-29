@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
-import { useSession } from '@/lib/auth';
+import { useSession, useOwnProfile } from '@/lib/auth';
 import { useUserDex, useAllOwnedCardsDetailed, useAllOwnedCardsLedgerDetailed, useAllWishedCards, useOwnedCardQuantities } from '@/lib/collection';
 import { useShowcase } from '@/lib/favorites';
 import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
@@ -61,6 +61,16 @@ export default function DashboardScreen() {
   const { session } = useSession();
   const userId = session?.user.id;
   const joinedAt = session?.user.created_at;
+  const { data: ownProfile } = useOwnProfile(userId);
+  // "Bonjour"/"Bonsoir" rather than "Bonjour"/"Bon après-midi"/"Bonsoir" — the
+  // simple two-way split matches how the greeting is actually said out loud
+  // in French, no false-precision third bucket needed for a decorative header.
+  const greeting = useMemo(() => {
+    const isEvening = new Date().getHours() >= 18;
+    return ownProfile?.display_name
+      ? t(isEvening ? 'dashboard.greetingEveningName' : 'dashboard.greetingMorningName', { name: ownProfile.display_name })
+      : t(isEvening ? 'dashboard.greetingEvening' : 'dashboard.greetingMorning');
+  }, [ownProfile?.display_name, t]);
   const { data: owned = new Set<number>(), isLoading: dexLoading } = useUserDex(userId);
   const { data: ownedCards = [] } = useAllOwnedCardsDetailed(userId);
   const { data: showcase = new Set<number>() } = useShowcase(userId);
@@ -246,7 +256,7 @@ export default function DashboardScreen() {
             </>
           )}
           <View style={styles.titleRow}>
-            <Text style={styles.h1}>{t('dashboard.title')}</Text>
+            <Text style={styles.h1}>{greeting}</Text>
             <View style={styles.titleActions}>
               <Pressable
                 onPress={() => setLayoutSheetOpen(true)}

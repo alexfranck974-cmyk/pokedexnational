@@ -163,7 +163,10 @@ export const STRINGS = {
     'tabs.wishlist': 'Wishlist',
 
     // Dashboard
-    'dashboard.title': 'Dashboard',
+    'dashboard.greetingMorningName': 'Bonjour, {name}',
+    'dashboard.greetingEveningName': 'Bonsoir, {name}',
+    'dashboard.greetingMorning': 'Bonjour',
+    'dashboard.greetingEvening': 'Bonsoir',
     'dashboard.collectionValueLabel': 'Valeur estimée de ta collection : {value}',
     'dashboard.collectionLabel': 'Collection',
     'dashboard.tradesSub': 'échanges',
@@ -686,7 +689,10 @@ export const STRINGS = {
     'tabs.collection': 'Collection',
     'tabs.wishlist': 'Wishlist',
 
-    'dashboard.title': 'Dashboard',
+    'dashboard.greetingMorningName': 'Good morning, {name}',
+    'dashboard.greetingEveningName': 'Good evening, {name}',
+    'dashboard.greetingMorning': 'Good morning',
+    'dashboard.greetingEvening': 'Good evening',
     'dashboard.collectionValueLabel': 'Estimated value of your collection: {value}',
     'dashboard.collectionLabel': 'Collection',
     'dashboard.tradesSub': 'trades',

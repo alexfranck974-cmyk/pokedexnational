@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
@@ -77,6 +78,23 @@ export async function requestPasswordReset(email: string) {
 export async function updatePassword(newPassword: string) {
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) throw error;
+}
+
+// The signed-in user's own display_name/username — session.user.user_metadata
+// has a display_name too (seeded at signup), but it goes stale the moment
+// Settings' "save" writes straight to the profiles row without also touching
+// auth metadata, so screens that need the *current* name (e.g. a Dashboard
+// greeting) should read this instead.
+export function useOwnProfile(userId?: string) {
+  return useQuery({
+    queryKey: ['own_profile', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('profiles').select('username, display_name').eq('id', userId!).single();
+      if (error) throw error;
+      return data as { username: string; display_name: string };
+    },
+  });
 }
 
 // viewerId lets an accepted friend (or the profile's own owner) see a
