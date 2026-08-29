@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/react-native';
 import { QueryCache, QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -15,15 +14,9 @@ import { LocaleProvider } from '@/lib/locale';
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { toast } from '@/lib/toast';
+import { initSentry, wrapRoot } from '@/lib/sentry';
 
-const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
-if (sentryDsn) {
-  Sentry.init({
-    dsn: sentryDsn,
-    tracesSampleRate: 0.2,
-    environment: __DEV__ ? 'development' : 'production',
-  });
-}
+initSentry();
 
 // Module-level (not per-render) so the throttle survives across the app's
 // whole lifetime, not just one RootLayout instance.
@@ -111,4 +104,4 @@ function RootLayout() {
   );
 }
 
-export default Sentry.wrap(RootLayout);
+export default wrapRoot(RootLayout);

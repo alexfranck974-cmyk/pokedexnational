@@ -1,7 +1,7 @@
 import { Component, type ReactNode } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Sentry from '@sentry/react-native';
+import { captureException } from '@/lib/sentry';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useT } from '@/lib/locale';
 
@@ -40,7 +40,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   }
 
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
-    Sentry.captureException(error, { extra: { componentStack: info.componentStack } });
+    captureException(error, { extra: { componentStack: info.componentStack } });
   }
 
   render() {
