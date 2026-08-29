@@ -9,6 +9,7 @@ import type { Pokemon } from '@/lib/types';
 import { useSession, useOwnProfile } from '@/lib/auth';
 import { useUserDex, useAllOwnedCardsDetailed, useAllOwnedCardsLedgerDetailed, useAllWishedCards, useOwnedCardQuantities } from '@/lib/collection';
 import { useShowcase } from '@/lib/favorites';
+import { useFriendNewsFeed } from '@/lib/friend-news';
 import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
 import { useDashboardRingLayout, type RingKey } from '@/lib/dashboard-layout';
 import { useTcgSets } from '@/lib/tcg-index';
@@ -62,6 +63,12 @@ export default function DashboardScreen() {
   const userId = session?.user.id;
   const joinedAt = session?.user.created_at;
   const { data: ownProfile } = useOwnProfile(userId);
+  // Same query key as the Social tab's own badge dot (app/(app)/_layout.tsx) —
+  // React Query dedupes, so this doesn't add a second network request, just a
+  // second read of the already-warm cache. Deliberately just a signal next to
+  // the greeting (tap → /news directly), not a second preview card here —
+  // friends.tsx already owns that on the Social tab.
+  const { data: friendNews = [] } = useFriendNewsFeed(userId);
   // "Bonjour"/"Bonsoir" rather than "Bonjour"/"Bon après-midi"/"Bonsoir" — the
   // simple two-way split matches how the greeting is actually said out loud
   // in French, no false-precision third bucket needed for a decorative header.
@@ -170,6 +177,12 @@ export default function DashboardScreen() {
       flexDirection: 'row' as const, flexWrap: 'wrap' as const, justifyContent: 'center' as const,
       alignItems: 'flex-start' as const, rowGap: spacing.lg, columnGap: spacing.lg,
     },
+    // Same visual language as the Social tab's own unread dot
+    // (app/(app)/_layout.tsx's requestDot) — one badge look app-wide.
+    newsDot: {
+      position: 'absolute' as const, top: -1, right: -3, width: 9, height: 9, borderRadius: 5,
+      backgroundColor: '#ef4444', borderWidth: 1.5,
+    },
     addBadge: {
       position: 'absolute' as const, bottom: -2, right: -2, width: 22, height: 22, borderRadius: 11,
       backgroundColor: colors.primary, alignItems: 'center' as const, justifyContent: 'center' as const,
@@ -258,6 +271,14 @@ export default function DashboardScreen() {
           <View style={styles.titleRow}>
             <Text style={styles.h1}>{greeting}</Text>
             <View style={styles.titleActions}>
+              <Pressable
+                onPress={() => router.push('/news' as never)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('dashboard.a11yNews')}>
+                <Ionicons name="newspaper-outline" size={20} color={colors.textMuted} />
+                {friendNews.length > 0 && <View style={[styles.newsDot, { borderColor: colors.surface }]} />}
+              </Pressable>
               <Pressable
                 onPress={() => setLayoutSheetOpen(true)}
                 hitSlop={8}
