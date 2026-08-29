@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Modal, FlatList, useWindowDimensions } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Modal, FlatList, Animated, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { PokemonType } from '@/lib/types';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
@@ -8,6 +8,12 @@ import { GENERATIONS, getGenerationLabel } from '@/lib/generations';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useLocale, useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts, SCREEN_FAB_CLEARANCE } from '@/lib/theme';
+import { useTabBarVisibility, TAB_BAR_HIDE_OFFSET } from '@/lib/tab-bar-visibility';
+
+// Height of the page-mode top toolbar (see PAGE_TOOLBAR_HEIGHT usage below) —
+// PokedexPager pads its pages by this much so the first row of cards never
+// sits under the bar. 40 (toolbarBtn) + spacing.sm (8) * 2 vertical padding.
+export const PAGE_TOOLBAR_HEIGHT = 56;
 
 interface Props {
   search: string;                       onSearch: (v: string) => void;
@@ -47,6 +53,20 @@ function makeStyles(colors: ColorTokens, shadow: ShadowTokens, bottomInset: numb
     fab: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center' as const, justifyContent: 'center' as const, ...shadow.md },
     badgeDot: { position: 'absolute' as const, top: 6, right: 6, width: 9, height: 9, borderRadius: 5, backgroundColor: colors.primary },
     columnsLabel: { fontSize: 15, fontFamily: fonts.monoBold, color: colors.text },
+
+    // Page/binder mode: a real top toolbar instead of floating FABs, so
+    // cards are never occluded (that view is meant to be admired, not
+    // browsed through a bubble stack).
+    toolbarWrap: { position: 'absolute' as const, left: 0, right: 0, top: 0 },
+    toolbar: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm,
+      paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+      backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
+      ...shadow.sm,
+    },
+    toolbarBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center' as const, justifyContent: 'center' as const },
+    toolbarSpacer: { flex: 1 },
+    toolbarSearchRow: { flex: 1, flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
 
     filterSheetBody: { padding: spacing.md, gap: spacing.sm },
     sectionLabel: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.textMuted, textTransform: 'uppercase' as const, marginTop: spacing.sm },
@@ -198,6 +218,12 @@ export function SearchFilterBar(p: Props) {
   const styles = useThemedStyles((colors, shadow) => makeStyles(colors, shadow, p.bottomInset));
   const hasFilters = p.statusFilter !== 'all' || p.typeFilter.length > 0 || p.setFilter || p.rarityFilter || p.generationFilter.length > 0;
 
+  // Scroll mode only: the floating FAB stack hides while actively scrolling
+  // (same shared signal that hides the floating tab bar) and reappears once
+  // the list settles, so it never sits over a card the user is looking at.
+  const { translateY: tabBarTranslateY } = useTabBarVisibility();
+  const fabOpacity = tabBarTranslateY.interpolate({ inputRange: [0, TAB_BAR_HIDE_OFFSET], outputRange: [1, 0], extrapolate: 'clamp' });
+
   const typeOptions: PickerOption[] = (Object.keys(TYPE_LABEL_FR) as PokemonType[])
     .map(ty => ({ id: ty, label: getTypeLabel(ty, locale) }));
   const setOptions: PickerOption[]  = p.sets.map(s => ({ id: s.id, label: setFlagLabel(s.name, s.region) }));
@@ -216,61 +242,108 @@ export function SearchFilterBar(p: Props) {
     : t('search.genChipCount', { n: p.generationFilter.length });
 
   return (
-    <View style={styles.overlay} pointerEvents="box-none">
-      {searchOpen && (
-        <View style={styles.floatingSearch}>
-          <Ionicons name="search" size={18} color={colors.textMuted} />
-          <TextInput
-            placeholder={t('search.placeholder')}
-            value={p.search}
-            onChangeText={p.onSearch}
-            style={styles.floatingSearchInput}
-            autoCapitalize="none"
-            autoFocus
-            onBlur={() => { if (!p.search) setSearchOpen(false); }}
-          />
-          <Pressable onPress={() => { p.onSearch(''); setSearchOpen(false); }} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('search.a11yClear')}>
-            <Ionicons name="close" size={20} color={colors.textMuted} />
-          </Pressable>
+    <>
+      {p.viewMode === 'page' ? (
+        <View style={styles.toolbarWrap} pointerEvents="box-none">
+          <View style={styles.toolbar}>
+            {searchOpen ? (
+              <View style={styles.toolbarSearchRow}>
+                <Ionicons name="search" size={18} color={colors.textMuted} />
+                <TextInput
+                  placeholder={t('search.placeholder')}
+                  value={p.search}
+                  onChangeText={p.onSearch}
+                  style={styles.floatingSearchInput}
+                  autoCapitalize="none"
+                  autoFocus
+                  onBlur={() => { if (!p.search) setSearchOpen(false); }}
+                />
+                <Pressable onPress={() => { p.onSearch(''); setSearchOpen(false); }} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('search.a11yClear')}>
+                  <Ionicons name="close" size={20} color={colors.textMuted} />
+                </Pressable>
+              </View>
+            ) : (
+              <>
+                <Pressable onPress={() => setSearchOpen(true)} style={styles.toolbarBtn} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleSearch')}>
+                  <Ionicons name="search" size={20} color={p.search ? colors.primary : colors.text} />
+                </Pressable>
+                <Pressable onPress={() => setFilterSheetOpen(true)} style={styles.toolbarBtn} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleFilter')}>
+                  <Ionicons name="filter" size={20} color={hasFilters ? colors.primary : colors.text} />
+                  {hasFilters && <View style={styles.badgeDot} />}
+                </Pressable>
+                <View style={styles.toolbarSpacer} />
+                <Pressable onPress={() => p.onCyclePageLayout?.()} style={styles.toolbarBtn} accessibilityRole="button" accessibilityLabel={t('search.a11yCyclePageLayout')}>
+                  <Text style={styles.columnsLabel}>×{p.pageLayout}</Text>
+                </Pressable>
+                {p.onToggleValues && (
+                  <Pressable onPress={p.onToggleValues} style={styles.toolbarBtn} accessibilityRole="button" accessibilityLabel={t('search.a11yTogglePrice')}>
+                    <Ionicons name="pricetag" size={18} color={p.showValues ? colors.primary : colors.text} />
+                  </Pressable>
+                )}
+                {p.onToggleViewMode && (
+                  <Pressable onPress={p.onToggleViewMode} style={styles.toolbarBtn} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleViewMode')}>
+                    <Ionicons name="book" size={18} color={colors.primary} />
+                  </Pressable>
+                )}
+              </>
+            )}
+          </View>
+        </View>
+      ) : (
+        <View style={styles.overlay} pointerEvents="box-none">
+          {searchOpen && (
+            <View style={styles.floatingSearch}>
+              <Ionicons name="search" size={18} color={colors.textMuted} />
+              <TextInput
+                placeholder={t('search.placeholder')}
+                value={p.search}
+                onChangeText={p.onSearch}
+                style={styles.floatingSearchInput}
+                autoCapitalize="none"
+                autoFocus
+                onBlur={() => { if (!p.search) setSearchOpen(false); }}
+              />
+              <Pressable onPress={() => { p.onSearch(''); setSearchOpen(false); }} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('search.a11yClear')}>
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </Pressable>
+            </View>
+          )}
+
+          <Animated.View style={[styles.fabStack, { opacity: fabOpacity, transform: [{ translateY: tabBarTranslateY }] }]}>
+            <Pressable onPress={() => setSearchOpen(o => !o)} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleSearch')}>
+              <Ionicons name="search" size={22} color={p.search ? colors.primary : colors.text} />
+            </Pressable>
+            <Pressable onPress={() => setFilterSheetOpen(true)} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleFilter')}>
+              <Ionicons name="filter" size={22} color={hasFilters ? colors.primary : colors.text} />
+              {hasFilters && <View style={styles.badgeDot} />}
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                const idx = COLUMN_CYCLE.indexOf(p.columns);
+                p.onColumns(COLUMN_CYCLE[(idx + 1) % COLUMN_CYCLE.length]);
+              }}
+              style={styles.fab}
+              accessibilityRole="button"
+              accessibilityLabel={t('search.a11yCycleColumns')}>
+              {p.columns === null ? (
+                <Ionicons name="grid-outline" size={22} color={colors.text} />
+              ) : (
+                <Text style={styles.columnsLabel}>×{p.columns}</Text>
+              )}
+            </Pressable>
+            {p.onToggleValues && (
+              <Pressable onPress={p.onToggleValues} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yTogglePrice')}>
+                <Ionicons name="pricetag" size={20} color={p.showValues ? colors.primary : colors.text} />
+              </Pressable>
+            )}
+            {p.onToggleViewMode && (
+              <Pressable onPress={p.onToggleViewMode} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleViewMode')}>
+                <Ionicons name="book-outline" size={20} color={colors.text} />
+              </Pressable>
+            )}
+          </Animated.View>
         </View>
       )}
-
-      <View style={styles.fabStack}>
-        <Pressable onPress={() => setSearchOpen(o => !o)} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleSearch')}>
-          <Ionicons name="search" size={22} color={p.search ? colors.primary : colors.text} />
-        </Pressable>
-        <Pressable onPress={() => setFilterSheetOpen(true)} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleFilter')}>
-          <Ionicons name="filter" size={22} color={hasFilters ? colors.primary : colors.text} />
-          {hasFilters && <View style={styles.badgeDot} />}
-        </Pressable>
-        <Pressable
-          onPress={() => {
-            if (p.viewMode === 'page') { p.onCyclePageLayout?.(); return; }
-            const idx = COLUMN_CYCLE.indexOf(p.columns);
-            p.onColumns(COLUMN_CYCLE[(idx + 1) % COLUMN_CYCLE.length]);
-          }}
-          style={styles.fab}
-          accessibilityRole="button"
-          accessibilityLabel={t(p.viewMode === 'page' ? 'search.a11yCyclePageLayout' : 'search.a11yCycleColumns')}>
-          {p.viewMode === 'page' ? (
-            <Text style={styles.columnsLabel}>×{p.pageLayout}</Text>
-          ) : p.columns === null ? (
-            <Ionicons name="grid-outline" size={22} color={colors.text} />
-          ) : (
-            <Text style={styles.columnsLabel}>×{p.columns}</Text>
-          )}
-        </Pressable>
-        {p.onToggleValues && (
-          <Pressable onPress={p.onToggleValues} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yTogglePrice')}>
-            <Ionicons name="pricetag" size={20} color={p.showValues ? colors.primary : colors.text} />
-          </Pressable>
-        )}
-        {p.onToggleViewMode && (
-          <Pressable onPress={p.onToggleViewMode} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleViewMode')}>
-            <Ionicons name={p.viewMode === 'page' ? 'book' : 'book-outline'} size={20} color={p.viewMode === 'page' ? colors.primary : colors.text} />
-          </Pressable>
-        )}
-      </View>
 
       <Modal visible={filterSheetOpen} transparent animationType="slide" onRequestClose={() => setFilterSheetOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setFilterSheetOpen(false)}>
@@ -355,6 +428,6 @@ export function SearchFilterBar(p: Props) {
         onClear={() => p.onGeneration([])}
         onClose={() => setOpenPicker(null)}
       />
-    </View>
+    </>
   );
 }

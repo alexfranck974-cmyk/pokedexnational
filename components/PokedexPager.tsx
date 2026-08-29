@@ -5,6 +5,7 @@ import { PokemonTile } from './PokemonTile';
 import type { PokemonWithState } from '@/lib/pokedex-list';
 import { BINDER_LAYOUT_COLS, type BinderLayout } from '@/lib/binders';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
+import { PAGE_TOOLBAR_HEIGHT } from './SearchFilterBar';
 
 interface Props {
   items: PokemonWithState[];
@@ -51,7 +52,9 @@ export function PokedexPager({ items, pageLayout, ownedImages, wishedInDexSet, c
   };
 
   const styles = useThemedStyles((colors, shadow) => ({
-    page: { justifyContent: 'center' as const, padding: spacing.md },
+    // paddingTop clears SearchFilterBar's page-mode top toolbar (this
+    // component only ever renders in page mode, so it's unconditional here).
+    page: { justifyContent: 'center' as const, padding: spacing.md, paddingTop: spacing.md + PAGE_TOOLBAR_HEIGHT },
     grid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, justifyContent: 'center' as const },
     slot: { padding: 6 },
     navBtn: {

@@ -195,58 +195,64 @@ export default function PokedexScreen() {
         <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={heroTextColor} />
       </LinearGradient>
       <PokedexSectionTabs active="pokedex" />
-      <SlideTransition transitionKey={navToken} direction={sectionDirection} style={{ flex: 1 }}>
-        {viewMode === 'page' ? (
-          <PokedexPager
-            items={items}
-            pageLayout={pageLayout}
-            ownedImages={ownedImages}
-            wishedInDexSet={wishedInDexSet}
-            cardPrices={showValues ? dexPrices : undefined}
-            onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
-            onLongSelect={num => {
-              const idx = ownedItems.findIndex(p => p.num === num);
-              if (idx !== -1) setZoomIndex(idx);
-            }}
-          />
-        ) : (
-          <PokedexGrid
-            items={items}
-            ownedImages={ownedImages}
-            wishedInDexSet={wishedInDexSet}
-            columnsOverride={columns}
-            cardPrices={showValues ? dexPrices : undefined}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-            onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
-            onLongSelect={num => {
-              const idx = ownedItems.findIndex(p => p.num === num);
-              if (idx !== -1) setZoomIndex(idx);
-            }}
-          />
-        )}
-      </SlideTransition>
-      <CardZoomModal
-        card={zoomCardImage}
-        caption={zoomPokemon ? `#${String(zoomPokemon.num).padStart(4, '0')} · ${getName(zoomPokemon, locale)}` : undefined}
-        onClose={() => setZoomIndex(null)}
-        onSwipeNext={() => setZoomIndex(i => i === null || ownedItems.length === 0 ? null : (i + 1) % ownedItems.length)}
-        onSwipePrev={() => setZoomIndex(i => i === null || ownedItems.length === 0 ? null : (i - 1 + ownedItems.length) % ownedItems.length)}
-      />
-      <SearchFilterBar
-        search={search} onSearch={setSearch}
-        statusFilter={statusFilter} onStatus={setStatus}
-        typeFilter={typeFilter} onType={setType}
-        setFilter={setFilter} onSet={setSet}
-        rarityFilter={rarityFilter} onRarity={setRarity}
-        generationFilter={generationFilter} onGeneration={setGeneration}
-        sort={sort} onSort={setSort}
-        sets={sets} rarities={rarities}
-        onReset={reset}
-        columns={columns} onColumns={setColumns}
-        showValues={showValues} onToggleValues={() => setShowValues(v => !v)}
-        viewMode={viewMode} onToggleViewMode={toggleViewMode}
-        pageLayout={pageLayout} onCyclePageLayout={cyclePageLayout}
-      />
+      {/* flex:1 wrapper establishes its own positioning context for
+          SearchFilterBar's absolute overlay/toolbar, so it anchors below the
+          hero + section tabs instead of covering them (its parent would
+          otherwise be the full-screen SafeAreaView). */}
+      <View style={{ flex: 1 }}>
+        <SlideTransition transitionKey={navToken} direction={sectionDirection} style={{ flex: 1 }}>
+          {viewMode === 'page' ? (
+            <PokedexPager
+              items={items}
+              pageLayout={pageLayout}
+              ownedImages={ownedImages}
+              wishedInDexSet={wishedInDexSet}
+              cardPrices={showValues ? dexPrices : undefined}
+              onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
+              onLongSelect={num => {
+                const idx = ownedItems.findIndex(p => p.num === num);
+                if (idx !== -1) setZoomIndex(idx);
+              }}
+            />
+          ) : (
+            <PokedexGrid
+              items={items}
+              ownedImages={ownedImages}
+              wishedInDexSet={wishedInDexSet}
+              columnsOverride={columns}
+              cardPrices={showValues ? dexPrices : undefined}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+              onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
+              onLongSelect={num => {
+                const idx = ownedItems.findIndex(p => p.num === num);
+                if (idx !== -1) setZoomIndex(idx);
+              }}
+            />
+          )}
+        </SlideTransition>
+        <CardZoomModal
+          card={zoomCardImage}
+          caption={zoomPokemon ? `#${String(zoomPokemon.num).padStart(4, '0')} · ${getName(zoomPokemon, locale)}` : undefined}
+          onClose={() => setZoomIndex(null)}
+          onSwipeNext={() => setZoomIndex(i => i === null || ownedItems.length === 0 ? null : (i + 1) % ownedItems.length)}
+          onSwipePrev={() => setZoomIndex(i => i === null || ownedItems.length === 0 ? null : (i - 1 + ownedItems.length) % ownedItems.length)}
+        />
+        <SearchFilterBar
+          search={search} onSearch={setSearch}
+          statusFilter={statusFilter} onStatus={setStatus}
+          typeFilter={typeFilter} onType={setType}
+          setFilter={setFilter} onSet={setSet}
+          rarityFilter={rarityFilter} onRarity={setRarity}
+          generationFilter={generationFilter} onGeneration={setGeneration}
+          sort={sort} onSort={setSort}
+          sets={sets} rarities={rarities}
+          onReset={reset}
+          columns={columns} onColumns={setColumns}
+          showValues={showValues} onToggleValues={() => setShowValues(v => !v)}
+          viewMode={viewMode} onToggleViewMode={toggleViewMode}
+          pageLayout={pageLayout} onCyclePageLayout={cyclePageLayout}
+        />
+      </View>
       <CaptureEffect event={currentCapture} onDone={() => setCaptureQueue(q => q.slice(1))} />
     </SafeAreaView>
   );
