@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, Image, Pressable, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
+import { View, Text, TextInput, Image, Pressable, ActivityIndicator, RefreshControl, ScrollView, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -25,16 +25,20 @@ import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 import { toast } from '@/lib/toast';
 import { withReturnTo } from '@/lib/navigation';
 import { useT, useTRich } from '@/lib/locale';
+import { SEALED_PRODUCT_TYPES } from '@/lib/sealed-products';
 
 interface NewsGroup { authorId: string; authorName: string; items: FriendNewsItem[]; }
 
 // Consecutive same-author runs collapse into one row — a friend who lands
 // several notable pulls in a row shouldn't push everyone else off-screen.
+// Only chase_card items merge this way (the multi-thumb strip only makes
+// sense for card art) — every other event type always renders its own row.
 function groupConsecutiveByAuthor(items: FriendNewsItem[]): NewsGroup[] {
   const groups: NewsGroup[] = [];
   for (const item of items) {
     const last = groups[groups.length - 1];
-    if (last && last.authorId === item.authorId) last.items.push(item);
+    const canMerge = item.eventType === 'chase_card' && last?.items[0].eventType === 'chase_card' && last.authorId === item.authorId;
+    if (canMerge) last.items.push(item);
     else groups.push({ authorId: item.authorId, authorName: item.authorName, items: [item] });
   }
   return groups;
@@ -87,7 +91,10 @@ export default function FriendsScreen() {
   const newsGroups = useMemo(() => groupConsecutiveByAuthor(filteredNews as FriendNewsItem[]), [filteredNews]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyReveal, setHistoryReveal] = useState<FriendNewsItem | null>(null);
-  const { data: newsHistory = [] } = useFriendNewsHistory(userId, historyOpen);
+  const {
+    data: historyPages, fetchNextPage, hasNextPage, isFetchingNextPage,
+  } = useFriendNewsHistory(userId, historyOpen);
+  const newsHistory = useMemo(() => historyPages?.pages.flatMap(p => p.items) ?? [], [historyPages]);
 
   const [search, setSearch] = useState('');
   const { data: found, isFetching: searching } = useFindProfileByUsername(search);
@@ -175,26 +182,66 @@ export default function FriendsScreen() {
     ? { title: t('friends.unfriendTitle'), message: t('friends.unfriendMessage', { name: unfriendTarget.name }) }
     : null;
 
-  const NewsRow = ({ item, onPress }: { item: FriendNewsItem; onPress: () => void }) => (
-    <Pressable onPress={onPress} style={styles.row}>
-      <Avatar name={item.authorName} />
-      <View style={styles.newsRowInfo}>
-        <Text style={styles.newsText}>
-          {tRich('friends.newsSingle', { name: item.authorName, rarity: item.rarityLabel }, styles.newsTextBold)}
-        </Text>
-        {item.reactionCount > 0 && (
-          <View style={styles.reactionRow}>
-            <Text style={styles.reactionEmoji}>{BRAVO_EMOJI}</Text>
-            <Text style={styles.reactionCount}>{item.reactionCount}</Text>
+  // Only chase_card items open FriendCardReveal (onOpenCard) — every other
+  // event type carries everything it needs on the row itself and, where a
+  // relevant screen exists, deep-links there on tap instead.
+  const NewsRow = ({ item, onOpenCard }: { item: FriendNewsItem; onOpenCard: (item: FriendNewsItem) => void }) => {
+    if (item.eventType === 'chase_card') {
+      return (
+        <Pressable onPress={() => onOpenCard(item)} style={styles.row}>
+          <Avatar name={item.authorName} />
+          <View style={styles.newsRowInfo}>
+            <Text style={styles.newsText}>
+              {tRich('friends.newsSingle', { name: item.authorName, rarity: item.rarityLabel }, styles.newsTextBold)}
+            </Text>
+            {item.reactionCount > 0 && (
+              <View style={styles.reactionRow}>
+                <Text style={styles.reactionEmoji}>{BRAVO_EMOJI}</Text>
+                <Text style={styles.reactionCount}>{item.reactionCount}</Text>
+              </View>
+            )}
           </View>
-        )}
-      </View>
-      <Image source={{ uri: item.imageSmall }} style={styles.newsThumb} resizeMode="contain" />
-    </Pressable>
-  );
+          <Image source={{ uri: item.imageSmall }} style={styles.newsThumb} resizeMode="contain" />
+        </Pressable>
+      );
+    }
+
+    const icon: keyof typeof Ionicons.glyphMap =
+      item.eventType === 'sealed_product' ? 'cube-outline'
+      : item.eventType === 'trade_completed' ? 'swap-horizontal-outline'
+      : item.eventType === 'binder_completed' ? 'albums-outline'
+      : 'ribbon-outline'; // set_goal_completed
+
+    const productLabel = t(SEALED_PRODUCT_TYPES.find(p => p.type === item.sealedProductType)?.labelKey ?? 'sealed.type.autre');
+    const text =
+      item.eventType === 'sealed_product'
+        ? tRich('friends.newsSealedProduct', { name: item.authorName, product: productLabel, set: item.sealedSetName ?? '' }, styles.newsTextBold)
+        : item.eventType === 'trade_completed'
+        ? tRich('friends.newsTradeCompleted', { name: item.authorName }, styles.newsTextBold)
+        : item.eventType === 'binder_completed'
+        ? tRich('friends.newsBinderCompleted', { name: item.authorName, binder: item.binderName ?? '' }, styles.newsTextBold)
+        : tRich('friends.newsSetGoalCompleted', { name: item.authorName, set: item.setGoalSetName ?? '' }, styles.newsTextBold);
+
+    const onPress = () => {
+      if (item.eventType === 'sealed_product' && item.sealedSetId) router.push(withReturnTo(`/pinned-set/${item.sealedSetId}`, '/friends') as never);
+      else if (item.eventType === 'set_goal_completed' && item.setGoalSetId) router.push(withReturnTo(`/pinned-set/${item.setGoalSetId}`, '/friends') as never);
+      else if (item.eventType === 'binder_completed' && item.binderId) router.push(withReturnTo(`/binder/${item.binderId}`, '/friends') as never);
+    };
+
+    return (
+      <Pressable onPress={onPress} style={styles.row}>
+        <IconBubble size={40} color={colors.primarySoft}>
+          <Ionicons name={icon} size={18} color={colors.primary} />
+        </IconBubble>
+        <View style={styles.newsRowInfo}>
+          <Text style={styles.newsText}>{text}</Text>
+        </View>
+      </Pressable>
+    );
+  };
 
   const NewsGroupRow = ({ group, onOpen }: { group: NewsGroup; onOpen: (item: FriendNewsItem) => void }) => {
-    if (group.items.length === 1) return <NewsRow item={group.items[0]} onPress={() => onOpen(group.items[0])} />;
+    if (group.items.length === 1) return <NewsRow item={group.items[0]} onOpenCard={onOpen} />;
     return (
       <View style={styles.row}>
         <Avatar name={group.authorName} />
@@ -397,15 +444,20 @@ export default function FriendsScreen() {
       <QRCodeModal visible={qrOpen} value={myShareUrl} label={t('friends.myQrCode')} onClose={() => setQrOpen(false)} />
       <FriendCardReveal item={openNews} mode="live" onClose={() => setOpenNews(null)} />
       <BubbleSheet visible={historyOpen} onClose={() => setHistoryOpen(false)} tint={CHASE_GOLD} title={t('friends.historyTitle')}>
-        <ScrollView contentContainerStyle={[styles.list, { padding: spacing.md }]}>
-          {newsHistory.length === 0 ? (
-            <Text style={styles.empty}>{t('friends.historyEmpty')}</Text>
-          ) : (
-            newsHistory.map((n: FriendNewsItem) => (
-              <NewsRow key={n.id} item={n} onPress={() => setHistoryReveal(n)} />
-            ))
-          )}
-        </ScrollView>
+        {newsHistory.length === 0 ? (
+          <Text style={[styles.empty, { padding: spacing.md }]}>{t('friends.historyEmpty')}</Text>
+        ) : (
+          <FlatList
+            data={newsHistory}
+            keyExtractor={(n: FriendNewsItem) => n.id}
+            style={{ flex: 1 }}
+            contentContainerStyle={[styles.list, { padding: spacing.md }]}
+            renderItem={({ item: n }) => <NewsRow item={n} onOpenCard={setHistoryReveal} />}
+            onEndReachedThreshold={0.4}
+            onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+            ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginTop: spacing.sm }} /> : null}
+          />
+        )}
       </BubbleSheet>
       <FriendCardReveal item={historyReveal} mode="history" onClose={() => setHistoryReveal(null)} />
     </SafeAreaView>

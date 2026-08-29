@@ -31,6 +31,8 @@ import {
   BINDER_LAYOUTS, BINDER_LAYOUT_COLS, type BinderLayout, type BinderSlotItem,
 } from '@/lib/binders';
 import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
+import { useSealedProducts, useAdjustSealedProduct, SEALED_PRODUCT_TYPES, type SealedProductType } from '@/lib/sealed-products';
+import { postBinderCompletedNewsIfNotable } from '@/lib/friend-news';
 import { useTcgSets, useTcgArtists, type TcgSetInfo } from '@/lib/tcg-index';
 import { Pokeball } from '@/components/Pokeball';
 import { BubbleSheet } from '@/components/BubbleSheet';
@@ -60,7 +62,7 @@ const TEAM_SIZE = 6;
 // Visual left-to-right chip order (not the subTab type's declaration order) —
 // drives SlideTransition's direction when switching sub-tabs. 'teams' isn't
 // reachable via any visible chip, so it's excluded here on purpose.
-const SUBTAB_ORDER = ['goals', 'binders', 'artists', 'duplicates', 'trainers'] as const;
+const SUBTAB_ORDER = ['goals', 'sealed', 'binders', 'artists', 'duplicates', 'trainers'] as const;
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -137,6 +139,9 @@ export default function FavoritesScreen() {
   const { data: goals = [] } = useSetGoals(userId);
   const toggleGoal = useToggleSetGoal();
   const { data: allSets = [] } = useTcgSets();
+  const { data: sealedProducts = new Map<string, Map<SealedProductType, number>>() } = useSealedProducts(userId);
+  const adjustSealed = useAdjustSealedProduct();
+  const [sealedSheetSet, setSealedSheetSet] = useState<TcgSetInfo | null>(null);
   const pinnedSetIds = useMemo(() => new Set(goals.map(g => g.setId)), [goals]);
   // Unpinned sets, grouped by region and kept in useTcgSets()'s own release-date-desc
   // order within each group — no stats shown here, that's what pinning unlocks.
@@ -176,6 +181,10 @@ export default function FavoritesScreen() {
     () => groupByRegionAndSeries(allSets.filter(s => pinnedSetIds.has(s.id))),
     [allSets, pinnedSetIds, locale],
   );
+  // Scellés browses the full catalog (no pin concept for sealed inventory) —
+  // same region/series grouping as Extensions, just every set instead of a
+  // pinned/unpinned split.
+  const sealedGroups = useMemo(() => groupByRegionAndSeries(allSets), [allSets, locale]);
   // Per-region collapse, independent toggles (not an accordion) — collapsing
   // the regions you don't care about is how you narrow the list down to just
   // the one you want, e.g. hide jp+cn to browse only Global. Shared between
@@ -213,7 +222,7 @@ export default function FavoritesScreen() {
     return map;
   }, [ownedCardsDetailed]);
 
-  const [subTab, setSubTab] = useState<'teams' | 'binders' | 'goals' | 'artists' | 'trainers' | 'duplicates'>('goals');
+  const [subTab, setSubTab] = useState<'teams' | 'binders' | 'goals' | 'sealed' | 'artists' | 'trainers' | 'duplicates'>('goals');
 
   // Slide-in direction/replay-token for the sub-tab content below — shared by
   // two sources so whichever happened most recently wins: arriving here from
@@ -395,8 +404,9 @@ export default function FavoritesScreen() {
     if (prev === undefined) return;
     if (binderCompletion.isComplete && !prev) {
       setCompletionCelebration({ id: `binder-complete-${key}-${Date.now()}`, kind: 'binderComplete', binderName: selectedBinder.name });
+      if (userId) postBinderCompletedNewsIfNotable(userId, key, selectedBinder.name);
     }
-  }, [selectedBinder, binderCompletion]);
+  }, [selectedBinder, binderCompletion, userId]);
 
   // Long-press-then-drag gesture for one occupied binder slot. Hit-testing is
   // done by grid geometry (origin + scroll offset + measured tile size), not
@@ -690,6 +700,18 @@ export default function FavoritesScreen() {
     catalogRowCaption: { fontSize: 12, fontFamily: fonts.mono, color: colors.textDim, marginTop: 2 },
     catalogRowPin: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.primarySoft },
     catalogRowPinText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.primary },
+    sealedCountBadge: { minWidth: 22, paddingHorizontal: 6, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: colors.primarySoft, alignItems: 'center' as const },
+    sealedCountBadgeText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.primary },
+    sealedTypeRow: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
+      paddingVertical: spacing.xs,
+    },
+    sealedTypeLabel: { fontSize: 14, fontFamily: fonts.body, color: colors.text },
+    sealedQuantityPill: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8,
+      backgroundColor: colors.surfaceAlt, borderRadius: radius.pill, paddingHorizontal: 6, paddingVertical: 4,
+    },
+    sealedQuantityText: { fontSize: 14, fontFamily: fonts.bodyBold, color: colors.text, minWidth: 18, textAlign: 'center' as const },
 
     dupHeader: { padding: spacing.md, gap: spacing.sm },
     dupSearchInput: {
@@ -723,6 +745,7 @@ export default function FavoritesScreen() {
           <Text style={styles.title}>
             {subTab === 'teams' ? 'Équipes'
               : subTab === 'binders' ? t('favorites.tabBinders')
+              : subTab === 'sealed' ? t('favorites.tabSealed')
               : subTab === 'artists' ? t('favorites.tabArtists')
               : subTab === 'trainers' ? t('favorites.tabTrainers')
               : subTab === 'duplicates' ? t('favorites.tabDuplicates')
@@ -732,6 +755,7 @@ export default function FavoritesScreen() {
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
           <Chip label={t('favorites.tabExtensions')} active={subTab === 'goals'} onPress={() => setSubTab('goals')} />
+          <Chip label={t('favorites.tabSealed')} active={subTab === 'sealed'} onPress={() => setSubTab('sealed')} />
           <Chip label={t('favorites.tabBinders')} active={subTab === 'binders'} onPress={() => setSubTab('binders')} />
           <Chip label={t('favorites.tabArtists')} active={subTab === 'artists'} onPress={() => setSubTab('artists')} />
           <Chip label={t('favorites.tabDuplicates')} active={subTab === 'duplicates'} onPress={() => setSubTab('duplicates')} />
@@ -1114,6 +1138,71 @@ export default function FavoritesScreen() {
           userId={userId}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         />
+      ) : subTab === 'sealed' ? (
+        <ScrollView
+          contentContainerStyle={styles.catalogList}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+          {...hideOnScrollProps}>
+          {sealedGroups.map(group => {
+            const regionKey = `sealed:${group.id}`;
+            const collapsed = collapsedRegions.has(regionKey);
+            const totalSets = group.subgroups.reduce((n, sg) => n + sg.sets.length, 0);
+            return (
+              <View key={group.id} style={styles.catalogSection}>
+                <Pressable
+                  onPress={() => toggleRegionCollapsed(regionKey)}
+                  style={styles.catalogSectionHeader}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(collapsed ? 'favorites.a11yExpandRegion' : 'favorites.a11yCollapseRegion', { region: group.label })}>
+                  <Text style={styles.catalogSectionTitle}>{group.label} · {totalSets}</Text>
+                  <Ionicons name={collapsed ? 'chevron-forward' : 'chevron-down'} size={16} color={colors.textMuted} />
+                </Pressable>
+                {!collapsed && group.subgroups.map(subgroup => {
+                  const seriesKey = `sealed:${subgroup.id}`;
+                  const seriesCollapsed = subgroup.label != null && collapsedSeries.has(seriesKey);
+                  return (
+                    <View key={subgroup.id}>
+                      {subgroup.label != null && (
+                        <Pressable
+                          onPress={() => toggleSeriesCollapsed(seriesKey)}
+                          style={styles.catalogSeriesHeader}
+                          accessibilityRole="button"
+                          accessibilityLabel={t(seriesCollapsed ? 'favorites.a11yExpandSeries' : 'favorites.a11yCollapseSeries', { series: subgroup.label })}>
+                          <Text style={styles.catalogSeriesTitle}>{subgroup.label} · {subgroup.sets.length}</Text>
+                          <Ionicons name={seriesCollapsed ? 'chevron-forward' : 'chevron-down'} size={14} color={colors.textDim} />
+                        </Pressable>
+                      )}
+                      {!seriesCollapsed && subgroup.sets.map(set => {
+                        const totalForSet = Array.from(sealedProducts.get(set.id)?.values() ?? []).reduce((a: number, b: number) => a + b, 0);
+                        return (
+                          <Pressable
+                            key={set.id}
+                            onPress={() => setSealedSheetSet(set)}
+                            style={({ pressed }) => [styles.catalogRow, pressed && styles.catalogRowPressed]}>
+                            {set.symbol ? (
+                              <Image source={{ uri: set.symbol }} style={styles.catalogRowIcon} resizeMode="contain" />
+                            ) : (
+                              <View style={styles.catalogRowIcon} />
+                            )}
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.catalogRowLabel} numberOfLines={1}>{setFlagLabel(set.name, set.region)}</Text>
+                            </View>
+                            {totalForSet > 0 && (
+                              <View style={styles.sealedCountBadge}>
+                                <Text style={styles.sealedCountBadgeText}>{totalForSet}</Text>
+                              </View>
+                            )}
+                            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })}
+        </ScrollView>
       ) : subTab === 'duplicates' ? (
         <>
           <View style={styles.dupHeader}>
@@ -1309,6 +1398,44 @@ export default function FavoritesScreen() {
         </ScrollView>
       )}
       </SlideTransition>
+
+      <BubbleSheet
+        visible={sealedSheetSet !== null}
+        onClose={() => setSealedSheetSet(null)}
+        tint={colors.primary}
+        title={sealedSheetSet ? setFlagLabel(sealedSheetSet.name, sealedSheetSet.region) : ''}
+        sizing="auto">
+        <View style={{ padding: spacing.md, gap: 2 }}>
+          {SEALED_PRODUCT_TYPES.map(({ type, labelKey }) => {
+            const qty = sealedSheetSet ? (sealedProducts.get(sealedSheetSet.id)?.get(type) ?? 0) : 0;
+            return (
+              <View key={type} style={styles.sealedTypeRow}>
+                <Text style={styles.sealedTypeLabel}>{t(labelKey)}</Text>
+                <View style={styles.sealedQuantityPill}>
+                  <Pressable
+                    hitSlop={6}
+                    disabled={!qty}
+                    onPress={() => sealedSheetSet && adjustSealed.mutate({
+                      setId: sealedSheetSet.id, setName: setFlagLabel(sealedSheetSet.name, sealedSheetSet.region),
+                      productType: type, delta: -1, currentQuantity: qty,
+                    })}>
+                    <Ionicons name="remove-circle-outline" size={20} color={qty ? colors.textMuted : colors.border} />
+                  </Pressable>
+                  <Text style={styles.sealedQuantityText}>{qty}</Text>
+                  <Pressable
+                    hitSlop={6}
+                    onPress={() => sealedSheetSet && adjustSealed.mutate({
+                      setId: sealedSheetSet.id, setName: setFlagLabel(sealedSheetSet.name, sealedSheetSet.region),
+                      productType: type, delta: 1, currentQuantity: qty,
+                    })}>
+                    <Ionicons name="add-circle-outline" size={20} color={colors.textMuted} />
+                  </Pressable>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      </BubbleSheet>
 
       <TeamSlotPicker
         visible={pickerSlot !== null}

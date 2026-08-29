@@ -1,9 +1,11 @@
+import { useEffect, useRef } from 'react';
 import { View, Image, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatRingTile } from './StatRingTile';
 import { useSetGoalProgress } from '@/lib/collection-goals';
 import { currentSetTier } from '@/lib/set-tiers';
 import { useTheme } from '@/lib/theme';
+import { postSetGoalCompletedNewsIfNotable } from '@/lib/friend-news';
 
 interface Props {
   userId?: string;
@@ -25,6 +27,21 @@ export function SetGoalTile({ userId, setId, setName, total, symbol, onPress, on
   const { colors } = useTheme();
   const pct = total > 0 ? Math.round((owned / total) * 100) : 0;
   const tier = currentSetTier(pct);
+
+  // Same "genuine incomplete->complete transition, never on first sight"
+  // reasoning as the binder-completion celebration (favorites.tsx) — undefined
+  // means unknown, not "was incomplete", so an already-100% set doesn't post
+  // the moment its tile first mounts. postSetGoalCompletedNewsIfNotable is
+  // also its own idempotency guard (existence check before insert).
+  const completeSeenRef = useRef<boolean | undefined>(undefined);
+  useEffect(() => {
+    const isComplete = total > 0 && pct >= 100;
+    const prev = completeSeenRef.current;
+    completeSeenRef.current = isComplete;
+    if (prev === undefined) return;
+    if (isComplete && !prev && userId) postSetGoalCompletedNewsIfNotable(userId, setId, setName);
+  }, [pct, total, userId, setId, setName]);
+
   return (
     <View style={styles.wrap}>
       <StatRingTile
