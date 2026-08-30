@@ -71,6 +71,44 @@ export function useTrainerCards() {
   });
 }
 
+// "Character Rare"-style cards — a Pokémon depicted together with the Trainer
+// who owns it, name pattern "TrainerName's Pokémon" (e.g. "Cynthia's Garchomp
+// ex", "Erika's Oddish"). Older sets reuse the exact same possessive-name
+// pattern (Gym/Team Rocket/Team Magma era) but never actually draw the trainer
+// — just a small "owner" icon in a corner — so the name regex alone isn't
+// enough; verified by eye on 2026-08-30 that within our data this visual
+// mechanic only exists in the `series` values below (dex_num filters out the
+// ~400 Trainer-supertype cards the same possessive names also match, e.g.
+// "The Boss's Way", "Professor's Research").
+const CHARACTER_RARE_SERIES = ['Scarlet & Violet', 'Mega Evolution'];
+const CHARACTER_RARE_NAME_PATTERN = "^[A-Za-zÀ-ÿ .'-]+'s ";
+
+export function useCharacterRareCards() {
+  return useQuery({
+    queryKey: ['tcg_character_rare_cards'],
+    staleTime: Infinity,
+    queryFn: async () => {
+      const rows: TcgCardRow[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('tcg_cards')
+          .select('id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region, available_finishes, cardmarket_trend_eur, cardmarket_low_eur')
+          .not('dex_num', 'is', null)
+          .in('series', CHARACTER_RARE_SERIES)
+          .filter('name', 'match', CHARACTER_RARE_NAME_PATTERN)
+          .order('dex_num', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw error;
+        rows.push(...((data ?? []) as TcgCardRow[]));
+        if (!data || data.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
+      return rows;
+    },
+  });
+}
+
 export function useCardsForArtist(artist: string | undefined) {
   return useQuery({
     queryKey: ['tcg_cards_by_artist', artist],

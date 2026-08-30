@@ -285,6 +285,7 @@ export const STRINGS = {
     'favorites.tabDuplicates': 'Doublons',
     'favorites.tabExtensions': 'Extensions',
     'favorites.tabSealed': 'Scellés',
+    'favorites.tabDuo': 'Duos',
     'sealed.type.displayBox': 'Display Box',
     'sealed.type.boosterBox': 'Booster Box',
     'sealed.type.etb': 'Coffret Dresseur (ETB)',
@@ -545,6 +546,14 @@ export const STRINGS = {
     'trainers.notFound': 'Aucun dresseur trouvé.',
     'trainers.a11yGridView': 'Vue grille',
     'trainers.a11yListView': 'Vue liste',
+
+    // Character Rare panel ("Duos" — Pokémon illustré avec son dresseur)
+    'duoCards.countSingular': '{n} Pokémon',
+    'duoCards.countPlural': '{n} Pokémon',
+    'duoCards.cardsCountSingular': '{n} carte',
+    'duoCards.cardsCountPlural': '{n} cartes',
+    'duoCards.searchPlaceholder': 'Chercher un Pokémon',
+    'duoCards.notFound': 'Aucun Pokémon trouvé.',
   },
   en: {
     'common.back': 'Back',
@@ -808,6 +817,7 @@ export const STRINGS = {
     'favorites.tabDuplicates': 'Duplicates',
     'favorites.tabExtensions': 'Sets',
     'favorites.tabSealed': 'Sealed',
+    'favorites.tabDuo': 'Duos',
     'sealed.type.displayBox': 'Display Box',
     'sealed.type.boosterBox': 'Booster Box',
     'sealed.type.etb': 'Elite Trainer Box',
@@ -1052,6 +1062,13 @@ export const STRINGS = {
     'trainers.notFound': 'No trainer found.',
     'trainers.a11yGridView': 'Grid view',
     'trainers.a11yListView': 'List view',
+
+    'duoCards.countSingular': '{n} Pokémon',
+    'duoCards.countPlural': '{n} Pokémon',
+    'duoCards.cardsCountSingular': '{n} card',
+    'duoCards.cardsCountPlural': '{n} cards',
+    'duoCards.searchPlaceholder': 'Search a Pokémon',
+    'duoCards.notFound': 'No Pokémon found.',
   },
 } as const;
 

@@ -60,7 +60,7 @@ export function SetGoalTile({ userId, setId, setName, total, symbol, onPress, on
 
 const styles = StyleSheet.create({
   wrap: { position: 'relative' },
-  ringIcon: { width: RING_SIZE * 0.5, height: RING_SIZE * 0.5 },
+  ringIcon: { width: RING_SIZE * 0.4, height: RING_SIZE * 0.4 },
   trophy: {
     position: 'absolute', top: 4, left: 12, width: 20, height: 20, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',

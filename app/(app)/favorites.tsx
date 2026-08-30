@@ -34,12 +34,14 @@ import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
 import { useSealedProducts, useAdjustSealedProduct, useSealedProductPrices, SEALED_PRODUCT_TYPES, type SealedProductType } from '@/lib/sealed-products';
 import { postBinderCompletedNewsIfNotable } from '@/lib/friend-news';
 import { useTcgSets, useTcgArtists, type TcgSetInfo } from '@/lib/tcg-index';
+import { getSeriesLogo } from '@/lib/series-logos';
 import { Pokeball } from '@/components/Pokeball';
 import { BubbleSheet } from '@/components/BubbleSheet';
 import { TeamSlotPicker } from '@/components/TeamSlotPicker';
 import { BinderSlotPicker } from '@/components/BinderSlotPicker';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { TrainersPanel } from '@/components/TrainersPanel';
+import { CharacterRarePanel } from '@/components/CharacterRarePanel';
 import { BackButton } from '@/components/BackButton';
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
 import { CaptureEffect, type CaptureEvent } from '@/components/CaptureEffect';
@@ -62,7 +64,7 @@ const TEAM_SIZE = 6;
 // Visual left-to-right chip order (not the subTab type's declaration order) —
 // drives SlideTransition's direction when switching sub-tabs. 'teams' isn't
 // reachable via any visible chip, so it's excluded here on purpose.
-const SUBTAB_ORDER = ['goals', 'sealed', 'binders', 'artists', 'duplicates', 'trainers'] as const;
+const SUBTAB_ORDER = ['goals', 'sealed', 'binders', 'artists', 'duplicates', 'trainers', 'duo'] as const;
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -223,7 +225,7 @@ export default function FavoritesScreen() {
     return map;
   }, [ownedCardsDetailed]);
 
-  const [subTab, setSubTab] = useState<'teams' | 'binders' | 'goals' | 'sealed' | 'artists' | 'trainers' | 'duplicates'>('goals');
+  const [subTab, setSubTab] = useState<'teams' | 'binders' | 'goals' | 'sealed' | 'artists' | 'trainers' | 'duplicates' | 'duo'>('goals');
 
   // Slide-in direction/replay-token for the sub-tab content below — shared by
   // two sources so whichever happened most recently wins: arriving here from
@@ -687,6 +689,7 @@ export default function FavoritesScreen() {
       paddingVertical: 4, paddingLeft: spacing.sm,
     },
     catalogSeriesTitle: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.textDim },
+    catalogSeriesLogo: { width: 72, height: 22, marginRight: spacing.xs },
     catalogRow: {
       flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm,
       backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm, ...shadow.sm,
@@ -755,6 +758,7 @@ export default function FavoritesScreen() {
               : subTab === 'artists' ? t('favorites.tabArtists')
               : subTab === 'trainers' ? t('favorites.tabTrainers')
               : subTab === 'duplicates' ? t('favorites.tabDuplicates')
+              : subTab === 'duo' ? t('favorites.tabDuo')
               : t('favorites.tabExtensions')}
           </Text>
           <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
@@ -766,6 +770,7 @@ export default function FavoritesScreen() {
           <Chip label={t('favorites.tabArtists')} active={subTab === 'artists'} onPress={() => setSubTab('artists')} />
           <Chip label={t('favorites.tabDuplicates')} active={subTab === 'duplicates'} onPress={() => setSubTab('duplicates')} />
           <Chip label={t('favorites.tabTrainers')} active={subTab === 'trainers'} onPress={() => setSubTab('trainers')} />
+          <Chip label={t('favorites.tabDuo')} active={subTab === 'duo'} onPress={() => setSubTab('duo')} />
           {/* "Équipes" is intentionally not surfaced for now — kept dormant (state/branch
               still below) for a possible future deckbuilding feature, not deleted. */}
         </ScrollView>
@@ -1144,6 +1149,11 @@ export default function FavoritesScreen() {
           userId={userId}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         />
+      ) : subTab === 'duo' ? (
+        <CharacterRarePanel
+          userId={userId}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+        />
       ) : subTab === 'sealed' ? (
         <ScrollView
           contentContainerStyle={styles.catalogList}
@@ -1174,7 +1184,12 @@ export default function FavoritesScreen() {
                           style={styles.catalogSeriesHeader}
                           accessibilityRole="button"
                           accessibilityLabel={t(seriesCollapsed ? 'favorites.a11yExpandSeries' : 'favorites.a11yCollapseSeries', { series: subgroup.label })}>
-                          <Text style={styles.catalogSeriesTitle}>{subgroup.label} · {subgroup.sets.length}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                            {getSeriesLogo(subgroup.label) && (
+                              <Image source={{ uri: getSeriesLogo(subgroup.label) }} style={styles.catalogSeriesLogo} resizeMode="contain" />
+                            )}
+                            <Text style={styles.catalogSeriesTitle}>{subgroup.label} · {subgroup.sets.length}</Text>
+                          </View>
                           <Ionicons name={seriesCollapsed ? 'chevron-forward' : 'chevron-down'} size={14} color={colors.textDim} />
                         </Pressable>
                       )}
@@ -1311,7 +1326,12 @@ export default function FavoritesScreen() {
                           style={styles.catalogSeriesHeader}
                           accessibilityRole="button"
                           accessibilityLabel={t(seriesCollapsed ? 'favorites.a11yExpandSeries' : 'favorites.a11yCollapseSeries', { series: subgroup.label })}>
-                          <Text style={styles.catalogSeriesTitle}>{subgroup.label} · {subgroup.sets.length}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                            {getSeriesLogo(subgroup.label) && (
+                              <Image source={{ uri: getSeriesLogo(subgroup.label) }} style={styles.catalogSeriesLogo} resizeMode="contain" />
+                            )}
+                            <Text style={styles.catalogSeriesTitle}>{subgroup.label} · {subgroup.sets.length}</Text>
+                          </View>
                           <Ionicons name={seriesCollapsed ? 'chevron-forward' : 'chevron-down'} size={14} color={colors.textDim} />
                         </Pressable>
                       )}
@@ -1364,7 +1384,12 @@ export default function FavoritesScreen() {
                           style={styles.catalogSeriesHeader}
                           accessibilityRole="button"
                           accessibilityLabel={t(seriesCollapsed ? 'favorites.a11yExpandSeries' : 'favorites.a11yCollapseSeries', { series: subgroup.label })}>
-                          <Text style={styles.catalogSeriesTitle}>{subgroup.label} · {subgroup.sets.length}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                            {getSeriesLogo(subgroup.label) && (
+                              <Image source={{ uri: getSeriesLogo(subgroup.label) }} style={styles.catalogSeriesLogo} resizeMode="contain" />
+                            )}
+                            <Text style={styles.catalogSeriesTitle}>{subgroup.label} · {subgroup.sets.length}</Text>
+                          </View>
                           <Ionicons name={seriesCollapsed ? 'chevron-forward' : 'chevron-down'} size={14} color={colors.textDim} />
                         </Pressable>
                       )}
