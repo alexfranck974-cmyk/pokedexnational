@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { Link } from 'expo-router';
 import { requestPasswordReset } from '@/lib/auth';
+import { AuthBanner } from '@/components/AuthBanner';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 export default function ForgotPassword() {
@@ -12,7 +13,7 @@ export default function ForgotPassword() {
   const { colors } = useTheme();
   const styles = useThemedStyles((colors) => ({
     wrap: { flex: 1, padding: spacing.xl, gap: spacing.md, justifyContent: 'center' as const, backgroundColor: colors.bg },
-    h1: { fontSize: 32, fontFamily: fonts.display, color: colors.text, marginBottom: spacing.lg },
+    h1: { fontSize: 32, fontFamily: fonts.display, color: colors.text, marginBottom: spacing.lg, textAlign: 'center' as const },
     hint: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.body },
     input: {
       borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 14, fontSize: 16,
@@ -40,6 +41,7 @@ export default function ForgotPassword() {
   if (sent) {
     return (
       <View style={styles.wrap}>
+        <AuthBanner />
         <Text style={styles.h1}>Vérifie ta boîte mail</Text>
         <Text style={styles.hint}>
           Si un compte existe pour {email.trim()}, un lien de réinitialisation vient d’être envoyé. Clique dessus pour choisir un nouveau mot de passe.
@@ -51,6 +53,7 @@ export default function ForgotPassword() {
 
   return (
     <View style={styles.wrap}>
+      <AuthBanner />
       <Text style={styles.h1}>Mot de passe oublié</Text>
       <Text style={styles.hint}>Entre ton email, on t’envoie un lien pour en choisir un nouveau.</Text>
       <TextInput placeholder="Email" placeholderTextColor={colors.textMuted} value={email} onChangeText={setEmail}

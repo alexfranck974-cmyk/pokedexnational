@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { Link } from 'expo-router';
 import { signIn } from '@/lib/auth';
+import { AuthBanner } from '@/components/AuthBanner';
 import { useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
@@ -14,7 +15,7 @@ export default function Login() {
   const t = useT();
   const styles = useThemedStyles((colors) => ({
     wrap: { flex: 1, padding: spacing.xl, gap: spacing.md, justifyContent: 'center' as const, backgroundColor: colors.bg },
-    h1: { fontSize: 32, fontFamily: fonts.display, color: colors.text, marginBottom: spacing.lg },
+    h1: { fontSize: 32, fontFamily: fonts.display, color: colors.text, marginBottom: spacing.lg, textAlign: 'center' as const },
     input: {
       borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 14, fontSize: 16,
       fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt,
@@ -35,6 +36,7 @@ export default function Login() {
 
   return (
     <View style={styles.wrap}>
+      <AuthBanner />
       <Text style={styles.h1}>{t('auth.login.title')}</Text>
       <TextInput placeholder={t('common.email')} placeholderTextColor={colors.textMuted} value={email} onChangeText={setEmail}
         autoCapitalize="none" keyboardType="email-address" style={styles.input} />

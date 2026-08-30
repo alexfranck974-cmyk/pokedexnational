@@ -157,6 +157,8 @@ export const STRINGS = {
     'capture.raritySubtitle': 'Une pépite pour ta collection',
     'capture.binderCompleteTitle': 'Binder complet !',
 
+    'auth.appName': 'Pokédex national',
+
     // Shared section tabs (Pokédex / Collection / Wishlist)
     'tabs.pokedex': 'Pokédex national',
     'tabs.collection': 'Collection',
@@ -685,6 +687,8 @@ export const STRINGS = {
     'capture.milestoneSubtitle': 'Keep it up!',
     'capture.raritySubtitle': 'A gem for your collection',
     'capture.binderCompleteTitle': 'Binder complete!',
+
+    'auth.appName': 'National Pokédex',
 
     'tabs.pokedex': 'National Pokédex',
     'tabs.collection': 'Collection',

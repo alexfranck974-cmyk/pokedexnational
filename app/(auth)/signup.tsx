@@ -4,6 +4,7 @@ import { Link } from 'expo-router';
 import { signUp } from '@/lib/auth';
 import { isValidUsername } from '@/lib/slug';
 import { supabase } from '@/lib/supabase';
+import { AuthBanner } from '@/components/AuthBanner';
 import { useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
@@ -20,7 +21,7 @@ export default function SignUp() {
   const t = useT();
   const styles = useThemedStyles((colors) => ({
     wrap: { flex: 1, padding: spacing.xl, gap: spacing.md, justifyContent: 'center' as const, backgroundColor: colors.bg },
-    h1: { fontSize: 32, fontFamily: fonts.display, color: colors.text, marginBottom: spacing.lg },
+    h1: { fontSize: 32, fontFamily: fonts.display, color: colors.text, marginBottom: spacing.lg, textAlign: 'center' as const },
     input: {
       borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 14, fontSize: 16,
       fontFamily: fonts.body, color: colors.text, backgroundColor: colors.surfaceAlt,
@@ -65,6 +66,7 @@ export default function SignUp() {
   if (needsConfirmation) {
     return (
       <View style={styles.wrap}>
+        <AuthBanner />
         <Text style={styles.h1}>{t('auth.signup.checkEmailTitle')}</Text>
         <Text style={styles.hint}>
           {t('auth.signup.checkEmailBody', { email: email.trim() })}
@@ -76,6 +78,7 @@ export default function SignUp() {
 
   return (
     <View style={styles.wrap}>
+      <AuthBanner />
       <Text style={styles.h1}>{t('auth.signup.title')}</Text>
       <TextInput placeholder={t('common.email')} placeholderTextColor={colors.textMuted} value={email} onChangeText={setEmail}
         autoCapitalize="none" keyboardType="email-address" style={styles.input} />
