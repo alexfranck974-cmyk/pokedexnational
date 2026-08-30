@@ -286,6 +286,7 @@ export const STRINGS = {
     'favorites.tabExtensions': 'Extensions',
     'favorites.tabSealed': 'Scellés',
     'favorites.tabDuo': 'Duos',
+    'favorites.tabTag': 'Tag',
     'sealed.type.displayBox': 'Display Box',
     'sealed.type.boosterBox': 'Booster Box',
     'sealed.type.etb': 'Coffret Dresseur (ETB)',
@@ -554,6 +555,14 @@ export const STRINGS = {
     'duoCards.cardsCountPlural': '{n} cartes',
     'duoCards.searchPlaceholder': 'Chercher un Pokémon',
     'duoCards.notFound': 'Aucun Pokémon trouvé.',
+
+    // Tag Team panel ("Tag" — cartes GX à deux Pokémon)
+    'tagTeamCards.countSingular': '{n} Pokémon',
+    'tagTeamCards.countPlural': '{n} Pokémon',
+    'tagTeamCards.cardsCountSingular': '{n} carte',
+    'tagTeamCards.cardsCountPlural': '{n} cartes',
+    'tagTeamCards.searchPlaceholder': 'Chercher un Pokémon',
+    'tagTeamCards.notFound': 'Aucun Pokémon trouvé.',
   },
   en: {
     'common.back': 'Back',
@@ -818,6 +827,7 @@ export const STRINGS = {
     'favorites.tabExtensions': 'Sets',
     'favorites.tabSealed': 'Sealed',
     'favorites.tabDuo': 'Duos',
+    'favorites.tabTag': 'Tag',
     'sealed.type.displayBox': 'Display Box',
     'sealed.type.boosterBox': 'Booster Box',
     'sealed.type.etb': 'Elite Trainer Box',
@@ -1069,6 +1079,13 @@ export const STRINGS = {
     'duoCards.cardsCountPlural': '{n} cards',
     'duoCards.searchPlaceholder': 'Search a Pokémon',
     'duoCards.notFound': 'No Pokémon found.',
+
+    'tagTeamCards.countSingular': '{n} Pokémon',
+    'tagTeamCards.countPlural': '{n} Pokémon',
+    'tagTeamCards.cardsCountSingular': '{n} card',
+    'tagTeamCards.cardsCountPlural': '{n} cards',
+    'tagTeamCards.searchPlaceholder': 'Search a Pokémon',
+    'tagTeamCards.notFound': 'No Pokémon found.',
   },
 } as const;
 

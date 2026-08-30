@@ -42,6 +42,7 @@ import { BinderSlotPicker } from '@/components/BinderSlotPicker';
 import { SetGoalTile } from '@/components/SetGoalTile';
 import { TrainersPanel } from '@/components/TrainersPanel';
 import { CharacterRarePanel } from '@/components/CharacterRarePanel';
+import { TagTeamPanel } from '@/components/TagTeamPanel';
 import { BackButton } from '@/components/BackButton';
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
 import { CaptureEffect, type CaptureEvent } from '@/components/CaptureEffect';
@@ -64,7 +65,7 @@ const TEAM_SIZE = 6;
 // Visual left-to-right chip order (not the subTab type's declaration order) —
 // drives SlideTransition's direction when switching sub-tabs. 'teams' isn't
 // reachable via any visible chip, so it's excluded here on purpose.
-const SUBTAB_ORDER = ['goals', 'sealed', 'binders', 'artists', 'duplicates', 'trainers', 'duo'] as const;
+const SUBTAB_ORDER = ['goals', 'sealed', 'binders', 'artists', 'duplicates', 'trainers', 'duo', 'tag'] as const;
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -225,7 +226,7 @@ export default function FavoritesScreen() {
     return map;
   }, [ownedCardsDetailed]);
 
-  const [subTab, setSubTab] = useState<'teams' | 'binders' | 'goals' | 'sealed' | 'artists' | 'trainers' | 'duplicates' | 'duo'>('goals');
+  const [subTab, setSubTab] = useState<'teams' | 'binders' | 'goals' | 'sealed' | 'artists' | 'trainers' | 'duplicates' | 'duo' | 'tag'>('goals');
 
   // Slide-in direction/replay-token for the sub-tab content below — shared by
   // two sources so whichever happened most recently wins: arriving here from
@@ -759,6 +760,7 @@ export default function FavoritesScreen() {
               : subTab === 'trainers' ? t('favorites.tabTrainers')
               : subTab === 'duplicates' ? t('favorites.tabDuplicates')
               : subTab === 'duo' ? t('favorites.tabDuo')
+              : subTab === 'tag' ? t('favorites.tabTag')
               : t('favorites.tabExtensions')}
           </Text>
           <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
@@ -771,6 +773,7 @@ export default function FavoritesScreen() {
           <Chip label={t('favorites.tabDuplicates')} active={subTab === 'duplicates'} onPress={() => setSubTab('duplicates')} />
           <Chip label={t('favorites.tabTrainers')} active={subTab === 'trainers'} onPress={() => setSubTab('trainers')} />
           <Chip label={t('favorites.tabDuo')} active={subTab === 'duo'} onPress={() => setSubTab('duo')} />
+          <Chip label={t('favorites.tabTag')} active={subTab === 'tag'} onPress={() => setSubTab('tag')} />
           {/* "Équipes" is intentionally not surfaced for now — kept dormant (state/branch
               still below) for a possible future deckbuilding feature, not deleted. */}
         </ScrollView>
@@ -1151,6 +1154,11 @@ export default function FavoritesScreen() {
         />
       ) : subTab === 'duo' ? (
         <CharacterRarePanel
+          userId={userId}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+        />
+      ) : subTab === 'tag' ? (
+        <TagTeamPanel
           userId={userId}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         />

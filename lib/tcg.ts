@@ -109,6 +109,40 @@ export function useCharacterRareCards() {
   });
 }
 
+// "Tag Team" GX cards — two Pokémon sharing one card, name pattern "X & Y-GX"
+// (e.g. "Pikachu & Zekrom-GX", "Mewtwo & Mew-GX"), Sun & Moon era only. `dex_num`
+// only ever holds the *first*-named Pokémon (pokemontcg.io/our schema has no
+// concept of a second dex number per card) — deliberately kept simple rather
+// than parsing the second name against the pokédex (regional-form/Mega-prefix
+// names like "Alolan Exeggutor" or "Mega Sableye" make that fragible), so a
+// card only ever surfaces under its first Pokémon here, never the second.
+const TAG_TEAM_NAME_PATTERN = ' & .+-GX$';
+
+export function useTagTeamCards() {
+  return useQuery({
+    queryKey: ['tcg_tag_team_cards'],
+    staleTime: Infinity,
+    queryFn: async () => {
+      const rows: TcgCardRow[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('tcg_cards')
+          .select('id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, series, region, available_finishes, cardmarket_trend_eur, cardmarket_low_eur')
+          .not('dex_num', 'is', null)
+          .filter('name', 'match', TAG_TEAM_NAME_PATTERN)
+          .order('dex_num', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw error;
+        rows.push(...((data ?? []) as TcgCardRow[]));
+        if (!data || data.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
+      return rows;
+    },
+  });
+}
+
 export function useCardsForArtist(artist: string | undefined) {
   return useQuery({
     queryKey: ['tcg_cards_by_artist', artist],
