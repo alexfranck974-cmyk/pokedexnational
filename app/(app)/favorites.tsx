@@ -31,7 +31,7 @@ import {
   BINDER_LAYOUTS, BINDER_LAYOUT_COLS, type BinderLayout, type BinderSlotItem,
 } from '@/lib/binders';
 import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
-import { useSealedProducts, useAdjustSealedProduct, SEALED_PRODUCT_TYPES, type SealedProductType } from '@/lib/sealed-products';
+import { useSealedProducts, useAdjustSealedProduct, useSealedProductPrices, SEALED_PRODUCT_TYPES, type SealedProductType } from '@/lib/sealed-products';
 import { postBinderCompletedNewsIfNotable } from '@/lib/friend-news';
 import { useTcgSets, useTcgArtists, type TcgSetInfo } from '@/lib/tcg-index';
 import { Pokeball } from '@/components/Pokeball';
@@ -140,6 +140,7 @@ export default function FavoritesScreen() {
   const toggleGoal = useToggleSetGoal();
   const { data: allSets = [] } = useTcgSets();
   const { data: sealedProducts = new Map<string, Map<SealedProductType, number>>() } = useSealedProducts(userId);
+  const { data: sealedProductPrices = new Map<string, Map<SealedProductType, number>>() } = useSealedProductPrices();
   const adjustSealed = useAdjustSealedProduct();
   const [sealedSheetSet, setSealedSheetSet] = useState<TcgSetInfo | null>(null);
   const pinnedSetIds = useMemo(() => new Set(goals.map(g => g.setId)), [goals]);
@@ -707,6 +708,11 @@ export default function FavoritesScreen() {
       paddingVertical: spacing.xs,
     },
     sealedTypeLabel: { fontSize: 14, fontFamily: fonts.body, color: colors.text },
+    sealedTypePrice: { fontSize: 11, fontFamily: fonts.mono, color: colors.success, marginTop: 1 },
+    sealedTotalValue: {
+      fontSize: 13, fontFamily: fonts.monoBold, color: colors.success, textAlign: 'right' as const,
+      marginBottom: spacing.xs,
+    },
     sealedQuantityPill: {
       flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8,
       backgroundColor: colors.surfaceAlt, borderRadius: radius.pill, paddingHorizontal: 6, paddingVertical: 4,
@@ -1406,11 +1412,34 @@ export default function FavoritesScreen() {
         title={sealedSheetSet ? setFlagLabel(sealedSheetSet.name, sealedSheetSet.region) : ''}
         sizing="auto">
         <View style={{ padding: spacing.md, gap: 2 }}>
+          {(() => {
+            const pricesForSet = sealedSheetSet ? sealedProductPrices.get(sealedSheetSet.id) : undefined;
+            const totalValue = sealedSheetSet
+              ? SEALED_PRODUCT_TYPES.reduce((sum, { type }) => {
+                  const qty = sealedProducts.get(sealedSheetSet.id)?.get(type) ?? 0;
+                  const price = pricesForSet?.get(type);
+                  return sum + (price != null ? qty * price : 0);
+                }, 0)
+              : 0;
+            return totalValue > 0 && (
+              <Text style={styles.sealedTotalValue}>
+                {t('sealed.totalValue', { value: eurFormatter(locale).format(totalValue) })}
+              </Text>
+            );
+          })()}
           {SEALED_PRODUCT_TYPES.map(({ type, labelKey }) => {
             const qty = sealedSheetSet ? (sealedProducts.get(sealedSheetSet.id)?.get(type) ?? 0) : 0;
+            const unitPrice = sealedSheetSet ? sealedProductPrices.get(sealedSheetSet.id)?.get(type) : undefined;
             return (
               <View key={type} style={styles.sealedTypeRow}>
-                <Text style={styles.sealedTypeLabel}>{t(labelKey)}</Text>
+                <View>
+                  <Text style={styles.sealedTypeLabel}>{t(labelKey)}</Text>
+                  {unitPrice != null && (
+                    <Text style={styles.sealedTypePrice}>
+                      {eurFormatter(locale).format(unitPrice)}{qty > 1 ? ` × ${qty}` : ''}
+                    </Text>
+                  )}
+                </View>
                 <View style={styles.sealedQuantityPill}>
                   <Pressable
                     hitSlop={6}
