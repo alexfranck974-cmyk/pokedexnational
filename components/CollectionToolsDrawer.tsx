@@ -8,17 +8,32 @@ import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useT } from '@/lib/locale';
 import { useMotion } from '@/lib/motion';
 import { withAlpha } from '@/lib/color-utils';
+import { hapticDrawerToggle } from '@/lib/haptics';
 
 export type ToolTab = 'artists' | 'duplicates' | 'trainers' | 'duo' | 'tag';
 
-// Hand-picked illustration crops (already landscape-composed, no card frame
-// or attack text) — one per tab today, but the array is the point: dropping
-// more files in here is all "alternance" (rotate a random pick per open)
-// will ever need, no code change.
+// Hand-picked illustration crops (landscape-composed, no card frame or
+// attack/rules text) — a small rotating pool per tab, one picked at random
+// per drawer mount. duo-1/tag-1/trainers-1 are the user's own screenshots;
+// the rest are auto-cropped from real card art (text-free art window,
+// verified by eye) and user-approved before being added here.
 const TOOL_ART: Partial<Record<ToolTab, number[]>> = {
-  duo: [require('../assets/tools/duo-1.png')],
-  tag: [require('../assets/tools/tag-1.png')],
-  trainers: [require('../assets/tools/trainers-1.png')],
+  duo: [
+    require('../assets/tools/duo-1.png'),
+    require('../assets/tools/duo-2.png'),
+    require('../assets/tools/duo-3.png'),
+  ],
+  tag: [
+    require('../assets/tools/tag-1.png'),
+    require('../assets/tools/tag-2.png'),
+    require('../assets/tools/tag-3.png'),
+  ],
+  trainers: [
+    require('../assets/tools/trainers-1.png'),
+    require('../assets/tools/trainers-2.png'),
+    require('../assets/tools/trainers-3.png'),
+    require('../assets/tools/trainers-4.png'),
+  ],
 };
 
 // One steady pick per mount — `tab` is a fixed literal per call site, so this
@@ -73,6 +88,9 @@ export function CollectionToolsDrawer({ activeTab, onSelect }: Props) {
   const dragStartProgress = useRef(0);
 
   const animateTo = (isOpen: boolean) => {
+    // Only a real open<->closed flip clicks — dragging further into an
+    // already-open drawer and releasing shouldn't buzz again.
+    if (isOpen !== openRef.current) hapticDrawerToggle();
     openRef.current = isOpen;
     setOpen(isOpen);
     const toValue = isOpen ? drawerWidth : 0;

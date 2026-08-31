@@ -14,3 +14,10 @@ export function hapticCardAdded() {
 export function hapticRevealSuccess() {
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 }
+
+// The pull-tab drawer (CollectionToolsDrawer) snapping fully open or fully
+// closed — tap or drag-release, either way. Same Light weight as
+// hapticCardAdded: a physical "click" confirming the snap, not a big moment.
+export function hapticDrawerToggle() {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+}
