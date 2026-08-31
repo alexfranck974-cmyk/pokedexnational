@@ -43,6 +43,8 @@ import { SetGoalTile } from '@/components/SetGoalTile';
 import { TrainersPanel } from '@/components/TrainersPanel';
 import { CharacterRarePanel } from '@/components/CharacterRarePanel';
 import { TagTeamPanel } from '@/components/TagTeamPanel';
+import { CollectionToolsSheet, type ToolTab } from '@/components/CollectionToolsSheet';
+import type { StringKey } from '@/lib/strings';
 import { BackButton } from '@/components/BackButton';
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
 import { CaptureEffect, type CaptureEvent } from '@/components/CaptureEffect';
@@ -66,6 +68,16 @@ const TEAM_SIZE = 6;
 // drives SlideTransition's direction when switching sub-tabs. 'teams' isn't
 // reachable via any visible chip, so it's excluded here on purpose.
 const SUBTAB_ORDER = ['goals', 'sealed', 'binders', 'artists', 'duplicates', 'trainers', 'duo', 'tag'] as const;
+// The curated-TCG-index tools, reachable only via the Outils pill/sheet —
+// see CollectionToolsSheet for why these are split out of the primary chips.
+const TOOL_TABS = ['artists', 'duplicates', 'trainers', 'duo', 'tag'] as const;
+const TOOL_TAB_LABEL_KEY: Record<ToolTab, StringKey> = {
+  artists: 'favorites.tabArtists',
+  duplicates: 'favorites.tabDuplicates',
+  trainers: 'favorites.tabTrainers',
+  duo: 'favorites.tabDuo',
+  tag: 'favorites.tabTag',
+};
 
 function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -227,6 +239,8 @@ export default function FavoritesScreen() {
   }, [ownedCardsDetailed]);
 
   const [subTab, setSubTab] = useState<'teams' | 'binders' | 'goals' | 'sealed' | 'artists' | 'trainers' | 'duplicates' | 'duo' | 'tag'>('goals');
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const isToolTab = (TOOL_TABS as readonly string[]).includes(subTab);
 
   // Slide-in direction/replay-token for the sub-tab content below — shared by
   // two sources so whichever happened most recently wins: arriving here from
@@ -569,6 +583,14 @@ export default function FavoritesScreen() {
     titleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
     title: { fontSize: 22, fontFamily: fonts.display, color: colors.text },
     chipRow: { flexDirection: 'row' as const, gap: spacing.xs },
+    toolsPill: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6,
+      paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill,
+      backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed' as const,
+    },
+    toolsPillActive: { backgroundColor: colors.primary, borderColor: colors.primary, borderStyle: 'solid' as const },
+    toolsPillText: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
+    toolsPillTextActive: { color: 'white' },
 
     teamList: { flex: 1, padding: spacing.md, gap: spacing.md },
     newTeamRow: { flexDirection: 'row' as const, gap: spacing.sm },
@@ -766,16 +788,25 @@ export default function FavoritesScreen() {
           <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={colors.primary} />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          {/* Primary row = "vitrines" of the user's own collection. The curated
+              TCG-index tools (Artistes/Doublons/Dresseurs/Duos/Tag) live behind
+              the Pokeball pill below instead of crowding this scroll row —
+              see CollectionToolsSheet. */}
           <Chip label={t('favorites.tabExtensions')} active={subTab === 'goals'} onPress={() => setSubTab('goals')} />
           <Chip label={t('favorites.tabSealed')} active={subTab === 'sealed'} onPress={() => setSubTab('sealed')} />
           <Chip label={t('favorites.tabBinders')} active={subTab === 'binders'} onPress={() => setSubTab('binders')} />
-          <Chip label={t('favorites.tabArtists')} active={subTab === 'artists'} onPress={() => setSubTab('artists')} />
-          <Chip label={t('favorites.tabDuplicates')} active={subTab === 'duplicates'} onPress={() => setSubTab('duplicates')} />
-          <Chip label={t('favorites.tabTrainers')} active={subTab === 'trainers'} onPress={() => setSubTab('trainers')} />
-          <Chip label={t('favorites.tabDuo')} active={subTab === 'duo'} onPress={() => setSubTab('duo')} />
-          <Chip label={t('favorites.tabTag')} active={subTab === 'tag'} onPress={() => setSubTab('tag')} />
           {/* "Équipes" is intentionally not surfaced for now — kept dormant (state/branch
               still below) for a possible future deckbuilding feature, not deleted. */}
+          <Pressable
+            onPress={() => setToolsOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t('favorites.a11yOpenTools')}
+            style={[styles.toolsPill, isToolTab && styles.toolsPillActive]}>
+            <Pokeball size={14} />
+            <Text style={[styles.toolsPillText, isToolTab && styles.toolsPillTextActive]}>
+              {isToolTab ? t(TOOL_TAB_LABEL_KEY[subTab as ToolTab]) : t('favorites.toolsPill')}
+            </Text>
+          </Pressable>
         </ScrollView>
       </View>
 
@@ -1654,6 +1685,11 @@ export default function FavoritesScreen() {
       <CardZoomModal card={dupZoom} onClose={() => setDupZoom(null)} />
       <CardZoomModal card={binderZoom} onClose={() => setBinderZoom(null)} />
       <CaptureEffect event={completionCelebration} onDone={() => setCompletionCelebration(null)} />
+      <CollectionToolsSheet
+        visible={toolsOpen}
+        onClose={() => setToolsOpen(false)}
+        onSelect={(tab: ToolTab) => setSubTab(tab)}
+      />
     </SafeAreaView>
   );
 }
