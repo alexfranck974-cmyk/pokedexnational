@@ -36,14 +36,15 @@ const TOOL_ART: Partial<Record<ToolTab, number[]>> = {
   ],
 };
 
-// One steady pick per mount — `tab` is a fixed literal per call site, so this
-// never reshuffles while the drawer stays open.
-function useToolArt(tab: ToolTab): number | undefined {
+// Re-picked every time `openCount` ticks (see animateTo) — a fresh roll each
+// time the drawer opens, not just once for the whole session. Stays steady
+// while a single open/close cycle is in progress (no reshuffling mid-drag).
+function useToolArt(tab: ToolTab, openCount: number): number | undefined {
   return useMemo(() => {
     const pool = TOOL_ART[tab];
     if (!pool || pool.length === 0) return undefined;
     return pool[Math.floor(Math.random() * pool.length)];
-  }, [tab]);
+  }, [tab, openCount]);
 }
 
 interface Props {
@@ -83,14 +84,21 @@ export function CollectionToolsDrawer({ activeTab, onSelect }: Props) {
   const drawerWidth = Math.min(screenWidth * DRAWER_WIDTH_RATIO, DRAWER_MAX_WIDTH);
   const [open, setOpen] = useState(false);
   const openRef = useRef(false);
+  // Bumped on every closed->open flip — the art pool re-rolls off this (see
+  // useToolArt), so pulling the drawer back out shows a different image each
+  // time instead of the same one for the whole session.
+  const [openCount, setOpenCount] = useState(0);
   // 0 (closed, panel fully off-screen right) .. drawerWidth (fully open).
   const progress = useRef(new Animated.Value(0)).current;
   const dragStartProgress = useRef(0);
 
   const animateTo = (isOpen: boolean) => {
-    // Only a real open<->closed flip clicks — dragging further into an
-    // already-open drawer and releasing shouldn't buzz again.
-    if (isOpen !== openRef.current) hapticDrawerToggle();
+    // Only a real open<->closed flip clicks/re-rolls — dragging further into
+    // an already-open drawer and releasing shouldn't buzz or reshuffle again.
+    if (isOpen !== openRef.current) {
+      hapticDrawerToggle();
+      if (isOpen) setOpenCount(n => n + 1);
+    }
     openRef.current = isOpen;
     setOpen(isOpen);
     const toValue = isOpen ? drawerWidth : 0;
@@ -117,9 +125,9 @@ export function CollectionToolsDrawer({ activeTab, onSelect }: Props) {
   const translateX = progress.interpolate({ inputRange: [0, drawerWidth], outputRange: [drawerWidth, 0] });
   const backdropOpacity = progress.interpolate({ inputRange: [0, drawerWidth], outputRange: [0, 0.45] });
 
-  const duoArt = useToolArt('duo');
-  const tagArt = useToolArt('tag');
-  const trainerArt = useToolArt('trainers');
+  const duoArt = useToolArt('duo', openCount);
+  const tagArt = useToolArt('tag', openCount);
+  const trainerArt = useToolArt('trainers', openCount);
 
   const tiles: { key: ToolTab; label: string; art?: number; icon?: keyof typeof Ionicons.glyphMap }[] = [
     { key: 'duo', label: t('favorites.tabDuo'), art: duoArt },
