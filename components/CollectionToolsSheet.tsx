@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { BubbleSheet } from './BubbleSheet';
-import { useTrainerCards, useCharacterRareCards, useTagTeamCards, type TcgCardRow } from '@/lib/tcg';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useT } from '@/lib/locale';
+import { withAlpha } from '@/lib/color-utils';
 
 export type ToolTab = 'artists' | 'duplicates' | 'trainers' | 'duo' | 'tag';
 
@@ -14,13 +15,25 @@ interface Props {
   onSelect: (tab: ToolTab) => void;
 }
 
-// One steady pick per fetch (not per render) — cards only changes once
-// react-query resolves, so this doesn't reshuffle while the sheet is open.
-function useRandomCardImage(cards: TcgCardRow[] | undefined): string | undefined {
+// Hand-picked illustration crops (already landscape-composed, no card frame
+// or attack text) — one per tab today, but the array is the point: dropping
+// more files in here is all "alternance" (rotate a random pick per open)
+// will ever need, no code change. Bundled assets, not card-DB URLs, so no
+// network fetch to defer — the sheet renders instantly on open.
+const TOOL_ART: Partial<Record<ToolTab, number[]>> = {
+  duo: [require('../assets/tools/duo-1.png')],
+  tag: [require('../assets/tools/tag-1.png')],
+  trainers: [require('../assets/tools/trainers-1.png')],
+};
+
+// One steady pick per mount — `tab` is a fixed literal per call site, so this
+// never reshuffles while the sheet stays open.
+function useToolArt(tab: ToolTab): number | undefined {
   return useMemo(() => {
-    if (!cards || cards.length === 0) return undefined;
-    return cards[Math.floor(Math.random() * cards.length)].image_small;
-  }, [cards]);
+    const pool = TOOL_ART[tab];
+    if (!pool || pool.length === 0) return undefined;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }, [tab]);
 }
 
 // The "outils de recherche" drawer for Favoris — curated slices of the whole
@@ -28,34 +41,18 @@ function useRandomCardImage(cards: TcgCardRow[] | undefined): string | undefined
 // showcase tabs (Extensions/Binders/Scellés) that stay in the primary chip
 // row. Step 1 of the progressive redesign: a plain sheet behind a button, not
 // yet the pull-tab drawer gesture — see conversation for why.
-//
-// Mounted lazily (only once `visible` first goes true) so the three card
-// hooks below don't fetch on every Favoris visit just to sit unused behind a
-// closed sheet — but once mounted it stays mounted (BubbleSheet's own
-// `visible` toggles the slide animation instead), so re-opening doesn't
-// re-fetch and closing doesn't cut the slide-down animation short.
 export function CollectionToolsSheet({ visible, onClose, onSelect }: Props) {
-  const [everOpened, setEverOpened] = useState(visible);
-  useEffect(() => { if (visible) setEverOpened(true); }, [visible]);
-  if (!everOpened) return null;
-  return <CollectionToolsSheetInner visible={visible} onClose={onClose} onSelect={onSelect} />;
-}
-
-function CollectionToolsSheetInner({ visible, onClose, onSelect }: Props) {
   const t = useT();
   const { colors } = useTheme();
-  const { data: trainerCards } = useTrainerCards();
-  const { data: duoCards } = useCharacterRareCards();
-  const { data: tagCards } = useTagTeamCards();
 
-  const trainerImg = useRandomCardImage(trainerCards);
-  const duoImg = useRandomCardImage(duoCards);
-  const tagImg = useRandomCardImage(tagCards);
+  const duoArt = useToolArt('duo');
+  const tagArt = useToolArt('tag');
+  const trainerArt = useToolArt('trainers');
 
-  const tiles: { key: ToolTab; label: string; image?: string; icon?: keyof typeof Ionicons.glyphMap }[] = [
-    { key: 'duo', label: t('favorites.tabDuo'), image: duoImg },
-    { key: 'tag', label: t('favorites.tabTag'), image: tagImg },
-    { key: 'trainers', label: t('favorites.tabTrainers'), image: trainerImg },
+  const tiles: { key: ToolTab; label: string; art?: number; icon?: keyof typeof Ionicons.glyphMap }[] = [
+    { key: 'duo', label: t('favorites.tabDuo'), art: duoArt },
+    { key: 'tag', label: t('favorites.tabTag'), art: tagArt },
+    { key: 'trainers', label: t('favorites.tabTrainers'), art: trainerArt },
     { key: 'artists', label: t('favorites.tabArtists'), icon: 'color-palette-outline' },
     { key: 'duplicates', label: t('favorites.tabDuplicates'), icon: 'copy-outline' },
   ];
@@ -66,9 +63,9 @@ function CollectionToolsSheetInner({ visible, onClose, onSelect }: Props) {
       width: '47%' as const, aspectRatio: 1.6, borderRadius: radius.lg, overflow: 'hidden' as const,
       backgroundColor: colors.surfaceAlt, justifyContent: 'flex-end' as const,
     },
-    tileImg: { opacity: 0.4 },
+    tileImg: { position: 'absolute' as const, top: 0, left: 0, width: '100%' as const, height: '100%' as const },
     iconWrap: { flex: 1, alignItems: 'center' as const, justifyContent: 'center' as const },
-    tileLabelWrap: { padding: spacing.sm, backgroundColor: colors.overlay },
+    tileLabelWrap: { padding: spacing.sm },
     tileLabel: { fontSize: 14, fontFamily: fonts.bodyBold, color: 'white' },
   }));
 
@@ -77,8 +74,17 @@ function CollectionToolsSheetInner({ visible, onClose, onSelect }: Props) {
       <View style={styles.grid}>
         {tiles.map(tile => (
           <Pressable key={tile.key} onPress={() => { onSelect(tile.key); onClose(); }} style={styles.tile}>
-            {tile.image ? (
-              <Image source={{ uri: tile.image }} style={[StyleSheet.absoluteFill, styles.tileImg]} resizeMode="cover" />
+            {tile.art ? (
+              <>
+                <Image source={tile.art} style={styles.tileImg} resizeMode="cover" />
+                {/* Scrim only over the lower half, where the label sits — the art
+                    itself stays vivid instead of washed out across the whole tile. */}
+                <LinearGradient
+                  colors={[withAlpha('#000000', 0), withAlpha('#000000', 0.75)]}
+                  start={{ x: 0, y: 0.3 }} end={{ x: 0, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              </>
             ) : tile.icon ? (
               <View style={styles.iconWrap}>
                 <Ionicons name={tile.icon} size={32} color={colors.textMuted} />
