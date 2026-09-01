@@ -31,7 +31,7 @@ import {
   BINDER_LAYOUTS, BINDER_LAYOUT_COLS, type BinderLayout, type BinderSlotItem,
 } from '@/lib/binders';
 import { useSetGoals, useToggleSetGoal } from '@/lib/collection-goals';
-import { useSealedProducts, useAdjustSealedProduct, useSealedProductPrices, SEALED_PRODUCT_TYPES, type SealedProductType } from '@/lib/sealed-products';
+import { useSealedProducts, useAdjustSealedProduct, useSealedProductPrices, SEALED_PRODUCT_TYPES, type SealedProductType, type SealedProductInfo } from '@/lib/sealed-products';
 import { postBinderCompletedNewsIfNotable } from '@/lib/friend-news';
 import { useTcgSets, useTcgArtists, type TcgSetInfo } from '@/lib/tcg-index';
 import { getSeriesLogo } from '@/lib/series-logos';
@@ -168,7 +168,7 @@ export default function FavoritesScreen() {
   const toggleGoal = useToggleSetGoal();
   const { data: allSets = [] } = useTcgSets();
   const { data: sealedProducts = new Map<string, Map<SealedProductType, number>>() } = useSealedProducts(userId);
-  const { data: sealedProductPrices = new Map<string, Map<SealedProductType, number>>() } = useSealedProductPrices();
+  const { data: sealedProductPrices = new Map<string, Map<SealedProductType, SealedProductInfo>>() } = useSealedProductPrices();
   const adjustSealed = useAdjustSealedProduct();
   const [sealedSheetSet, setSealedSheetSet] = useState<TcgSetInfo | null>(null);
   const pinnedSetIds = useMemo(() => new Set(goals.map(g => g.setId)), [goals]);
@@ -793,8 +793,11 @@ export default function FavoritesScreen() {
     sealedCountBadgeText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.primary },
     sealedTypeRow: {
       flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
-      paddingVertical: spacing.xs,
+      paddingVertical: spacing.xs, gap: spacing.sm,
     },
+    sealedTypeInfo: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, flex: 1 },
+    sealedTypeImg: { width: 40, height: 40, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+    sealedTypeImgPlaceholder: { alignItems: 'center' as const, justifyContent: 'center' as const },
     sealedTypeLabel: { fontSize: 14, fontFamily: fonts.body, color: colors.text },
     sealedTypePrice: { fontSize: 11, fontFamily: fonts.mono, color: colors.success, marginTop: 1 },
     sealedTotalValue: {
@@ -1496,7 +1499,7 @@ export default function FavoritesScreen() {
             const totalValue = sealedSheetSet
               ? SEALED_PRODUCT_TYPES.reduce((sum, { type }) => {
                   const qty = sealedProducts.get(sealedSheetSet.id)?.get(type) ?? 0;
-                  const price = pricesForSet?.get(type);
+                  const price = pricesForSet?.get(type)?.priceEur;
                   return sum + (price != null ? qty * price : 0);
                 }, 0)
               : 0;
@@ -1508,16 +1511,26 @@ export default function FavoritesScreen() {
           })()}
           {SEALED_PRODUCT_TYPES.map(({ type, labelKey }) => {
             const qty = sealedSheetSet ? (sealedProducts.get(sealedSheetSet.id)?.get(type) ?? 0) : 0;
-            const unitPrice = sealedSheetSet ? sealedProductPrices.get(sealedSheetSet.id)?.get(type) : undefined;
+            const info = sealedSheetSet ? sealedProductPrices.get(sealedSheetSet.id)?.get(type) : undefined;
+            const unitPrice = info?.priceEur;
             return (
               <View key={type} style={styles.sealedTypeRow}>
-                <View>
-                  <Text style={styles.sealedTypeLabel}>{t(labelKey)}</Text>
-                  {unitPrice != null && (
-                    <Text style={styles.sealedTypePrice}>
-                      {eurFormatter(locale).format(unitPrice)}{qty > 1 ? ` × ${qty}` : ''}
-                    </Text>
+                <View style={styles.sealedTypeInfo}>
+                  {info?.imageUrl ? (
+                    <Image source={{ uri: info.imageUrl }} style={styles.sealedTypeImg} resizeMode="contain" />
+                  ) : (
+                    <View style={[styles.sealedTypeImg, styles.sealedTypeImgPlaceholder]}>
+                      <Ionicons name="cube-outline" size={20} color={colors.textDim} />
+                    </View>
                   )}
+                  <View>
+                    <Text style={styles.sealedTypeLabel}>{t(labelKey)}</Text>
+                    {unitPrice != null && (
+                      <Text style={styles.sealedTypePrice}>
+                        {eurFormatter(locale).format(unitPrice)}{qty > 1 ? ` × ${qty}` : ''}
+                      </Text>
+                    )}
+                  </View>
                 </View>
                 <View style={styles.sealedQuantityPill}>
                   <Pressable

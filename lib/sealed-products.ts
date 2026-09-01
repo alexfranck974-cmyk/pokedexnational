@@ -20,25 +20,32 @@ export const SEALED_PRODUCT_TYPES: { type: SealedProductType; labelKey: StringKe
 
 // setId -> productType -> quantity, for O(1) per-set lookup in the catalog list.
 export type SealedProductsBySet = Map<string, Map<SealedProductType, number>>;
-// setId -> productType -> price_eur, same shape as above. Reference data
+export interface SealedProductInfo {
+  priceEur: number | null;
+  imageUrl: string | null;
+}
+// setId -> productType -> { priceEur, imageUrl }. Reference data
 // (sync-sealed-product-prices.ts), not user-specific — small table (only a
 // handful of hand-verified sets in this first pass), so staleTime: Infinity
 // matches the tcg-index convention rather than the default 5min.
-export type SealedProductPricesBySet = Map<string, Map<SealedProductType, number>>;
+export type SealedProductPricesBySet = Map<string, Map<SealedProductType, SealedProductInfo>>;
 
 export function useSealedProductPrices() {
   return useQuery({
     queryKey: ['sealed_product_prices'],
     staleTime: Infinity,
     queryFn: async () => {
-      const { data, error } = await supabase.from('sealed_product_prices').select('set_id, product_type, price_eur');
+      const { data, error } = await supabase.from('sealed_product_prices').select('set_id, product_type, price_eur, image_url');
       if (error) throw error;
       const bySet: SealedProductPricesBySet = new Map();
       for (const row of data ?? []) {
-        if (row.price_eur == null) continue;
+        if (row.price_eur == null && row.image_url == null) continue;
         const setId = row.set_id as string;
         if (!bySet.has(setId)) bySet.set(setId, new Map());
-        bySet.get(setId)!.set(row.product_type as SealedProductType, row.price_eur as number);
+        bySet.get(setId)!.set(row.product_type as SealedProductType, {
+          priceEur: row.price_eur as number | null,
+          imageUrl: row.image_url as string | null,
+        });
       }
       return bySet;
     },
