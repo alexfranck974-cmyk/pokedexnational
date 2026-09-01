@@ -46,6 +46,32 @@ const SET_TO_TCGPLAYER_GROUP: Record<string, { categoryId: number; groupId: numb
   sv8pt5: { categoryId: 3, groupId: 23821 },
   zsv10pt5: { categoryId: 3, groupId: 24325 }, // SV: Black Bolt
   rsv10pt5: { categoryId: 3, groupId: 24326 }, // SV: White Flare
+  // Batch added 2026-09-02 — every mainline SV set plus the tail end of SWSH,
+  // same card-#1-name cross-check as the block above (all 21 verified clean,
+  // no mismatches). "Trainer Gallery" subsets, McDonald's promos, and other
+  // non-standalone-purchased groups deliberately skipped — they're not sold
+  // as their own booster box/ETB/booster, they ride inside the parent set's.
+  sv10: { categoryId: 3, groupId: 24269 }, // Destined Rivals
+  sv9: { categoryId: 3, groupId: 24073 }, // Journey Together
+  sv8: { categoryId: 3, groupId: 23651 }, // Surging Sparks
+  sv7: { categoryId: 3, groupId: 23537 }, // Stellar Crown
+  sv6pt5: { categoryId: 3, groupId: 23529 }, // Shrouded Fable
+  sv6: { categoryId: 3, groupId: 23473 }, // Twilight Masquerade
+  sv5: { categoryId: 3, groupId: 23381 }, // Temporal Forces
+  sv4pt5: { categoryId: 3, groupId: 23353 }, // Paldean Fates
+  sv4: { categoryId: 3, groupId: 23286 }, // Paradox Rift
+  sv3pt5: { categoryId: 3, groupId: 23237 }, // 151
+  sv3: { categoryId: 3, groupId: 23228 }, // Obsidian Flames
+  sv2: { categoryId: 3, groupId: 23120 }, // Paldea Evolved
+  sv1: { categoryId: 3, groupId: 22873 }, // Scarlet & Violet Base Set
+  swsh12pt5: { categoryId: 3, groupId: 17688 }, // Crown Zenith
+  swsh12: { categoryId: 3, groupId: 3170 }, // Silver Tempest
+  swsh11: { categoryId: 3, groupId: 3118 }, // Lost Origin
+  pgo: { categoryId: 3, groupId: 3064 }, // Pokemon GO
+  swsh10: { categoryId: 3, groupId: 3040 }, // Astral Radiance
+  swsh9: { categoryId: 3, groupId: 2948 }, // Brilliant Stars
+  swsh8: { categoryId: 3, groupId: 2906 }, // Fusion Strike
+  cel25: { categoryId: 3, groupId: 2867 }, // Celebrations
 };
 
 // Only these 3 of the app's 7 SealedProductType buckets get a reliable
