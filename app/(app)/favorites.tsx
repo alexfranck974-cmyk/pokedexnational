@@ -101,9 +101,12 @@ const Chip = ({ label, active, onPress }: { label: string; active: boolean; onPr
       borderTopLeftRadius: radius.md, borderTopRightRadius: radius.md,
       backgroundColor: colors.surfaceAlt, marginTop: 5,
     },
-    active: { backgroundColor: colors.primary, marginTop: 0, ...shadow.sm },
+    active: {
+      backgroundColor: colors.primary, marginTop: 0,
+      paddingHorizontal: 18, paddingVertical: 10, ...shadow.sm,
+    },
     text: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
-    textActive: { color: 'white' },
+    textActive: { color: 'white', fontSize: 14 },
   }));
   return (
     <Pressable onPress={onPress} style={[chipStyles.chip, active && chipStyles.active]}>
