@@ -3,6 +3,7 @@ import { View, Text, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
+import { GestureDetector } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSession } from '@/lib/auth';
@@ -18,7 +19,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { WishlistFilterBar } from '@/components/WishlistFilterBar';
 import { RefreshButton } from '@/components/RefreshButton';
 import { FriendSetGalleryModal, type FriendSetGalleryTarget } from '@/components/FriendSetGalleryModal';
-import { PokedexSectionTabs, sectionIndex, hrefToSection } from '@/components/PokedexSectionTabs';
+import { PokedexSectionTabs, sectionIndex, hrefToSection, useSectionSwipeGesture } from '@/components/PokedexSectionTabs';
 import { SlideTransition } from '@/components/SlideTransition';
 import { enterPokemonDetail, safeDecodeURIComponent } from '@/lib/navigation';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
@@ -74,6 +75,7 @@ export default function WishlistScreen() {
   const { colors, heroGradient, heroText, heroSurface, heroSurfaceActive, heroSurfaceActiveText } = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
   const hideOnScrollProps = useHideOnScrollProps();
+  const swipeGesture = useSectionSwipeGesture('wishlist');
   const [gallery, setGallery] = useState<FriendSetGalleryTarget | null>(null);
 
   // Slide-in direction for arriving from Pokédex/Collection via PokedexSectionTabs
@@ -402,7 +404,11 @@ export default function WishlistScreen() {
         </View>
       )}
 
-      <SlideTransition transitionKey={navToken} direction={sectionDirection} style={{ flex: 1 }}>
+      <GestureDetector gesture={swipeGesture} touchAction="pan-y">
+      {/* userSelect:none (RNW-only — see pokemon/[num].tsx's screen style for
+          the same fix) stops a swipe from becoming a native text-drag-select,
+          which would otherwise eat the gesture first. */}
+      <SlideTransition transitionKey={navToken} direction={sectionDirection} style={{ flex: 1, userSelect: 'none' } as any}>
       {filtered.length === 0 ? (
         <View style={styles.center}>
           <EmptyState icon="search-outline" hint={t('wishlist.noResults')} />
@@ -430,6 +436,7 @@ export default function WishlistScreen() {
         />
       )}
       </SlideTransition>
+      </GestureDetector>
       <WishlistFilterBar
         search={search} onSearch={setSearch}
         statusFilter={statusFilter} onStatus={setStatus}

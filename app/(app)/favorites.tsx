@@ -47,7 +47,7 @@ import { CollectionToolsDrawer, type ToolTab } from '@/components/CollectionTool
 import { BackButton } from '@/components/BackButton';
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
 import { CaptureEffect, type CaptureEvent } from '@/components/CaptureEffect';
-import { PokedexSectionTabs, sectionIndex, hrefToSection } from '@/components/PokedexSectionTabs';
+import { PokedexSectionTabs, sectionIndex, hrefToSection, useSectionSwipeGesture } from '@/components/PokedexSectionTabs';
 import { SlideTransition } from '@/components/SlideTransition';
 import { SkeletonBlock } from '@/components/SkeletonBlock';
 import { EmptyState } from '@/components/EmptyState';
@@ -134,6 +134,7 @@ export default function FavoritesScreen() {
   const { colors } = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
   const hideOnScrollProps = useHideOnScrollProps();
+  const sectionSwipeGesture = useSectionSwipeGesture('collection');
 
   const { data: owned = new Set<number>() } = useUserDex(userId);
   const { data: ownedImages = new Map<number, string>() } = useOwnedCardImages(userId);
@@ -861,7 +862,12 @@ export default function FavoritesScreen() {
         </ScrollView>
       </View>
 
-      <SlideTransition transitionKey={subTabNavToken} direction={subTabTransitionDirection} style={{ flex: 1 }}>
+      <GestureDetector gesture={sectionSwipeGesture} touchAction="pan-y">
+      {/* userSelect:none (RNW-only, missing from RN's own ViewStyle type — see
+          pokemon/[num].tsx's screen style for the same fix) stops a swipe from
+          turning into a native text-drag-select, which would otherwise eat the
+          gesture before useSectionSwipeGesture's Pan ever sees it. */}
+      <SlideTransition transitionKey={subTabNavToken} direction={subTabTransitionDirection} style={{ flex: 1, userSelect: 'none' } as any}>
       {subTab === 'teams' ? (
         selectedTeam ? (
           <View style={styles.teamEditor}>
@@ -1476,6 +1482,7 @@ export default function FavoritesScreen() {
         </ScrollView>
       )}
       </SlideTransition>
+      </GestureDetector>
 
       <BubbleSheet
         visible={sealedSheetSet !== null}

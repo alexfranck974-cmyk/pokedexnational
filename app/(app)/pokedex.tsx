@@ -15,7 +15,8 @@ import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
 import { PokedexGrid } from '@/components/PokedexGrid';
 import { PokedexPager } from '@/components/PokedexPager';
 import { usePokedexViewMode } from '@/lib/pokedex-view-mode';
-import { PokedexSectionTabs, sectionIndex, hrefToSection } from '@/components/PokedexSectionTabs';
+import { PokedexSectionTabs, sectionIndex, hrefToSection, useSectionSwipeGesture } from '@/components/PokedexSectionTabs';
+import { GestureDetector } from 'react-native-gesture-handler';
 import { SlideTransition } from '@/components/SlideTransition';
 import { SearchFilterBar } from '@/components/SearchFilterBar';
 import { ProgressRing } from '@/components/ProgressRing';
@@ -119,6 +120,7 @@ export default function PokedexScreen() {
   // consecutive same-origin visits.
   const [sectionDirection, setSectionDirection] = useState<'left' | 'right' | null>(null);
   const [navToken, setNavToken] = useState(0);
+  const sectionSwipeGesture = useSectionSwipeGesture('pokedex');
   useEffect(() => {
     if (!from) return;
     const fromSection = hrefToSection(safeDecodeURIComponent(from));
@@ -200,8 +202,13 @@ export default function PokedexScreen() {
           hero + section tabs instead of covering them (its parent would
           otherwise be the full-screen SafeAreaView). */}
       <View style={{ flex: 1 }}>
-        <SlideTransition transitionKey={navToken} direction={sectionDirection} style={{ flex: 1 }}>
-          {viewMode === 'page' ? (
+        {viewMode === 'page' ? (
+          // PokedexPager pages between individual Pokémon via its own
+          // horizontal, native `pagingEnabled` ScrollView — layering the
+          // section-swipe gesture on top here would fight it over every
+          // horizontal drag, so this mode skips it. Grid mode has no
+          // horizontal scrolling of its own, so it's the only one that gets it.
+          <SlideTransition transitionKey={navToken} direction={sectionDirection} style={{ flex: 1 }}>
             <PokedexPager
               items={items}
               pageLayout={pageLayout}
@@ -214,22 +221,29 @@ export default function PokedexScreen() {
                 if (idx !== -1) setZoomIndex(idx);
               }}
             />
-          ) : (
-            <PokedexGrid
-              items={items}
-              ownedImages={ownedImages}
-              wishedInDexSet={wishedInDexSet}
-              columnsOverride={columns}
-              cardPrices={showValues ? dexPrices : undefined}
-              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-              onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
-              onLongSelect={num => {
-                const idx = ownedItems.findIndex(p => p.num === num);
-                if (idx !== -1) setZoomIndex(idx);
-              }}
-            />
-          )}
-        </SlideTransition>
+          </SlideTransition>
+        ) : (
+          <GestureDetector gesture={sectionSwipeGesture} touchAction="pan-y">
+            {/* userSelect:none (RNW-only — see pokemon/[num].tsx's screen style
+                for the same fix) stops a swipe from becoming a native text-drag-
+                select, which would otherwise eat the gesture first. */}
+            <SlideTransition transitionKey={navToken} direction={sectionDirection} style={{ flex: 1, userSelect: 'none' } as any}>
+              <PokedexGrid
+                items={items}
+                ownedImages={ownedImages}
+                wishedInDexSet={wishedInDexSet}
+                columnsOverride={columns}
+                cardPrices={showValues ? dexPrices : undefined}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+                onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
+                onLongSelect={num => {
+                  const idx = ownedItems.findIndex(p => p.num === num);
+                  if (idx !== -1) setZoomIndex(idx);
+                }}
+              />
+            </SlideTransition>
+          </GestureDetector>
+        )}
         <CardZoomModal
           card={zoomCardImage}
           caption={zoomPokemon ? `#${String(zoomPokemon.num).padStart(4, '0')} · ${getName(zoomPokemon, locale)}` : undefined}

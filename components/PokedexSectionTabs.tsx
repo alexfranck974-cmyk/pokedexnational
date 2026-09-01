@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, View, Text, Pressable, type LayoutChangeEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
+import { Gesture } from 'react-native-gesture-handler';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useT } from '@/lib/locale';
 import { useMotion } from '@/lib/motion';
@@ -27,6 +28,55 @@ export function hrefToSection(href: string): PokedexSection | null {
 
 interface Props {
   active: PokedexSection;
+}
+
+// Distance/speed a horizontal drag has to cross before release counts as
+// "swipe to the next/previous section" rather than an incidental scroll
+// nudge — either threshold alone is enough (a fast short flick, or a slow
+// long drag, both read as intentional).
+const SWIPE_DISTANCE_THRESHOLD = 70;
+const SWIPE_VELOCITY_THRESHOLD = 700;
+
+// Wraps a screen's content (below PokedexSectionTabs) so swiping left/right
+// switches section the same way tapping a tab does — same router.replace +
+// withReturnTo call, so the existing SlideTransition on the *target* screen
+// picks up the direction and animates exactly like a tap would. Deliberately
+// "commit on release" rather than tracking the finger continuously: no
+// reanimated in this project, and a release-triggered nav reuses the already-
+// built tap-navigation path instead of a second, parallel drag-to-reveal
+// implementation.
+//
+// activeOffsetX/failOffsetY is the standard RNGH pattern for "horizontal
+// gesture, but let vertical scrolling through untouched" — a mostly-vertical
+// drag fails out of this gesture before it activates, handing the touch back
+// to whatever ScrollView/FlashList is underneath. touchAction="pan-y" on the
+// GestureDetector (set by each screen) is the same web-specific companion
+// piece used by the binder slot drag in favorites.tsx, for the same reason.
+//
+// On web specifically, the wrapped content also needs `userSelect: 'none'`
+// (see each screen's SlideTransition style) — verified 2026-09-01 that
+// without it, a drag starting on or crossing any <Text> (a Pokémon name, a
+// header, a chip label — RNW Text has no default userSelect, so it's
+// selectable by default) gets swallowed by the browser's native text-
+// selection drag instead of ever reaching this gesture. Content wrapped in
+// nothing but images/icons wouldn't need it, but these screens are full of
+// text, so it's not optional here.
+export function useSectionSwipeGesture(active: PokedexSection) {
+  const router = useRouter();
+
+  return Gesture.Pan()
+    .activeOffsetX([-24, 24])
+    .failOffsetY([-10, 10])
+    .onEnd((e) => {
+      const activeIdx = sectionIndex(active);
+      const swipedToNext = e.translationX < -SWIPE_DISTANCE_THRESHOLD || e.velocityX < -SWIPE_VELOCITY_THRESHOLD;
+      const swipedToPrev = e.translationX > SWIPE_DISTANCE_THRESHOLD || e.velocityX > SWIPE_VELOCITY_THRESHOLD;
+      const targetIdx = swipedToNext ? activeIdx + 1 : swipedToPrev ? activeIdx - 1 : activeIdx;
+      if (targetIdx === activeIdx || targetIdx < 0 || targetIdx >= SECTIONS.length) return;
+      const target = SECTIONS[targetIdx];
+      const originHref = SECTIONS[activeIdx].href;
+      router.replace(withReturnTo(target.href, originHref) as never);
+    });
 }
 
 // Real navigation (router.replace) between three sibling routes, not local
