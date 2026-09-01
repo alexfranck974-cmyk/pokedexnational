@@ -1,7 +1,9 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, View, Text, Pressable, type LayoutChangeEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useT } from '@/lib/locale';
+import { useMotion } from '@/lib/motion';
 import { withReturnTo } from '@/lib/navigation';
 import type { StringKey } from '@/lib/strings';
 
@@ -34,19 +36,45 @@ interface Props {
 export function PokedexSectionTabs({ active }: Props) {
   const router = useRouter();
   const t = useT();
+  const { animationsEnabled } = useMotion();
+  const activeIndex = sectionIndex(active);
+
+  // Measured (not percentage-based) so the sliding pill lines up exactly with
+  // the flex:1 tab buttons regardless of screen width — recomputed on layout/
+  // rotation via onLayout rather than assumed from window dimensions.
+  const [rowWidth, setRowWidth] = useState(0);
+  const indicatorAnim = useRef(new Animated.Value(activeIndex)).current;
+  useEffect(() => {
+    if (!animationsEnabled) { indicatorAnim.setValue(activeIndex); return; }
+    Animated.spring(indicatorAnim, { toValue: activeIndex, useNativeDriver: false, bounciness: 6 }).start();
+    // useNativeDriver: false — this animates `left`/`width` (layout
+    // properties), which the native driver can't touch, only transform/opacity.
+  }, [activeIndex, animationsEnabled, indicatorAnim]);
+
+  const tabWidth = rowWidth / SECTIONS.length;
+  const indicatorLeft = indicatorAnim.interpolate({
+    inputRange: SECTIONS.map((_, i) => i),
+    outputRange: SECTIONS.map((_, i) => i * tabWidth),
+  });
+
+  const onRowLayout = (e: LayoutChangeEvent) => setRowWidth(e.nativeEvent.layout.width);
+
   const styles = useThemedStyles((colors) => ({
-    row: {
-      flexDirection: 'row' as const, gap: spacing.xs, padding: spacing.sm,
-      backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
-    },
-    tabBtn: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, alignItems: 'center' as const },
-    tabBtnActive: { backgroundColor: colors.primary },
+    // No border/background seam of its own anymore — sits flush against the
+    // header above it (colors.bg matches the screen background) instead of
+    // reading as a separate strip.
+    row: { flexDirection: 'row' as const, padding: spacing.sm, position: 'relative' as const, backgroundColor: colors.bg },
+    indicator: { position: 'absolute' as const, top: spacing.sm, bottom: spacing.sm, borderRadius: radius.pill, backgroundColor: colors.primary },
+    tabBtn: { flex: 1, paddingVertical: 8, alignItems: 'center' as const },
     tabText: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
     tabTextActive: { color: 'white' },
   }));
 
   return (
-    <View style={styles.row}>
+    <View style={styles.row} onLayout={onRowLayout}>
+      {rowWidth > 0 && (
+        <Animated.View pointerEvents="none" style={[styles.indicator, { left: indicatorLeft, width: tabWidth }]} />
+      )}
       {SECTIONS.map(s => (
         <Pressable
           key={s.key}
@@ -55,7 +83,7 @@ export function PokedexSectionTabs({ active }: Props) {
             const originHref = SECTIONS.find(sec => sec.key === active)?.href ?? '/pokedex';
             router.replace(withReturnTo(s.href, originHref) as never);
           }}
-          style={[styles.tabBtn, s.key === active && styles.tabBtnActive]}>
+          style={styles.tabBtn}>
           <Text style={[styles.tabText, s.key === active && styles.tabTextActive]}>{t(s.labelKey)}</Text>
         </Pressable>
       ))}
