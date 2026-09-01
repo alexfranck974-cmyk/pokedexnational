@@ -75,6 +75,14 @@ function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
+// One flattened row of the Extensions tab's ScrollView — see
+// buildExtensionsFlatRows for why this needs to be a flat array at all.
+type ExtensionsFlatRow =
+  | { type: 'region'; key: string; label: string; count: number; collapsed: boolean; onToggle: () => void }
+  | { type: 'series'; key: string; label: string; count: number; collapsed: boolean; onToggle: () => void }
+  | { type: 'pinnedGrid'; key: string; sets: TcgSetInfo[] }
+  | { type: 'catalogSetRow'; key: string; set: TcgSetInfo };
+
 function numColsFor(width: number): number {
   if (width < 600) return 3;
   if (width < 1024) return 5;
@@ -226,6 +234,56 @@ export default function FavoritesScreen() {
     if (next.has(regionId)) next.delete(regionId); else next.add(regionId);
     return next;
   });
+
+  // Flattens the pinned-goals + catalog sections (region -> series -> sets)
+  // into one array of direct ScrollView children, so region/series headers
+  // can be passed to stickyHeaderIndices — RN's ScrollView only sticks
+  // *direct* children, not arbitrarily nested ones, which is what the old
+  // per-group <View> wrapping prevented. Region/series headers are
+  // normalized into one shape here (they render identically either way)
+  // instead of the old duplicated pinned/catalog header JSX.
+  const buildExtensionsFlatRows = (groups: typeof catalogGroups, kind: 'pinned' | 'catalog'): ExtensionsFlatRow[] => {
+    const rows: ExtensionsFlatRow[] = [];
+    for (const group of groups) {
+      const regionCollapsed = collapsedRegions.has(group.id);
+      const totalCount = group.subgroups.reduce((n, sg) => n + sg.sets.length, 0);
+      rows.push({
+        type: 'region', key: `${kind}-region:${group.id}`, label: group.label, count: totalCount,
+        collapsed: regionCollapsed, onToggle: () => toggleRegionCollapsed(group.id),
+      });
+      if (regionCollapsed) continue;
+      for (const subgroup of group.subgroups) {
+        // Pinned/catalog collapse independently even for the "same" series —
+        // see collapsedSeries' own comment above.
+        const seriesKey = kind === 'pinned' ? `pinned:${subgroup.id}` : subgroup.id;
+        if (subgroup.label != null) {
+          const seriesCollapsed = collapsedSeries.has(seriesKey);
+          rows.push({
+            type: 'series', key: `${kind}-series:${subgroup.id}`, label: subgroup.label, count: subgroup.sets.length,
+            collapsed: seriesCollapsed, onToggle: () => toggleSeriesCollapsed(seriesKey),
+          });
+          if (seriesCollapsed) continue;
+        }
+        if (kind === 'pinned') {
+          rows.push({ type: 'pinnedGrid', key: `pinned-grid:${subgroup.id}`, sets: subgroup.sets });
+        } else {
+          for (const set of subgroup.sets) rows.push({ type: 'catalogSetRow', key: `catalog-row:${set.id}`, set });
+        }
+      }
+    }
+    return rows;
+  };
+  const extensionsFlatRows = useMemo(
+    () => [...buildExtensionsFlatRows(pinnedGroups, 'pinned'), ...buildExtensionsFlatRows(catalogGroups, 'catalog')],
+    [pinnedGroups, catalogGroups, collapsedRegions, collapsedSeries],
+  );
+  const extensionsStickyIndices = useMemo(
+    () => extensionsFlatRows.reduce<number[]>((acc, row, i) => {
+      if (row.type === 'region' || row.type === 'series') acc.push(i);
+      return acc;
+    }, []),
+    [extensionsFlatRows],
+  );
 
   const { data: allArtists = [], isLoading: artistsLoading } = useTcgArtists();
   // Owned count per artist — computed client-side from cards already fetched
@@ -691,23 +749,31 @@ export default function FavoritesScreen() {
       alignItems: 'center' as const, justifyContent: 'center' as const, overflow: 'hidden' as const,
       backgroundColor: colors.surfaceAlt,
     },
-    goalsGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm },
+    goalsGrid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm, marginBottom: spacing.xs },
     catalogList: { padding: spacing.md, gap: spacing.lg, paddingBottom: TAB_BAR_CLEARANCE },
+    // Extensions' own flattened rows (see buildExtensionsFlatRows) sit as
+    // direct ScrollView children instead of nested per-group Views, so the
+    // rhythm between sections/rows comes from each row's own margin below
+    // rather than a container `gap` (which would otherwise apply between
+    // *every* row, headers included, cramming the sticky headers too).
+    catalogListFlat: { padding: spacing.md, paddingBottom: TAB_BAR_CLEARANCE },
     catalogSection: { gap: spacing.xs },
+    // backgroundColor here is what keeps a stuck header opaque instead of
+    // showing rows scrolling by underneath it.
     catalogSectionHeader: {
       flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
-      paddingVertical: 4,
+      paddingVertical: 4, marginTop: spacing.lg, backgroundColor: colors.bg,
     },
     catalogSectionTitle: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted, textTransform: 'uppercase' as const, marginBottom: 2 },
     catalogSeriesHeader: {
       flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
-      paddingVertical: 4, paddingLeft: spacing.sm,
+      paddingVertical: 4, paddingLeft: spacing.sm, marginTop: spacing.xs, backgroundColor: colors.bg,
     },
     catalogSeriesTitle: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.textDim },
     catalogSeriesLogo: { width: 72, height: 22, marginRight: spacing.xs },
     catalogRow: {
       flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm,
-      backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm, ...shadow.sm,
+      backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.xs, ...shadow.sm,
     },
     catalogRowPressed: { backgroundColor: colors.surfaceAlt },
     catalogRowIcon: { width: 26, height: 26 },
@@ -1320,131 +1386,88 @@ export default function FavoritesScreen() {
         </>
       ) : (
         <ScrollView
-          contentContainerStyle={styles.catalogList}
+          contentContainerStyle={styles.catalogListFlat}
+          stickyHeaderIndices={extensionsStickyIndices}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           {...hideOnScrollProps}>
-          {pinnedGroups.map(group => {
-            const collapsed = collapsedRegions.has(group.id);
-            const totalPinned = group.subgroups.reduce((n, sg) => n + sg.sets.length, 0);
-            return (
-              <View key={`pinned-${group.id}`} style={styles.catalogSection}>
+          {extensionsFlatRows.map(row => {
+            if (row.type === 'region') {
+              return (
                 <Pressable
-                  onPress={() => toggleRegionCollapsed(group.id)}
+                  key={row.key}
+                  onPress={row.onToggle}
                   style={styles.catalogSectionHeader}
                   accessibilityRole="button"
-                  accessibilityLabel={t(collapsed ? 'favorites.a11yExpandRegion' : 'favorites.a11yCollapseRegion', { region: group.label })}>
-                  <Text style={styles.catalogSectionTitle}>{group.label} · {totalPinned}</Text>
-                  <Ionicons name={collapsed ? 'chevron-forward' : 'chevron-down'} size={16} color={colors.textMuted} />
+                  accessibilityLabel={t(row.collapsed ? 'favorites.a11yExpandRegion' : 'favorites.a11yCollapseRegion', { region: row.label })}>
+                  <Text style={styles.catalogSectionTitle}>{row.label} · {row.count}</Text>
+                  <Ionicons name={row.collapsed ? 'chevron-forward' : 'chevron-down'} size={16} color={colors.textMuted} />
                 </Pressable>
-                {!collapsed && group.subgroups.map(subgroup => {
-                  const seriesKey = `pinned:${subgroup.id}`;
-                  const seriesCollapsed = subgroup.label != null && collapsedSeries.has(seriesKey);
-                  return (
-                    <View key={subgroup.id}>
-                      {subgroup.label != null && (
-                        <Pressable
-                          onPress={() => toggleSeriesCollapsed(seriesKey)}
-                          style={styles.catalogSeriesHeader}
-                          accessibilityRole="button"
-                          accessibilityLabel={t(seriesCollapsed ? 'favorites.a11yExpandSeries' : 'favorites.a11yCollapseSeries', { series: subgroup.label })}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                            {getSeriesLogo(subgroup.label) && (
-                              <Image source={{ uri: getSeriesLogo(subgroup.label) }} style={styles.catalogSeriesLogo} resizeMode="contain" />
-                            )}
-                            <Text style={styles.catalogSeriesTitle}>{subgroup.label} · {subgroup.sets.length}</Text>
-                          </View>
-                          <Ionicons name={seriesCollapsed ? 'chevron-forward' : 'chevron-down'} size={14} color={colors.textDim} />
-                        </Pressable>
-                      )}
-                      {!seriesCollapsed && (
-                        <View style={styles.goalsGrid}>
-                          {subgroup.sets.map(set => {
-                            const setName = setFlagLabel(set.name, set.region);
-                            return (
-                              <SetGoalTile
-                                key={set.id}
-                                userId={userId}
-                                setId={set.id}
-                                setName={setName}
-                                total={set.cardCount}
-                                symbol={set.symbol}
-                                onPress={() => router.push(withReturnTo(`/pinned-set/${set.id}`, '/favorites') as never)}
-                                onUnpin={() => setDeleteTarget({ kind: 'setGoal', id: set.id, name: setName })}
-                              />
-                            );
-                          })}
-                        </View>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            );
-          })}
-
-          {catalogGroups.map(group => {
-            const collapsed = collapsedRegions.has(group.id);
-            const totalSets = group.subgroups.reduce((n, sg) => n + sg.sets.length, 0);
-            return (
-              <View key={group.id} style={styles.catalogSection}>
+              );
+            }
+            if (row.type === 'series') {
+              return (
                 <Pressable
-                  onPress={() => toggleRegionCollapsed(group.id)}
-                  style={styles.catalogSectionHeader}
+                  key={row.key}
+                  onPress={row.onToggle}
+                  style={styles.catalogSeriesHeader}
                   accessibilityRole="button"
-                  accessibilityLabel={t(collapsed ? 'favorites.a11yExpandRegion' : 'favorites.a11yCollapseRegion', { region: group.label })}>
-                  <Text style={styles.catalogSectionTitle}>{group.label} · {totalSets}</Text>
-                  <Ionicons name={collapsed ? 'chevron-forward' : 'chevron-down'} size={16} color={colors.textMuted} />
+                  accessibilityLabel={t(row.collapsed ? 'favorites.a11yExpandSeries' : 'favorites.a11yCollapseSeries', { series: row.label })}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    {getSeriesLogo(row.label) && (
+                      <Image source={{ uri: getSeriesLogo(row.label) }} style={styles.catalogSeriesLogo} resizeMode="contain" />
+                    )}
+                    <Text style={styles.catalogSeriesTitle}>{row.label} · {row.count}</Text>
+                  </View>
+                  <Ionicons name={row.collapsed ? 'chevron-forward' : 'chevron-down'} size={14} color={colors.textDim} />
                 </Pressable>
-                {!collapsed && group.subgroups.map(subgroup => {
-                  const seriesCollapsed = subgroup.label != null && collapsedSeries.has(subgroup.id);
-                  return (
-                    <View key={subgroup.id}>
-                      {subgroup.label != null && (
-                        <Pressable
-                          onPress={() => toggleSeriesCollapsed(subgroup.id)}
-                          style={styles.catalogSeriesHeader}
-                          accessibilityRole="button"
-                          accessibilityLabel={t(seriesCollapsed ? 'favorites.a11yExpandSeries' : 'favorites.a11yCollapseSeries', { series: subgroup.label })}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                            {getSeriesLogo(subgroup.label) && (
-                              <Image source={{ uri: getSeriesLogo(subgroup.label) }} style={styles.catalogSeriesLogo} resizeMode="contain" />
-                            )}
-                            <Text style={styles.catalogSeriesTitle}>{subgroup.label} · {subgroup.sets.length}</Text>
-                          </View>
-                          <Ionicons name={seriesCollapsed ? 'chevron-forward' : 'chevron-down'} size={14} color={colors.textDim} />
-                        </Pressable>
-                      )}
-                      {!seriesCollapsed && subgroup.sets.map(set => {
-                        const year = set.releaseDate ? new Date(set.releaseDate).getFullYear() : null;
-                        return (
-                          <Pressable
-                            key={set.id}
-                            onPress={() => router.push(withReturnTo(`/pinned-set/${set.id}`, '/favorites') as never)}
-                            style={({ pressed }) => [styles.catalogRow, pressed && styles.catalogRowPressed]}>
-                            {set.symbol ? (
-                              <Image source={{ uri: set.symbol }} style={styles.catalogRowIcon} resizeMode="contain" />
-                            ) : (
-                              <View style={styles.catalogRowIcon} />
-                            )}
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.catalogRowLabel} numberOfLines={1}>{setFlagLabel(set.name, set.region)}</Text>
-                              <Text style={styles.catalogRowCaption}>
-                                {year ? `${year} · ` : ''}{t('favorites.setCardsCount', { n: set.cardCount })}
-                              </Text>
-                            </View>
-                            <Pressable
-                              hitSlop={8}
-                              onPress={(e) => { e.stopPropagation(); toggleGoal.mutate({ setId: set.id, currentlyPinned: false }); }}
-                              style={styles.catalogRowPin}>
-                              <Text style={styles.catalogRowPinText}>{t('favorites.startPin')}</Text>
-                            </Pressable>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  );
-                })}
-              </View>
+              );
+            }
+            if (row.type === 'pinnedGrid') {
+              return (
+                <View key={row.key} style={styles.goalsGrid}>
+                  {row.sets.map(set => {
+                    const setName = setFlagLabel(set.name, set.region);
+                    return (
+                      <SetGoalTile
+                        key={set.id}
+                        userId={userId}
+                        setId={set.id}
+                        setName={setName}
+                        total={set.cardCount}
+                        symbol={set.symbol}
+                        onPress={() => router.push(withReturnTo(`/pinned-set/${set.id}`, '/favorites') as never)}
+                        onUnpin={() => setDeleteTarget({ kind: 'setGoal', id: set.id, name: setName })}
+                      />
+                    );
+                  })}
+                </View>
+              );
+            }
+            const set = row.set;
+            const year = set.releaseDate ? new Date(set.releaseDate).getFullYear() : null;
+            return (
+              <Pressable
+                key={row.key}
+                onPress={() => router.push(withReturnTo(`/pinned-set/${set.id}`, '/favorites') as never)}
+                style={({ pressed }) => [styles.catalogRow, pressed && styles.catalogRowPressed]}>
+                {set.symbol ? (
+                  <Image source={{ uri: set.symbol }} style={styles.catalogRowIcon} resizeMode="contain" />
+                ) : (
+                  <View style={styles.catalogRowIcon} />
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.catalogRowLabel} numberOfLines={1}>{setFlagLabel(set.name, set.region)}</Text>
+                  <Text style={styles.catalogRowCaption}>
+                    {year ? `${year} · ` : ''}{t('favorites.setCardsCount', { n: set.cardCount })}
+                  </Text>
+                </View>
+                <Pressable
+                  hitSlop={8}
+                  onPress={(e) => { e.stopPropagation(); toggleGoal.mutate({ setId: set.id, currentlyPinned: false }); }}
+                  style={styles.catalogRowPin}>
+                  <Text style={styles.catalogRowPinText}>{t('favorites.startPin')}</Text>
+                </Pressable>
+              </Pressable>
             );
           })}
         </ScrollView>
