@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, View, Text, Pressable, type LayoutChangeEvent } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useT } from '@/lib/locale';
 import { useMotion } from '@/lib/motion';
@@ -38,6 +39,17 @@ export function PokedexSectionTabs({ active }: Props) {
   const t = useT();
   const { animationsEnabled } = useMotion();
   const activeIndex = sectionIndex(active);
+  // pokedex/favorites/wishlist are each their own (hidden, href:null for two
+  // of them) Tabs.Screen — react-native-web's stock pointerEvents="none" on
+  // an *inactive* screen's wrapper doesn't actually cascade to block clicks
+  // on nested Pressables several levels down (verified 2026-09-01: a stale
+  // screen's own copy of this exact component, sitting at the same on-screen
+  // position, kept winning the hit-test over the newly-focused screen's copy
+  // after a second tap-driven hop — e.g. Pokédex→Collection→Wishlist got
+  // stuck on Collection). useIsFocused + an explicit disabled/pointerEvents
+  // guard here doesn't rely on that cascade at all, so it isn't affected by
+  // whatever's actually broken in it.
+  const isFocused = useIsFocused();
 
   // Measured (not percentage-based) so the sliding pill lines up exactly with
   // the flex:1 tab buttons regardless of screen width — recomputed on layout/
@@ -71,13 +83,14 @@ export function PokedexSectionTabs({ active }: Props) {
   }));
 
   return (
-    <View style={styles.row} onLayout={onRowLayout}>
+    <View style={styles.row} onLayout={onRowLayout} pointerEvents={isFocused ? 'auto' : 'none'}>
       {rowWidth > 0 && (
         <Animated.View pointerEvents="none" style={[styles.indicator, { left: indicatorLeft, width: tabWidth }]} />
       )}
       {SECTIONS.map(s => (
         <Pressable
           key={s.key}
+          disabled={!isFocused}
           onPress={() => {
             if (s.key === active) return;
             const originHref = SECTIONS.find(sec => sec.key === active)?.href ?? '/pokedex';
