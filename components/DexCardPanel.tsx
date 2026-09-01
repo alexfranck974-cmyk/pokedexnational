@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactElement } from 'react';
-import { View, Text, TextInput, ActivityIndicator, Pressable, Image, ScrollView, type RefreshControlProps } from 'react-native';
+import { View, Text, TextInput, ActivityIndicator, Pressable, Image, ScrollView, StyleSheet, type RefreshControlProps } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { CardZoomModal } from './CardZoomModal';
@@ -107,7 +107,7 @@ export function DexCardPanel({ cards, cardsLoading, userId, refreshControl, coun
     list: { paddingBottom: TAB_BAR_CLEARANCE },
     row: {
       flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, padding: spacing.sm,
-      borderBottomWidth: 1, borderColor: colors.border, backgroundColor: colors.surface,
+      borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, backgroundColor: colors.surface,
     },
     sprite: { width: 40, height: 40 },
     info: { gap: 2, marginRight: spacing.sm },

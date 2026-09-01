@@ -81,10 +81,19 @@ function numColsFor(width: number): number {
   return 8;
 }
 
+// Styled as a binder index tab, not a pill filter chip — top corners only,
+// the active one raised and shadowed to read as "the page you're on", the
+// rest sitting flatter/lower like tabs tucked behind it. Reinforces the same
+// "classeur" language as the pull-tab drawer (CollectionToolsDrawer) instead
+// of two unrelated visual idioms on the same screen.
 const Chip = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => {
-  const chipStyles = useThemedStyles((colors) => ({
-    chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
-    active: { backgroundColor: colors.primary },
+  const chipStyles = useThemedStyles((colors, shadow) => ({
+    chip: {
+      paddingHorizontal: 14, paddingVertical: 8,
+      borderTopLeftRadius: radius.md, borderTopRightRadius: radius.md,
+      backgroundColor: colors.surfaceAlt, marginTop: 5,
+    },
+    active: { backgroundColor: colors.primary, marginTop: 0, ...shadow.sm },
     text: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
     textActive: { color: 'white' },
   }));
@@ -573,7 +582,7 @@ export default function FavoritesScreen() {
     header: { padding: spacing.md, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border, gap: spacing.sm, ...shadow.sm },
     titleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
     title: { fontSize: 22, fontFamily: fonts.display, color: colors.text },
-    chipRow: { flexDirection: 'row' as const, gap: spacing.xs },
+    chipRow: { flexDirection: 'row' as const, alignItems: 'flex-end' as const, gap: spacing.xs },
 
     teamList: { flex: 1, padding: spacing.md, gap: spacing.md },
     newTeamRow: { flexDirection: 'row' as const, gap: spacing.sm },
