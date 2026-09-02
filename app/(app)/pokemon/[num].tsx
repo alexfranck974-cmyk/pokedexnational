@@ -203,7 +203,7 @@ export default function PokemonDetail() {
     heroCount: { fontSize: 16, fontFamily: fonts.monoBold, color: heroText },
     heroAcquired: { fontSize: 10, fontFamily: fonts.body, color: heroTextMuted },
     noteButton: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 3, marginTop: 4, maxWidth: 140 },
-    noteButtonText: { fontSize: 10, fontFamily: fonts.body, color: heroTextMuted },
+    noteButtonText: { fontSize: 10, fontFamily: fonts.body, color: heroTextMuted, flexShrink: 1, minWidth: 0 },
     noteInput: {
       fontSize: 10, fontFamily: fonts.body, color: heroText, marginTop: 4, minWidth: 100, maxWidth: 140,
       paddingVertical: 2, paddingHorizontal: 6, borderRadius: radius.sm, backgroundColor: heroSurface,

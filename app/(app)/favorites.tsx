@@ -748,6 +748,10 @@ export default function FavoritesScreen() {
     // frame around the "Insérer à gauche/droite / Supprimer" tap targets).
     organizeToolbar: { padding: spacing.md, gap: spacing.sm, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
     organizeHint: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
+    organizeChipRow: {
+      flexDirection: 'row' as const, flexWrap: 'wrap' as const, justifyContent: 'center' as const,
+      alignItems: 'flex-end' as const, gap: spacing.xs,
+    },
     organizeSlot: {
       flex: 1, borderRadius: radius.bubble, borderWidth: 2, borderColor: colors.warning,
       alignItems: 'center' as const, justifyContent: 'center' as const, overflow: 'hidden' as const,
@@ -1031,7 +1035,7 @@ export default function FavoritesScreen() {
               <Text style={styles.organizeHint}>
                 {t(armedTool ? 'favorites.organizeHintArmed' : 'favorites.organizeHintIdle')}
               </Text>
-              <View style={styles.chipRow}>
+              <View style={styles.organizeChipRow}>
                 <Chip label={t('favorites.organizeInsertLeft')} active={armedTool === 'insertLeft'} onPress={() => setArmedTool('insertLeft')} />
                 <Chip label={t('favorites.organizeInsertRight')} active={armedTool === 'insertRight'} onPress={() => setArmedTool('insertRight')} />
                 <Chip label={t('favorites.organizeDelete')} active={armedTool === 'delete'} onPress={() => setArmedTool('delete')} />
