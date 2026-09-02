@@ -108,8 +108,9 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
 // Fetches every card in a set, sweeping back over whatever failed (with a
 // real cooldown in between, not just fetchJson's sub-second backoff) up to
 // RETRY_SWEEPS times before giving up on what's left. toRow returning null
-// (Trainer/Energy, no dex link) is a correct exclusion, not a failure —
-// mapLimit only ever puts genuinely-errored fetches in `failed`.
+// (no image available anywhere — see toRow's own comment) is a correct
+// exclusion, not a failure — mapLimit only ever puts genuinely-errored
+// fetches in `failed`.
 async function fetchAllCards(
   cardRefs: { id: string }[], locale: string, region: 'jp' | 'cn' | 'global', releaseDate: string | null,
 ): Promise<NonNullable<ReturnType<typeof toRow>>[]> {
@@ -145,20 +146,34 @@ interface CardDetail {
   illustrator?: string;
   image?: string;
   dexId?: number[];
+  category?: 'Pokemon' | 'Trainer' | 'Energy';
   set: { id: string; name: string };
   pricing?: { cardmarket?: { trend?: number | null; avg?: number | null; low?: number | null; updated?: string | null } | null };
 }
 
 const REGION_SERIES_LABEL: Record<'jp' | 'cn', string> = { jp: 'Japon', cn: 'Chine' };
 
+// TCGdex's own category string ("Pokemon", no accent) vs. the accented
+// "Pokémon" the rest of tcg_cards already uses (pokemontcg.io's own value,
+// see sync-tcg-cards.ts and 026_tcg_cards_supertype.sql's column default) —
+// normalized here so supertype is one consistent value across global/jp/cn
+// rows instead of silently forking the filter/grouping vocabulary.
+const SUPERTYPE_LABEL: Record<NonNullable<CardDetail['category']>, string> = {
+  Pokemon: 'Pokémon',
+  Trainer: 'Trainer',
+  Energy: 'Energy',
+};
+
 function toRow(c: CardDetail, region: 'jp' | 'cn' | 'global', releaseDate: string | null) {
-  const dex = c.dexId?.find(n => n >= 1 && n <= 1025);
-  if (!dex) return null; // skip Trainer/Energy cards (no dex link)
+  const dex = c.dexId?.find(n => n >= 1 && n <= 1025) ?? null;
   // TCGdex doesn't have image assets for every card yet (notably: all zh-cn cards
   // seen so far, several very recent JA sets, and the "en" gap-fill sets below) —
   // fall back to the Pokémon's official-artwork sprite so the row (and ownership
-  // tracking) still exists.
-  const spriteFallback = SPRITE_BY_DEX.get(dex);
+  // tracking) still exists. Trainer/Energy cards (dex === null) have no species to
+  // fall back to, so they only get a row here when TCGdex has real art for them —
+  // see insertMissingTrainerEnergyCards in sync-tcgplayer-images.ts for the
+  // TCGPlayer-sourced backfill that catches the ones TCGdex doesn't (yet).
+  const spriteFallback = dex ? SPRITE_BY_DEX.get(dex) : undefined;
   const imageSmall = c.image ? `${c.image}/low.webp` : spriteFallback;
   const imageLarge = c.image ? `${c.image}/high.webp` : spriteFallback ?? null;
   if (!imageSmall) return null;
@@ -176,6 +191,7 @@ function toRow(c: CardDetail, region: 'jp' | 'cn' | 'global', releaseDate: strin
     card_number: c.localId,
     rarity: c.rarity ?? null,
     artist: c.illustrator ?? null,
+    supertype: c.category ? SUPERTYPE_LABEL[c.category] : 'Pokémon',
     image_small: imageSmall,
     image_large: imageLarge,
     release_date: releaseDate,

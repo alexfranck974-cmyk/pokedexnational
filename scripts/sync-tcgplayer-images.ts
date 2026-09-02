@@ -38,6 +38,7 @@ export const SET_TO_TCGPLAYER_GROUP: Record<string, { categoryId: number; groupI
   'jp-M3': { categoryId: 85, groupId: 24600 }, // M3: Nihil Zero
   'jp-M4': { categoryId: 85, groupId: 24653 }, // M4: Ninja Spinner
   'jp-M5': { categoryId: 85, groupId: 24711 }, // M5: Abyss Eye
+  'jp-M6': { categoryId: 85, groupId: 24791 }, // M6: Storm Emeralda
   'jp-M-P': { categoryId: 85, groupId: 24423 }, // M-P Promotional Cards
   'jp-SV11B': { categoryId: 85, groupId: 24349 }, // SV11B: Black Bolt
   'jp-SV11W': { categoryId: 85, groupId: 24350 }, // SV11W: White Flare
@@ -208,12 +209,91 @@ async function insertMissingMepCards() {
   console.log(`  inserted ${toInsert.length}/${MEP_MISSING_CARDS.length}`);
 }
 
+// Trainer/Energy/Stadium cards TCGdex has no art for yet, so
+// sync-tcgdex-cards.ts's toRow() never created a row for them at all (unlike
+// Pokémon cards, they have no dex_num to fall back to a species sprite with —
+// see toRow's comment). Unlike MEP_MISSING_CARDS above, these don't need
+// hand-verification: a Trainer/Energy card has no dex_num to get wrong, so an
+// automatic Number-matched insert (typed off TCGPlayer's own "CardType"
+// field) is safe. Only inserts ids that don't exist yet, so it never
+// duplicates or overwrites a TCGdex-sourced row once TCGdex adds real art —
+// same "stopgap, not a permanent override" relationship as insertMissingMepCards.
+async function insertMissingTrainerEnergyCards(setId: string, group: { categoryId: number; groupId: number }) {
+  const { data: sample } = await supabase
+    .from('tcg_cards')
+    .select('set_name, series, release_date, region')
+    .eq('set_id', setId)
+    .limit(1)
+    .maybeSingle();
+  if (!sample) return; // no rows for this set at all yet — nothing to anchor set-level metadata to
+
+  const { data: existing, error } = await supabase
+    .from('tcg_cards')
+    .select('id')
+    .eq('set_id', setId)
+    .returns<{ id: string }[]>();
+  if (error) throw error;
+  const existingIds = new Set(existing.map(r => r.id));
+
+  const { results: products } = await fetchJson<TcgPlayerListResponse<TcgPlayerProduct>>(
+    `https://tcgcsv.com/tcgplayer/${group.categoryId}/${group.groupId}/products`,
+  );
+
+  // Bundle products (e.g. "Legendary Summit [Set of 2]") carry a multi-card
+  // Number like "073/076 / 074/076" — a real single-card Number never has a
+  // space in it, so this also doubles as the collision guard numberKey()
+  // alone doesn't provide (its left-of-"/" parse would otherwise fold a
+  // bundle onto the same key as one of the individual cards it bundles).
+  const isBundle = (raw: string) => raw.includes(' ');
+
+  const toInsert: Record<string, unknown>[] = [];
+  const seenIds = new Set<string>();
+  for (const p of products) {
+    const numberField = p.extendedData?.find(e => e.name === 'Number')?.value;
+    if (!numberField || !p.imageUrl || isBundle(numberField)) continue;
+    // Every real Pokémon product prints an "HP" field — a far more reliable
+    // discriminator than "CardType", which is the elemental type ("Grass",
+    // "Fire"...) on Pokémon products but is inconsistently present on
+    // Trainer ones (some Tool cards like "Custom Vest" carry no CardType
+    // field at all here, confirmed 2026-09-02). Skip anything with HP —
+    // that's a Pokémon row, sourced from TCGdex (or the hand-verified mep
+    // list above), not this pass. Everything left without HP is Trainer or
+    // Energy; CardType containing "Energy" ("Special Energy" etc.) is the
+    // only case worth telling apart, everything else defaults to Trainer.
+    if (p.extendedData?.some(e => e.name === 'HP')) continue;
+    const cardType = p.extendedData?.find(e => e.name === 'CardType')?.value ?? '';
+    const supertype = cardType.includes('Energy') ? 'Energy' : 'Trainer';
+    const cardNumber = numberKey(numberField);
+    const id = `${setId}-${cardNumber}`;
+    if (existingIds.has(id) || seenIds.has(id)) continue;
+    seenIds.add(id);
+    const rarity = p.extendedData?.find(e => e.name === 'Rarity')?.value ?? null;
+    const image = `https://tcgplayer-cdn.tcgplayer.com/product/${p.productId}_400w.jpg`;
+    toInsert.push({
+      id, name: p.name, dex_num: null, set_id: setId, set_name: sample.set_name,
+      card_number: cardNumber, rarity, artist: null,
+      image_small: image, image_large: image,
+      release_date: sample.release_date, series: sample.series,
+      cardmarket_trend_eur: null, cardmarket_avg_eur: null, cardmarket_low_eur: null, cardmarket_updated_at: null,
+      region: sample.region, supertype, updated_at: new Date().toISOString(),
+    });
+  }
+  if (!toInsert.length) { console.log(`  ${setId}: no missing Trainer/Energy cards`); return; }
+  const { error: insErr } = await supabase.from('tcg_cards').insert(toInsert);
+  if (insErr) throw insErr;
+  console.log(`  ${setId}: inserted ${toInsert.length} Trainer/Energy card(s)`);
+}
+
 async function main() {
   for (const [setId, group] of Object.entries(SET_TO_TCGPLAYER_GROUP)) {
     console.log(`\n=== ${setId} ===`);
     await syncSet(setId, group);
   }
   await insertMissingMepCards();
+  console.log('\n=== missing Trainer/Energy cards ===');
+  for (const [setId, group] of Object.entries(SET_TO_TCGPLAYER_GROUP)) {
+    await insertMissingTrainerEnergyCards(setId, group);
+  }
   console.log('\nDone.');
 }
 
