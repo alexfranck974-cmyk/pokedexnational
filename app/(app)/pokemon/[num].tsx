@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, Image, ActivityIndicator, Pressable, ScrollView, PanResponder } from 'react-native';
+import { View, Text, Image, ActivityIndicator, Pressable, ScrollView, PanResponder, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,7 +21,7 @@ import { useCardsForPokemon } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
 import {
   useUserCards, useLedgerCardsForDex, useUserWishlist, useToggleCard, useToggleWish, useCardAcquiredAt,
-  useOwnedCardQuantities, useAdjustOwnedCardQuantity, useOwnedCardFinishes,
+  useOwnedCardQuantities, useAdjustOwnedCardQuantity, useOwnedCardFinishes, useCardNote, useUpdateCardNote,
 } from '@/lib/collection';
 import { useFavorites, useToggleFavorite, useShowcase, useToggleShowcase, VITRINE_LIMIT } from '@/lib/favorites';
 import { toast } from '@/lib/toast';
@@ -30,6 +30,7 @@ import { useHistoryBackGuard } from '@/lib/history-back-guard';
 import { useLocale, useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { BackButton } from '@/components/BackButton';
+import { hrefToSection } from '@/components/PokedexSectionTabs';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -64,6 +65,17 @@ export default function PokemonDetail() {
   const { data: ledgerSet = new Set<string>() } = useLedgerCardsForDex(userId, num);
   const { data: wishedSet = new Set<string>() } = useUserWishlist(userId, num);
   const { data: acquiredAt } = useCardAcquiredAt(userId, num);
+  const { data: note } = useCardNote(userId, num);
+  const updateNote = useUpdateCardNote();
+  const [editingNote, setEditingNote] = useState(false);
+  const [noteDraft, setNoteDraft] = useState('');
+  const fromPokedex = hrefToSection(safeDecodeURIComponent(from ?? '')) === 'pokedex';
+  const commitNote = () => {
+    setEditingNote(false);
+    const trimmed = noteDraft.trim();
+    if (trimmed === (note ?? '')) return;
+    updateNote.mutate({ dexNum: num, note: trimmed || null });
+  };
   const toggle = useToggleCard();
   const toggleWish = useToggleWish();
   const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
@@ -190,6 +202,13 @@ export default function PokemonDetail() {
     heroName: { fontSize: 20, fontFamily: fonts.display, color: heroText },
     heroCount: { fontSize: 16, fontFamily: fonts.monoBold, color: heroText },
     heroAcquired: { fontSize: 10, fontFamily: fonts.body, color: heroTextMuted },
+    noteButton: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 3, marginTop: 4, maxWidth: 140 },
+    noteButtonText: { fontSize: 10, fontFamily: fonts.body, color: heroTextMuted },
+    noteInput: {
+      fontSize: 10, fontFamily: fonts.body, color: heroText, marginTop: 4, minWidth: 100, maxWidth: 140,
+      paddingVertical: 2, paddingHorizontal: 6, borderRadius: radius.sm, backgroundColor: heroSurface,
+      textAlign: 'right' as const,
+    },
     regionRow: { flexDirection: 'row' as const, gap: spacing.xs, padding: spacing.sm, paddingBottom: 0 },
     regionChip: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, alignItems: 'center' as const },
     regionChipActive: { backgroundColor: colors.primary },
@@ -280,6 +299,32 @@ export default function PokemonDetail() {
             <Text style={styles.heroCount}>{ledgerSet.size} / {filteredCards.length}</Text>
             {acquiredAt && (
               <Text style={styles.heroAcquired}>{t('pokemon.addedOn', { date: new Date(acquiredAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'fr-FR') })}</Text>
+            )}
+            {fromPokedex && officialSet.size > 0 && (
+              editingNote ? (
+                <TextInput
+                  style={styles.noteInput}
+                  value={noteDraft}
+                  onChangeText={setNoteDraft}
+                  placeholder={t('pokemon.notePlaceholder')}
+                  placeholderTextColor={heroTextMuted}
+                  autoFocus
+                  maxLength={140}
+                  onBlur={commitNote}
+                  onSubmitEditing={commitNote}
+                  returnKeyType="done"
+                />
+              ) : (
+                <Pressable
+                  onPress={() => { setNoteDraft(note ?? ''); setEditingNote(true); }}
+                  style={styles.noteButton}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('pokemon.noteA11yLabel')}>
+                  <Ionicons name={note ? 'bookmark' : 'pencil-outline'} size={11} color={heroTextMuted} />
+                  <Text style={styles.noteButtonText} numberOfLines={1}>{note || t('pokemon.addNote')}</Text>
+                </Pressable>
+              )
             )}
           </View>
         </View>

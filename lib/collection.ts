@@ -50,6 +50,54 @@ export function useCardAcquiredAt(userId: string | undefined, dexNum: number | u
   });
 }
 
+// Free-text personal note on the owned card slot (064_user_cards_note.sql) —
+// e.g. "cadeau de ...". Deliberately never selected with `*` anywhere else in
+// this file, so it can't leak onto the public profile view by accident (that
+// page doesn't query user_cards directly, but user_cards' own SELECT policy
+// does allow public read when is_public=true — omission here, not RLS, is
+// what keeps a note private).
+export function useCardNote(userId: string | undefined, dexNum: number | undefined) {
+  return useQuery({
+    queryKey: ['card_note', userId, dexNum],
+    enabled: !!userId && !!dexNum,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_cards')
+        .select('note')
+        .eq('user_id', userId!)
+        .eq('dex_num', dexNum!)
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.note as string | null | undefined) ?? null;
+    },
+  });
+}
+
+export function useUpdateCardNote() {
+  const qc = useQueryClient();
+  const { session } = useSession();
+  const userId = session?.user.id;
+
+  return useMutation({
+    mutationFn: async ({ dexNum, note }: { dexNum: number; note: string | null }) => {
+      if (!userId) throw new Error('Not signed in');
+      const { error } = await supabase.from('user_cards').update({ note }).eq('user_id', userId).eq('dex_num', dexNum);
+      if (error) throw error;
+    },
+    onMutate: async ({ dexNum, note }) => {
+      await qc.cancelQueries({ queryKey: ['card_note', userId, dexNum] });
+      const prev = qc.getQueryData<string | null>(['card_note', userId, dexNum]);
+      qc.setQueryData(['card_note', userId, dexNum], note);
+      return { prev };
+    },
+    onError: (_e, { dexNum }, ctx) => {
+      if (ctx && 'prev' in ctx) qc.setQueryData(['card_note', userId, dexNum], ctx.prev);
+      toast('Impossible de sauvegarder la note, réessaie.');
+    },
+    onSettled: (_r, _e, { dexNum }) => qc.invalidateQueries({ queryKey: ['card_note', userId, dexNum] }),
+  });
+}
+
 export function useToggleCard() {
   const qc = useQueryClient();
   const { session } = useSession();

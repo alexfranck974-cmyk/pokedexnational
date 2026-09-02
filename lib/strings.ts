@@ -137,6 +137,9 @@ export const STRINGS = {
     'pokemon.regionGlobal': 'Global',
     'pokemon.regionChinese': 'Chinois',
     'pokemon.regionJapanese': 'Japonais',
+    'pokemon.addNote': 'Ajouter une note',
+    'pokemon.notePlaceholder': 'ex. cadeau de...',
+    'pokemon.noteA11yLabel': 'Note sur cette carte',
 
     // Card copy sheet (finish/condition editor)
     'cardCopy.title': 'Ma copie',
@@ -693,6 +696,9 @@ export const STRINGS = {
     'pokemon.regionGlobal': 'Global',
     'pokemon.regionChinese': 'Chinese',
     'pokemon.regionJapanese': 'Japanese',
+    'pokemon.addNote': 'Add a note',
+    'pokemon.notePlaceholder': 'e.g. gift from...',
+    'pokemon.noteA11yLabel': 'Note on this card',
 
     'cardCopy.title': 'My copy',
     'cardCopy.editButton': 'Edit finish / condition',
