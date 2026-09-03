@@ -42,6 +42,10 @@ export const SET_TO_TCGPLAYER_GROUP: Record<string, { categoryId: number; groupI
   'jp-M-P': { categoryId: 85, groupId: 24423 }, // M-P Promotional Cards
   'jp-SV11B': { categoryId: 85, groupId: 24349 }, // SV11B: Black Bolt
   'jp-SV11W': { categoryId: 85, groupId: 24350 }, // SV11W: White Flare
+  // Found via a 2026-09-03 audit for sets with zero TCGdex art at all (same
+  // symptom M6 had) — both verified card #1 name match like the rest above.
+  'jp-SV5M': { categoryId: 85, groupId: 23613 }, // SV5M: Cyber Judge
+  'jp-SV-P': { categoryId: 85, groupId: 23779 }, // SV-P: Promotional Cards
 };
 
 const MAX_RETRIES = 5;
