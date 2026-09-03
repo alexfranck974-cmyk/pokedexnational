@@ -57,6 +57,23 @@ const SET_TO_TCGPLAYER_GROUP: Record<string, { categoryId: number; groupId: numb
   'jp-SV10': { categoryId: 85, groupId: 24310 }, // SV10: The Glory of Team Rocket
   'jp-M1S': { categoryId: 85, groupId: 24400 },  // m1S: Mega Symphonia (same group already used by sync-tcgplayer-images.ts)
   'jp-SV9a': { categoryId: 85, groupId: 24260 }, // SV9a: Heat Wave Arena
+
+  // Added 2026-09-03 — reused straight from sync-tcgplayer-images.ts's own
+  // SET_TO_TCGPLAYER_GROUP (same free upside: those entries were already
+  // hand-verified there for the image backfill, no separate re-verification
+  // needed since it's the same TCGPlayer group either way).
+  'jp-M1L': { categoryId: 85, groupId: 24399 },
+  'jp-M2': { categoryId: 85, groupId: 24459 },
+  'jp-M2a': { categoryId: 85, groupId: 24499 },
+  'jp-M3': { categoryId: 85, groupId: 24600 },
+  'jp-M4': { categoryId: 85, groupId: 24653 },
+  'jp-M5': { categoryId: 85, groupId: 24711 },
+  'jp-M6': { categoryId: 85, groupId: 24791 },
+  'jp-M-P': { categoryId: 85, groupId: 24423 },
+  'jp-SV11B': { categoryId: 85, groupId: 24349 },
+  'jp-SV11W': { categoryId: 85, groupId: 24350 },
+  'jp-SV5M': { categoryId: 85, groupId: 23613 },
+  'jp-SV-P': { categoryId: 85, groupId: 23779 },
 };
 
 const MAX_RETRIES = 5;
