@@ -40,6 +40,26 @@ const SET_TO_TCGPLAYER_GROUP: Record<string, { categoryId: number; groupId: numb
   me5: { categoryId: 3, groupId: 24688 },      // ME05: Pitch Black
   sv8pt5: { categoryId: 3, groupId: 23821 },   // SV: Prismatic Evolutions
 
+  // Added 2026-09-04 — a full-global-region audit found these 8 sets 100%
+  // missing a price (vs. ~1% for the rest of global), each verified by hand
+  // (card #1/#2 name cross-checked, same as everywhere else in this file).
+  // Explicitly NOT added: tk1a/tk1b (EX Trainer Kit 1: Latias & Latios) and
+  // tk2a/tk2b (EX Trainer Kit 2: Plusle & Minun) — TCGPlayer bundles both
+  // half-decks of each kit into one group with genuinely overlapping Number
+  // values (e.g. "Arcanine" and "Beldum" are both "1/12" in group 1542,
+  // one per half-deck), so a plain number-keyed match would silently assign
+  // the wrong price to about half the cards in each kit. No safe fix here
+  // without a hand-built per-card list like MEP_MISSING_CARDS, not worth it
+  // for ~24 low-value promo cards total.
+  dpp: { categoryId: 3, groupId: 1421 },     // Diamond and Pearl Promos
+  hsp: { categoryId: 3, groupId: 1453 },     // HGSS Promos
+  cel25c: { categoryId: 3, groupId: 2931 },  // Celebrations: Classic Collection
+  sve: { categoryId: 3, groupId: 24382 },    // SVE: Scarlet & Violet Energies
+  mcd14: { categoryId: 3, groupId: 1692 },   // McDonald's Promos 2014
+  mcd15: { categoryId: 3, groupId: 1694 },   // McDonald's Promos 2015
+  mcd17: { categoryId: 3, groupId: 2148 },   // McDonald's Promos 2017
+  mcd18: { categoryId: 3, groupId: 2364 },   // McDonald's Promos 2018
+
   // JP sets — TCGPlayer's "Pokemon Japan" category (85), same real-market-price
   // rationale as above, chosen as the 6 biggest JP price gaps (top ~54% of all
   // missing JP cards) rather than every gap set — see sync:tcgplayer-prices plan
