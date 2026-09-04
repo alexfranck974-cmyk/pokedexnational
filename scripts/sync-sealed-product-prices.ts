@@ -72,6 +72,104 @@ const SET_TO_TCGPLAYER_GROUP: Record<string, { categoryId: number; groupId: numb
   swsh9: { categoryId: 3, groupId: 2948 }, // Brilliant Stars
   swsh8: { categoryId: 3, groupId: 2906 }, // Fusion Strike
   cel25: { categoryId: 3, groupId: 2867 }, // Celebrations
+
+  // Added 2026-09-04 — a full audit found sealed_product_prices had zero
+  // coverage for every SM/older-SWSH/XY/e-card global set and every single
+  // JP set (46 of them). This batch covers what's verifiably matchable:
+  //
+  // JP entries below are pure reuse of groupIds already hand-verified for
+  // sync-tcgplayer-images.ts/sync-tcgplayer-prices.ts (same TCGPlayer group,
+  // no new verification needed — see jp-SV4a's comment there re: the
+  // "レイジングサーフ" name collision with jp-SV3a, still applies here).
+  'jp-M1L': { categoryId: 85, groupId: 24399 },
+  'jp-M1S': { categoryId: 85, groupId: 24400 },
+  'jp-M2': { categoryId: 85, groupId: 24459 },
+  'jp-M2a': { categoryId: 85, groupId: 24499 },
+  'jp-M3': { categoryId: 85, groupId: 24600 },
+  'jp-M4': { categoryId: 85, groupId: 24653 },
+  'jp-M5': { categoryId: 85, groupId: 24711 },
+  'jp-M-P': { categoryId: 85, groupId: 24423 },
+  'jp-SV11B': { categoryId: 85, groupId: 24349 },
+  'jp-SV11W': { categoryId: 85, groupId: 24350 },
+  'jp-SV5M': { categoryId: 85, groupId: 23613 },
+  'jp-SV-P': { categoryId: 85, groupId: 23779 },
+  'jp-SV4a': { categoryId: 85, groupId: 23601 }, // Shiny Treasure ex (labelled "レイジングサーフ" — do not confuse with jp-SV3a/23600)
+  'jp-SV8a': { categoryId: 85, groupId: 23909 },
+  'jp-SV6': { categoryId: 85, groupId: 23614 },
+  'jp-SV10': { categoryId: 85, groupId: 24310 },
+  'jp-SV9a': { categoryId: 85, groupId: 24260 },
+
+  // English entries below are new for this file — each confirmed to have a
+  // real Booster Box/ETB/Booster Pack product in its TCGPlayer group before
+  // being added (not just a name match). Promo sets (swshp, smp, xyp, svp)
+  // deliberately excluded — same reasoning as the "non-standalone-purchased"
+  // note above, confirmed they have zero matching products either way.
+  // ecard1-3/pl3/bw7 only match 1-2 of the 3 types (ETB didn't exist as a
+  // product line yet in those eras) — expected, not a bug.
+  swsh1: { categoryId: 3, groupId: 2585 },  // Sword & Shield
+  swsh2: { categoryId: 3, groupId: 2626 },  // Rebel Clash
+  swsh3: { categoryId: 3, groupId: 2675 },  // Darkness Ablaze
+  swsh4: { categoryId: 3, groupId: 2701 },  // Vivid Voltage
+  swsh5: { categoryId: 3, groupId: 2765 },  // Battle Styles
+  swsh6: { categoryId: 3, groupId: 2807 },  // Chilling Reign
+  swsh7: { categoryId: 3, groupId: 2848 },  // Evolving Skies
+  sm1: { categoryId: 3, groupId: 1863 },    // Sun & Moon
+  sm2: { categoryId: 3, groupId: 1919 },    // Guardians Rising
+  sm3: { categoryId: 3, groupId: 1957 },    // Burning Shadows
+  sm5: { categoryId: 3, groupId: 2178 },    // Ultra Prism
+  sm7: { categoryId: 3, groupId: 2278 },    // Celestial Storm
+  sm8: { categoryId: 3, groupId: 2328 },    // Lost Thunder
+  sm9: { categoryId: 3, groupId: 2377 },    // Team Up
+  sm10: { categoryId: 3, groupId: 2420 },   // Unbroken Bonds
+  sm11: { categoryId: 3, groupId: 2464 },   // Unified Minds
+  sm12: { categoryId: 3, groupId: 2534 },   // Cosmic Eclipse
+  xy5: { categoryId: 3, groupId: 1509 },    // Primal Clash
+  xy8: { categoryId: 3, groupId: 1661 },    // BREAKthrough
+  ecard1: { categoryId: 3, groupId: 1375 }, // Expedition Base Set
+  ecard2: { categoryId: 3, groupId: 1397 }, // Aquapolis
+  ecard3: { categoryId: 3, groupId: 1372 }, // Skyridge
+  pl3: { categoryId: 3, groupId: 1384 },    // Supreme Victors
+  bw7: { categoryId: 3, groupId: 1408 },    // Boundaries Crossed
+
+  // Added 2026-09-04 (part 2) — the rest of the JP catalog. Found via
+  // TCGPlayer's own `abbreviation` field on each group (an exact, authoritative
+  // match to our jp-<code> set ids — no name-collision risk the way matching
+  // by Japanese display name would have, see jp-SV4a's comment above). jp-M6
+  // (Storm Emeralda) was verified back when its card images were backfilled
+  // but missed being added here at the time — included now. jp-MC and
+  // jp-SV-P stay deliberately unmapped: jp-MC bundles multiple starter decks
+  // under one set_id (see sync-tcgplayer-images.ts's comment), and jp-SV-P
+  // (promo cards) has a group but confirmed zero Booster Box/ETB/Booster
+  // products in it, same as the English promo sets above.
+  'jp-M6': { categoryId: 85, groupId: 24791 },
+  'jp-S9': { categoryId: 85, groupId: 23628 },    // Star Birth
+  'jp-S9a': { categoryId: 85, groupId: 23639 },   // Battle Region
+  'jp-S10a': { categoryId: 85, groupId: 23640 },  // Dark Phantasma
+  'jp-S10P': { categoryId: 85, groupId: 23630 },  // Space Juggler
+  'jp-S11': { categoryId: 85, groupId: 23631 },   // Lost Abyss
+  'jp-S11a': { categoryId: 85, groupId: 23642 },  // Incandescent Arcana
+  'jp-S12': { categoryId: 85, groupId: 23632 },   // Paradigm Trigger
+  'jp-S12a': { categoryId: 85, groupId: 23645 },  // VSTAR Universe
+  'jp-SV1S': { categoryId: 85, groupId: 23605 },  // Scarlet ex
+  'jp-SV1V': { categoryId: 85, groupId: 23606 },  // Violet ex
+  'jp-SV1a': { categoryId: 85, groupId: 23598 },  // Triplet Beat
+  'jp-SV2a': { categoryId: 85, groupId: 23599 },  // Pokemon Card 151
+  'jp-SV2D': { categoryId: 85, groupId: 23608 },  // Clay Burst
+  'jp-SV2P': { categoryId: 85, groupId: 23607 },  // Snow Hazard
+  'jp-SV3': { categoryId: 85, groupId: 23609 },   // Ruler of the Black Flame
+  'jp-SV3a': { categoryId: 85, groupId: 23600 },  // Raging Surf (the real one — see jp-SV4a's comment)
+  'jp-SV4K': { categoryId: 85, groupId: 23610 },  // Ancient Roar
+  'jp-SV4M': { categoryId: 85, groupId: 23611 },  // Future Flash
+  'jp-SV5K': { categoryId: 85, groupId: 23612 },  // Wild Force
+  'jp-SV5a': { categoryId: 85, groupId: 23602 },  // Crimson Haze
+  'jp-SV6a': { categoryId: 85, groupId: 23603 },  // Night Wanderer
+  'jp-SV7': { categoryId: 85, groupId: 23615 },   // Stellar Miracle
+  'jp-SV7a': { categoryId: 85, groupId: 23604 },  // Paradise Dragona
+  'jp-SV8': { categoryId: 85, groupId: 23777 },   // Super Electric Breaker
+  'jp-SV9': { categoryId: 85, groupId: 24173 },   // Battle Partners
+  'jp-SVK': { categoryId: 85, groupId: 23794 },   // Stellar Miracle Deck Build Box
+  'jp-SVLS': { categoryId: 85, groupId: 23793 },  // Ceruledge ex ("Soulblaze") Stellar Tera Type Starter Set
+  'jp-SVLN': { categoryId: 85, groupId: 23798 },  // Sylveon ex Stellar Tera Type Starter Set
 };
 
 // Only these 3 of the app's 7 SealedProductType buckets get a reliable
