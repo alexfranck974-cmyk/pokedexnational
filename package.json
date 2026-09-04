@@ -65,7 +65,8 @@
     "sync:tcgdex:prices": "ts-node --project tsconfig.scripts.json scripts/sync-tcgdex-prices.ts",
     "check:image-fallback": "ts-node --project tsconfig.scripts.json scripts/check-image-fallback.ts",
     "sync:pokewallet-logos": "ts-node --project tsconfig.scripts.json scripts/sync-pokewallet-jp-logos.ts",
-    "sync:sealed-prices": "ts-node --project tsconfig.scripts.json scripts/sync-sealed-product-prices.ts"
+    "sync:sealed-prices": "ts-node --project tsconfig.scripts.json scripts/sync-sealed-product-prices.ts",
+    "sync:pikaqian": "ts-node --project tsconfig.scripts.json scripts/sync-pikaqian-cards.ts"
   },
   "jest": {
     "preset": "jest-expo",
