@@ -27,6 +27,11 @@ export const STRINGS = {
     'appLayout.a11ySettings': 'Réglages',
     'appLayout.a11yMarket': 'Marché',
     'appLayout.a11yInProgressTrade': 'Échange en cours',
+    'appLayout.a11ySearch': 'Rechercher un Pokémon',
+    'appLayout.a11yMoreActions': 'Plus d’actions',
+    'globalSearch.title': 'Rechercher un Pokémon',
+    'globalSearch.placeholder': 'Nom ou numéro...',
+    'globalSearch.noResults': 'Aucun Pokémon trouvé.',
 
     // Auth — login
     'auth.login.title': 'Connexion',
@@ -593,6 +598,11 @@ export const STRINGS = {
     'appLayout.a11ySettings': 'Settings',
     'appLayout.a11yMarket': 'Market',
     'appLayout.a11yInProgressTrade': 'Trade in progress',
+    'appLayout.a11ySearch': 'Search a Pokémon',
+    'appLayout.a11yMoreActions': 'More actions',
+    'globalSearch.title': 'Search a Pokémon',
+    'globalSearch.placeholder': 'Name or number...',
+    'globalSearch.noResults': 'No Pokémon found.',
 
     'auth.login.title': 'Log in',
     'auth.login.submit': 'Log in',
