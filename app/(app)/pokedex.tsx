@@ -265,6 +265,7 @@ export default function PokedexScreen() {
           showValues={showValues} onToggleValues={() => setShowValues(v => !v)}
           viewMode={viewMode} onToggleViewMode={toggleViewMode}
           pageLayout={pageLayout} onCyclePageLayout={cyclePageLayout}
+          collapsible
         />
       </View>
       <CaptureEffect event={currentCapture} onDone={() => setCaptureQueue(q => q.slice(1))} />

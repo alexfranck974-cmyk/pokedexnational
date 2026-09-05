@@ -114,6 +114,8 @@ export const STRINGS = {
     'search.a11yTogglePrice': 'Afficher les prix',
     'search.a11yToggleViewMode': 'Basculer vue défilante / vue page',
     'search.a11yCyclePageLayout': 'Changer la mise en page',
+    'search.a11yExpandMore': 'Plus d’options',
+    'search.a11yCollapseMore': 'Replier les options',
 
     // Card filter tree (extension filter)
     'cardFilter.title': 'Filtrer par extension',
@@ -680,6 +682,8 @@ export const STRINGS = {
     'search.a11yTogglePrice': 'Show prices',
     'search.a11yToggleViewMode': 'Toggle scrolling / page view',
     'search.a11yCyclePageLayout': 'Change page layout',
+    'search.a11yExpandMore': 'More options',
+    'search.a11yCollapseMore': 'Collapse options',
 
     'cardFilter.title': 'Filter by set',
     'cardFilter.selectedSingular': '{n} set selected',

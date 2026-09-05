@@ -38,6 +38,12 @@ interface Props {
    * meaning, avoids growing the FAB stack further. Omit to keep scroll-only. */
   viewMode?: 'scroll' | 'page';         onToggleViewMode?: () => void;
   pageLayout?: 9 | 12 | 16;             onCyclePageLayout?: () => void;
+  /** National Pokédex only: the standalone in-grid search FAB is dropped
+   * (GlobalSearchBubble in app/(app)/_layout.tsx replaces it — two magnifying
+   * glasses on the same screen read as redundant) and filter/columns/values/
+   * viewMode fold into one collapsed "more" bubble instead of a 3-4-deep
+   * FAB stack. Omit to keep the full stack (e.g. the public profile view). */
+  collapsible?: boolean;
 }
 
 const COLUMN_CYCLE: (2 | 3 | 4 | null)[] = [null, 2, 3, 4];
@@ -210,6 +216,7 @@ export function SearchFilterBar(p: Props) {
   const [openPicker, setOpenPicker] = useState<null | 'type' | 'set' | 'rarity' | 'gen'>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [moreExpanded, setMoreExpanded] = useState(false);
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const { colors } = useTheme();
@@ -291,7 +298,7 @@ export function SearchFilterBar(p: Props) {
         </View>
       ) : (
         <View style={styles.overlay} pointerEvents="box-none">
-          {searchOpen && (
+          {searchOpen && !p.collapsible && (
             <View style={styles.floatingSearch}>
               <Ionicons name="search" size={18} color={colors.textMuted} />
               <TextInput
@@ -310,35 +317,51 @@ export function SearchFilterBar(p: Props) {
           )}
 
           <Animated.View style={[styles.fabStack, { opacity: fabOpacity, transform: [{ translateY: tabBarTranslateY }] }]}>
-            <Pressable onPress={() => setSearchOpen(o => !o)} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleSearch')}>
-              <Ionicons name="search" size={22} color={p.search ? colors.primary : colors.text} />
-            </Pressable>
-            <Pressable onPress={() => setFilterSheetOpen(true)} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleFilter')}>
-              <Ionicons name="filter" size={22} color={hasFilters ? colors.primary : colors.text} />
-              {hasFilters && <View style={styles.badgeDot} />}
-            </Pressable>
-            <Pressable
-              onPress={() => {
-                const idx = COLUMN_CYCLE.indexOf(p.columns);
-                p.onColumns(COLUMN_CYCLE[(idx + 1) % COLUMN_CYCLE.length]);
-              }}
-              style={styles.fab}
-              accessibilityRole="button"
-              accessibilityLabel={t('search.a11yCycleColumns')}>
-              {p.columns === null ? (
-                <Ionicons name="grid-outline" size={22} color={colors.text} />
-              ) : (
-                <Text style={styles.columnsLabel}>×{p.columns}</Text>
-              )}
-            </Pressable>
-            {p.onToggleValues && (
+            {!p.collapsible && (
+              <Pressable onPress={() => setSearchOpen(o => !o)} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleSearch')}>
+                <Ionicons name="search" size={22} color={p.search ? colors.primary : colors.text} />
+              </Pressable>
+            )}
+            {(!p.collapsible || moreExpanded) && (
+              <Pressable onPress={() => setFilterSheetOpen(true)} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleFilter')}>
+                <Ionicons name="filter" size={22} color={hasFilters ? colors.primary : colors.text} />
+                {hasFilters && <View style={styles.badgeDot} />}
+              </Pressable>
+            )}
+            {(!p.collapsible || moreExpanded) && (
+              <Pressable
+                onPress={() => {
+                  const idx = COLUMN_CYCLE.indexOf(p.columns);
+                  p.onColumns(COLUMN_CYCLE[(idx + 1) % COLUMN_CYCLE.length]);
+                }}
+                style={styles.fab}
+                accessibilityRole="button"
+                accessibilityLabel={t('search.a11yCycleColumns')}>
+                {p.columns === null ? (
+                  <Ionicons name="grid-outline" size={22} color={colors.text} />
+                ) : (
+                  <Text style={styles.columnsLabel}>×{p.columns}</Text>
+                )}
+              </Pressable>
+            )}
+            {p.onToggleValues && (!p.collapsible || moreExpanded) && (
               <Pressable onPress={p.onToggleValues} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yTogglePrice')}>
                 <Ionicons name="pricetag" size={20} color={p.showValues ? colors.primary : colors.text} />
               </Pressable>
             )}
-            {p.onToggleViewMode && (
+            {p.onToggleViewMode && (!p.collapsible || moreExpanded) && (
               <Pressable onPress={p.onToggleViewMode} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleViewMode')}>
                 <Ionicons name="book-outline" size={20} color={colors.text} />
+              </Pressable>
+            )}
+            {p.collapsible && (
+              <Pressable
+                onPress={() => setMoreExpanded(v => !v)}
+                style={styles.fab}
+                accessibilityRole="button"
+                accessibilityLabel={t(moreExpanded ? 'search.a11yCollapseMore' : 'search.a11yExpandMore')}>
+                <Ionicons name={moreExpanded ? 'close' : 'ellipsis-horizontal'} size={22} color={hasFilters ? colors.primary : colors.text} />
+                {!moreExpanded && hasFilters && <View style={styles.badgeDot} />}
               </Pressable>
             )}
           </Animated.View>
