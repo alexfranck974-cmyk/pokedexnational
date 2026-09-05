@@ -1309,7 +1309,7 @@ export default function FavoritesScreen() {
                               <View style={styles.catalogRowIcon} />
                             )}
                             <View style={{ flex: 1 }}>
-                              <Text style={styles.catalogRowLabel} numberOfLines={1}>{setFlagLabel(set.name, set.region)}</Text>
+                              <Text style={styles.catalogRowLabel} numberOfLines={1}>{setFlagLabel(set.name, set.region, set.id)}</Text>
                             </View>
                             {totalForSet > 0 && (
                               <View style={styles.sealedCountBadge}>
@@ -1442,7 +1442,7 @@ export default function FavoritesScreen() {
               return (
                 <View key={row.key} style={styles.goalsGrid}>
                   {row.sets.map(set => {
-                    const setName = setFlagLabel(set.name, set.region);
+                    const setName = setFlagLabel(set.name, set.region, set.id);
                     return (
                       <SetGoalTile
                         key={set.id}
@@ -1472,7 +1472,7 @@ export default function FavoritesScreen() {
                   <View style={styles.catalogRowIcon} />
                 )}
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.catalogRowLabel} numberOfLines={1}>{setFlagLabel(set.name, set.region)}</Text>
+                  <Text style={styles.catalogRowLabel} numberOfLines={1}>{setFlagLabel(set.name, set.region, set.id)}</Text>
                   <Text style={styles.catalogRowCaption}>
                     {year ? `${year} · ` : ''}{t('favorites.setCardsCount', { n: set.cardCount })}
                   </Text>
@@ -1495,7 +1495,7 @@ export default function FavoritesScreen() {
         visible={sealedSheetSet !== null}
         onClose={() => setSealedSheetSet(null)}
         tint={colors.primary}
-        title={sealedSheetSet ? setFlagLabel(sealedSheetSet.name, sealedSheetSet.region) : ''}
+        title={sealedSheetSet ? setFlagLabel(sealedSheetSet.name, sealedSheetSet.region, sealedSheetSet.id) : ''}
         sizing="auto">
         <View style={{ padding: spacing.md, gap: 2 }}>
           {(() => {
@@ -1541,7 +1541,7 @@ export default function FavoritesScreen() {
                     hitSlop={6}
                     disabled={!qty}
                     onPress={() => sealedSheetSet && adjustSealed.mutate({
-                      setId: sealedSheetSet.id, setName: setFlagLabel(sealedSheetSet.name, sealedSheetSet.region),
+                      setId: sealedSheetSet.id, setName: setFlagLabel(sealedSheetSet.name, sealedSheetSet.region, sealedSheetSet.id),
                       productType: type, delta: -1, currentQuantity: qty,
                     })}>
                     <Ionicons name="remove-circle-outline" size={20} color={qty ? colors.textMuted : colors.border} />
@@ -1550,7 +1550,7 @@ export default function FavoritesScreen() {
                   <Pressable
                     hitSlop={6}
                     onPress={() => sealedSheetSet && adjustSealed.mutate({
-                      setId: sealedSheetSet.id, setName: setFlagLabel(sealedSheetSet.name, sealedSheetSet.region),
+                      setId: sealedSheetSet.id, setName: setFlagLabel(sealedSheetSet.name, sealedSheetSet.region, sealedSheetSet.id),
                       productType: type, delta: 1, currentQuantity: qty,
                     })}>
                     <Ionicons name="add-circle-outline" size={20} color={colors.textMuted} />
@@ -1690,7 +1690,7 @@ export default function FavoritesScreen() {
                     })}
                     style={({ pressed }) => [styles.teamRow, pressed && styles.teamRowPressed]}>
                     <Ionicons name={checked ? 'checkbox' : 'square-outline'} size={20} color={checked ? colors.primary : colors.textMuted} />
-                    <Text style={styles.teamRowName} numberOfLines={1}>{setFlagLabel(item.name, item.region)}</Text>
+                    <Text style={styles.teamRowName} numberOfLines={1}>{setFlagLabel(item.name, item.region, item.id)}</Text>
                     <Text style={styles.teamRowCount}>{item.cardCount}</Text>
                   </Pressable>
                 );

@@ -157,7 +157,7 @@ export default function PokedexScreen() {
   if (typeFilter.length) filterHintParts.push(typeFilter.map(ty => getTypeLabel(ty, locale)).join(locale === 'en' ? ' or ' : ' ou '));
   if (setFilter) {
     const s = sets.find(s => s.id === setFilter);
-    filterHintParts.push(s ? setFlagLabel(s.name, s.region) : setFilter);
+    filterHintParts.push(s ? setFlagLabel(s.name, s.region, s.id) : setFilter);
   }
   if (rarityFilter) filterHintParts.push(rarityFilter);
   const filterHint = filterHintParts.length ? filterHintParts.join(' + ') : undefined;

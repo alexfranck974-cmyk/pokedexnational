@@ -131,7 +131,7 @@ export function WishlistFilterBar(p: Props) {
 
   const typeOptions: PickerOption[] = (Object.keys(TYPE_LABEL_FR) as PokemonType[])
     .map(pt => ({ id: pt, label: getTypeLabel(pt, locale) }));
-  const setOptions: PickerOption[]  = p.sets.map(s => ({ id: s.id, label: setFlagLabel(s.name, s.region) }));
+  const setOptions: PickerOption[]  = p.sets.map(s => ({ id: s.id, label: setFlagLabel(s.name, s.region, s.id) }));
   const rarityOptions: PickerOption[] = p.rarities.map(r => ({ id: r, label: r }));
   const genOptions: PickerOption[] = GENERATIONS.map(g => ({ id: String(g.gen), label: getGenerationLabel(g, locale) }));
 

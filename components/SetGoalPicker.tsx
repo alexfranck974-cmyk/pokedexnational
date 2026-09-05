@@ -32,7 +32,7 @@ export function SetGoalPicker({ visible, pinnedSetIds, tint, onClose }: Props) {
   const filtered = useMemo(() => {
     const q = normalize(search.trim());
     if (!q) return sets;
-    return sets.filter(s => normalize(s.name).includes(q) || normalize(setFlagLabel(s.name, s.region)).includes(q));
+    return sets.filter(s => normalize(s.name).includes(q) || normalize(setFlagLabel(s.name, s.region, s.id)).includes(q));
   }, [sets, search]);
 
   const styles = useThemedStyles((colors) => ({
@@ -80,7 +80,7 @@ export function SetGoalPicker({ visible, pinnedSetIds, tint, onClose }: Props) {
                       <View style={styles.rowIconPlaceholder} />
                     )}
                     <View style={styles.rowText}>
-                      <Text style={styles.rowLabel} numberOfLines={1}>{setFlagLabel(item.name, item.region)}</Text>
+                      <Text style={styles.rowLabel} numberOfLines={1}>{setFlagLabel(item.name, item.region, item.id)}</Text>
                       <Text style={styles.rowCaption}>
                         {year ? `${year} · ` : ''}{t('setGoalPicker.cardsCount', { n: item.cardCount })}
                       </Text>

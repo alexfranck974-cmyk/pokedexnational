@@ -135,7 +135,7 @@ export function CardFilterTree({ cards, selectedSetIds, onChange, onOpenSet }: P
                 {isOpen && g.sets.map(s => (
                   <Pressable key={s.id} onPress={() => toggleSet(s.id)} style={[styles.row, styles.subRow]}>
                     <Text style={styles.check}>{isSetSelected(s.id) ? '☑' : '☐'}</Text>
-                    <Text style={styles.setName}>{setFlagLabel(s.name, s.region)}</Text>
+                    <Text style={styles.setName}>{setFlagLabel(s.name, s.region, s.id)}</Text>
                     <Text style={styles.count}>({s.count})</Text>
                     {onOpenSet && (
                       <Pressable onPress={(e) => { e.stopPropagation(); onOpenSet(s.id); }} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('cardFilter.a11yJumpToSet')}>

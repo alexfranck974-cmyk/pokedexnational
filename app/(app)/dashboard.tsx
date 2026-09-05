@@ -317,7 +317,7 @@ export default function DashboardScreen() {
               {goals.map(g => {
                 const set = setsById.get(g.setId);
                 if (!set) return null;
-                const setName = setFlagLabel(set.name, set.region);
+                const setName = setFlagLabel(set.name, set.region, set.id);
                 return (
                   <SetGoalTile
                     key={g.setId}

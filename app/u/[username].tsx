@@ -355,7 +355,7 @@ function PublicProfileInner() {
                       key={g.setId}
                       userId={userId}
                       setId={g.setId}
-                      setName={setFlagLabel(set.name, set.region)}
+                      setName={setFlagLabel(set.name, set.region, set.id)}
                       total={set.cardCount}
                       symbol={set.symbol}
                       onPress={() => {
@@ -365,7 +365,7 @@ function PublicProfileInner() {
                           .filter(c => c.setId === g.setId)
                           .sort((a, b) => a.cardNumber.localeCompare(b.cardNumber, undefined, { numeric: true }));
                         setGallerySet({
-                          setName: setFlagLabel(set.name, set.region), owned: setCards.length, total: set.cardCount,
+                          setName: setFlagLabel(set.name, set.region, set.id), owned: setCards.length, total: set.cardCount,
                           cards: setCards.map(c => ({ key: c.cardId, imageSmall: c.imageSmall, imageLarge: c.imageLarge })),
                         });
                       }}

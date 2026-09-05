@@ -40,7 +40,7 @@ export function NewSetBanner({ userId, joinedAt }: Props) {
 
   if (releases.length === 0) return null;
   const release = releases[0];
-  const label = setFlagLabel(release.setName, release.region);
+  const label = setFlagLabel(release.setName, release.region, release.setId);
 
   return (
     <View style={styles.banner}>
