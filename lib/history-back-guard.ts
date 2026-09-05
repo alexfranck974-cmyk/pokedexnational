@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
+import { isAnyModalOpen } from './useModalBackClose';
 
 // Module-level (not React state) so it survives component mounts/unmounts
 // within the same browser tab — see useHistoryBackGuard below for why that
@@ -26,6 +27,36 @@ let guardActive = false;
 // history (a fresh tab, a shared link). One shared guard, reused across
 // however many guarded screens get chained through before the user actually
 // backs out, keeps the worst case at exactly one extra entry, not N.
+
+// CardZoomModal (lib/useModalBackClose.ts) also pushes its own dummy history
+// entry while a card is zoomed, and calls history.back() itself to consume
+// it when the zoom is dismissed by tapping (not the back button). That fires
+// this hook's own popstate listener too — originally indistinguishable from
+// a real "user pressed back", which silently kicked the user off the
+// guarded screen every single time they closed a zoomed card (2026-09-05).
+// Tried keying off `event.state` first (checking for a `__backGuard` marker
+// on the landed-on entry) but Expo Router rewrites/replaces history state
+// out from under both hooks — confirmed live, the state actually observed
+// on landing was Expo Router's own `{id: "..."}` shape, never our marker.
+// Direct module-level coordination between the two hooks instead: whoever
+// is about to call history.back() to consume its own entry marks the next
+// popstate as "expected" first, so this listener can tell "I caused this"
+// apart from "the user really pressed back" without depending on state
+// shape at all.
+let suppressNextPop = false;
+let suppressResetTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Call right before a history.back() that's just cleaning up your own
+// pushState entry (not a real navigation) — see useModalBackClose.ts.
+// Self-clears after a short delay as a safety net in case the expected
+// popstate never arrives (e.g. no guard is mounted to consume it), so a
+// stale flag can never suppress some later, unrelated, genuine back-press.
+export function suppressNextBackGuardPop() {
+  suppressNextPop = true;
+  if (suppressResetTimer) clearTimeout(suppressResetTimer);
+  suppressResetTimer = setTimeout(() => { suppressNextPop = false; }, 2000);
+}
+
 export function useHistoryBackGuard(onBack: () => void) {
   const onBackRef = useRef(onBack);
   onBackRef.current = onBack;
@@ -39,6 +70,17 @@ export function useHistoryBackGuard(onBack: () => void) {
     }
 
     const onPopState = () => {
+      if (suppressNextPop) {
+        suppressNextPop = false;
+        if (suppressResetTimer) { clearTimeout(suppressResetTimer); suppressResetTimer = null; }
+        return;
+      }
+      // A real back-press while a card zoom (or any useModalBackClose modal)
+      // is still open on this screen should just close that modal — this
+      // listener runs first (mounted before any modal ever opens), so
+      // without this check it would navigate the screen away before the
+      // modal's own listener got a chance to react at all.
+      if (isAnyModalOpen()) return;
       guardActive = false;
       onBackRef.current();
     };
