@@ -131,7 +131,13 @@ async function main() {
     }
 
     const { data: pub } = supabase.storage.from('set-logos').getPublicUrl(path);
-    const { error: updErr } = await supabase.from('tcg_cards').update({ set_logo: pub.publicUrl }).eq('set_id', set.set_id);
+    // Also written to set_symbol (2026-09-05): PokeWallet only ever exposes
+    // this one wide wordmark image per set — no separate small-icon
+    // endpoint — but the Extensions catalog's small list-row icon
+    // (catalogRowIcon, 26x26) reads set_symbol, not set_logo. Reusing the
+    // same image there beats the empty icon JP/CN sets showed before, even
+    // shrunk down small (user's explicit call, 2026-09-05).
+    const { error: updErr } = await supabase.from('tcg_cards').update({ set_logo: pub.publicUrl, set_symbol: pub.publicUrl }).eq('set_id', set.set_id);
     if (updErr) {
       console.error(`  ${set.set_id}: tcg_cards update failed:`, updErr.message);
       failed++;
