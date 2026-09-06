@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, type ReactElement } from 'react';
-import { View, Text, Image, StyleSheet, Animated, useWindowDimensions, type NativeSyntheticEvent, type NativeScrollEvent, type RefreshControlProps } from 'react-native';
+import { useMemo, type ReactElement } from 'react';
+import { View, Text, Image, StyleSheet, useWindowDimensions, type RefreshControlProps } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
 import { PokemonTile } from './PokemonTile';
@@ -11,19 +11,6 @@ import { withAlpha } from '@/lib/color-utils';
 import { useLocale } from '@/lib/locale';
 import { useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
-import { useMotion } from '@/lib/motion';
-
-// Fast-scroll fade: tiles dim while actively flinging through the list and
-// sharpen back to full opacity once scrolling settles — "let me admire the
-// collection" rather than a blur of tiles racing past. Same delta+idle-timer
-// shape as lib/tab-bar-visibility.tsx's handleScroll (that file doesn't use
-// real scroll velocity either — NativeScrollEvent only reliably reports it on
-// iOS — just a higher threshold here than its SCROLL_JITTER_PX=4 tab-bar
-// trigger, since this needs to ignore normal browsing scroll and only catch
-// a genuine fast fling.
-const FAST_SCROLL_PX = 40;
-const FADE_IDLE_MS = 200;
-const FADE_OPACITY = 0.6;
 
 const POKEDEX = pokedexData as Pokemon[];
 const SPRITE_BY_DEX = new Map<number, string>(POKEDEX.map(p => [p.num, p.sprite_url]));
@@ -68,43 +55,8 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, co
   const { width } = useWindowDimensions();
   const { locale } = useLocale();
   const hideOnScrollProps = useHideOnScrollProps();
-  const { animationsEnabled } = useMotion();
   const cols = columnsOverride ?? numColsFor(width);
 
-  const fadeOpacity = useRef(new Animated.Value(1)).current;
-  const fadedRef = useRef(false);
-  const lastOffsetYRef = useRef(0);
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const animateFade = (faded: boolean) => {
-    if (faded === fadedRef.current || !animationsEnabled) return;
-    fadedRef.current = faded;
-    Animated.timing(fadeOpacity, { toValue: faded ? FADE_OPACITY : 1, duration: faded ? 80 : 200, useNativeDriver: true }).start();
-  };
-  const handleFadeScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const y = e.nativeEvent.contentOffset.y;
-    const delta = y - lastOffsetYRef.current;
-    lastOffsetYRef.current = y;
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    idleTimerRef.current = setTimeout(() => animateFade(false), FADE_IDLE_MS);
-    if (Math.abs(delta) > FAST_SCROLL_PX) animateFade(true);
-  };
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    hideOnScrollProps.onScroll(e);
-    handleFadeScroll(e);
-  };
-  // This screen is kept mounted across section switches (no unmountOnBlur),
-  // so fadeOpacity's ref persists too — without this, a fling right before
-  // navigating away could still be mid-fade (or mid-settle-timer) when the
-  // user comes back, showing a dim grid instead of the real content. Belt
-  // and suspenders: also covers the case where it genuinely does unmount.
-  useEffect(() => {
-    return () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      fadedRef.current = false;
-      fadeOpacity.setValue(1);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   const styles = useThemedStyles((colors) => ({
     headerRow: {
       alignItems: 'center' as const, justifyContent: 'center' as const,
@@ -144,7 +96,6 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, co
   );
 
   return (
-    <Animated.View style={{ flex: 1, opacity: fadeOpacity }}>
     <FlashList
       data={rows}
       numColumns={cols}
@@ -155,7 +106,7 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, co
       contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
       maintainVisibleContentPosition={{ disabled: true }}
       stickyHeaderIndices={stickyHeaderIndices}
-      onScroll={onScroll}
+      onScroll={hideOnScrollProps.onScroll}
       scrollEventThrottle={hideOnScrollProps.scrollEventThrottle}
       overrideItemLayout={(layout, row, _index, maxColumns) => {
         if (row?.type === 'header') layout.span = maxColumns;
@@ -200,6 +151,5 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, co
         )
       }
     />
-    </Animated.View>
   );
 }
