@@ -204,11 +204,21 @@ export default function WishlistScreen() {
     pokemonName: { fontSize: 14, fontFamily: fonts.bodyBold, color: colors.text },
     pokemonSub: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
     pokemonThumbs: { maxWidth: 120, flexGrow: 0 },
-    pokemonThumbWrap: { borderRadius: radius.sm, marginRight: 4, alignItems: 'center' as const },
+    pokemonThumbWrap: { borderRadius: radius.sm, marginRight: 4, alignItems: 'center' as const, position: 'relative' as const },
     pokemonThumbWrapOwned: { borderWidth: 1.5, borderColor: colors.success },
     pokemonThumb: { width: 28, height: 40 },
+    pokemonThumbRemove: {
+      position: 'absolute' as const, top: -4, right: 0, width: 16, height: 16, borderRadius: 8,
+      backgroundColor: colors.danger, alignItems: 'center' as const, justifyContent: 'center' as const,
+    },
+    pokemonThumbRemoveText: { fontSize: 9, fontFamily: fonts.bodyBold, color: 'white', lineHeight: 11 },
     heartFilled: { fontSize: 18, color: colors.danger, lineHeight: 22 },
   }));
+
+  // .mutate is stable across renders (react-query), unlike toggleWish itself
+  // — needed here (not just in renderCardTile below) now that renderPokemonRow
+  // also has a per-thumbnail remove button, same useCallback-stability reasoning.
+  const wishMutate = toggleWish.mutate;
 
   // Stable across re-renders triggered by unrelated state (e.g. opening the
   // card gallery sheet) — an inline renderItem is a fresh function every
@@ -251,6 +261,14 @@ export default function WishlistScreen() {
           {item.cards.slice(0, 4).map(c => (
             <View key={c.id} style={[styles.pokemonThumbWrap, ownedIds.has(c.id) && styles.pokemonThumbWrapOwned]}>
               <Image source={{ uri: c.image_small }} style={styles.pokemonThumb} resizeMode="contain" />
+              <Pressable
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={t('wishlist.a11yRemove')}
+                onPress={(e) => { e.stopPropagation(); wishMutate({ cardId: c.id, currentlyWished: true, dexNum: item.dexNum }); }}
+                style={styles.pokemonThumbRemove}>
+                <Text style={styles.pokemonThumbRemoveText}>✕</Text>
+              </Pressable>
             </View>
           ))}
         </ScrollView>
@@ -266,10 +284,9 @@ export default function WishlistScreen() {
     [refreshing, onRefresh, colors.primary],
   );
 
-  // .mutate is stable across renders (react-query), unlike the toggleWish/
-  // togglePriority mutation objects themselves — depending on those directly
-  // would defeat this useCallback the same way an inline renderItem did.
-  const wishMutate = toggleWish.mutate;
+  // .mutate is stable across renders (react-query), unlike togglePriority
+  // itself — same useCallback-stability reasoning (wishMutate is declared
+  // above, next to renderPokemonRow, which also needs it now).
   const priorityMutate = togglePriority.mutate;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const renderCardTile = useCallback(({ item }: { item: WishlistCard }) => {
