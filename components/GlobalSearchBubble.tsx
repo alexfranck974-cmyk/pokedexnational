@@ -6,6 +6,8 @@ import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { withReturnTo } from '@/lib/navigation';
+import { useTcgSets } from '@/lib/tcg-index';
+import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useLocale, useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
@@ -15,33 +17,48 @@ function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
+type SearchResult =
+  | { type: 'pokemon'; key: string; num: number; label: string; sprite: string }
+  | { type: 'set'; key: string; id: string; label: string; symbol: string | null; cardCount: number };
+
 // Floating action button visible on every (app) screen (rendered once from
-// app/(app)/_layout.tsx) — a quick way to jump straight to any Pokémon's
-// detail page without first navigating to the Pokédex tab. Deliberately a
-// simple name/number lookup, not the Pokédex's own full filter set — this is
-// a shortcut, not a replacement for SearchFilterBar.
+// app/(app)/_layout.tsx) — a quick way to jump straight to a Pokémon's detail
+// page or a TCG set's page (Extensions catalog / Collection), without first
+// navigating to the Pokédex or Collection tab. Deliberately a simple name/
+// number lookup, not the Pokédex's own full filter set — this is a shortcut,
+// not a replacement for SearchFilterBar.
 export function GlobalSearchBubble({ style }: { style?: object }) {
   const router = useRouter();
   const pathname = usePathname();
   const { locale } = useLocale();
   const t = useT();
   const { colors } = useTheme();
+  const { data: sets = [] } = useTcgSets();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
 
   const results = useMemo(() => {
     const q = normalize(query.trim());
     if (!q) return [];
-    return POKEDEX.filter(p => {
-      const numMatch = String(p.num).padStart(4, '0').includes(q) || String(p.num).includes(q);
-      return numMatch || normalize(getName(p, locale)).includes(q);
-    }).slice(0, 30);
-  }, [query, locale]);
+    const pokemonResults: SearchResult[] = POKEDEX
+      .filter(p => {
+        const numMatch = String(p.num).padStart(4, '0').includes(q) || String(p.num).includes(q);
+        return numMatch || normalize(getName(p, locale)).includes(q);
+      })
+      .slice(0, 20)
+      .map(p => ({ type: 'pokemon', key: `p${p.num}`, num: p.num, label: getName(p, locale), sprite: p.sprite_url }));
+    const setResults: SearchResult[] = sets
+      .filter(s => normalize(s.name).includes(q) || normalize(setFlagLabel(s.name, s.region, s.id)).includes(q))
+      .slice(0, 15)
+      .map(s => ({ type: 'set', key: `s${s.id}`, id: s.id, label: setFlagLabel(s.name, s.region, s.id), symbol: s.symbol, cardCount: s.cardCount }));
+    return [...pokemonResults, ...setResults];
+  }, [query, locale, sets]);
 
   const close = () => { setOpen(false); setQuery(''); };
-  const select = (num: number) => {
+  const select = (item: SearchResult) => {
     close();
-    router.push(withReturnTo(`/pokemon/${num}`, pathname) as never);
+    const href = item.type === 'pokemon' ? `/pokemon/${item.num}` : `/pinned-set/${item.id}`;
+    router.push(withReturnTo(href, pathname) as never);
   };
 
   const styles = useThemedStyles((colors, shadow) => ({
@@ -63,8 +80,10 @@ export function GlobalSearchBubble({ style }: { style?: object }) {
     },
     row: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: 8 },
     sprite: { width: 40, height: 40 },
+    setIconWrap: { width: 40, height: 40, alignItems: 'center' as const, justifyContent: 'center' as const },
     num: { fontSize: 12, fontFamily: fonts.mono, color: colors.textDim, width: 44 },
     name: { fontSize: 15, fontFamily: fonts.bodyBold, color: colors.text, flex: 1 },
+    setCount: { fontSize: 12, fontFamily: fonts.mono, color: colors.textDim },
     empty: { padding: spacing.lg, textAlign: 'center' as const, fontSize: 13, fontFamily: fonts.body, color: colors.textMuted },
   }));
 
@@ -97,14 +116,30 @@ export function GlobalSearchBubble({ style }: { style?: object }) {
             />
             <FlatList
               data={results}
-              keyExtractor={p => String(p.num)}
+              keyExtractor={item => item.key}
               keyboardShouldPersistTaps="handled"
               ListEmptyComponent={query.trim() ? <Text style={styles.empty}>{t('globalSearch.noResults')}</Text> : null}
               renderItem={({ item }) => (
-                <Pressable style={styles.row} onPress={() => select(item.num)}>
-                  <Image source={{ uri: item.sprite_url }} style={styles.sprite} resizeMode="contain" />
-                  <Text style={styles.num}>#{String(item.num).padStart(4, '0')}</Text>
-                  <Text style={styles.name}>{getName(item, locale)}</Text>
+                <Pressable style={styles.row} onPress={() => select(item)}>
+                  {item.type === 'pokemon' ? (
+                    <>
+                      <Image source={{ uri: item.sprite }} style={styles.sprite} resizeMode="contain" />
+                      <Text style={styles.num}>#{String(item.num).padStart(4, '0')}</Text>
+                      <Text style={styles.name}>{item.label}</Text>
+                    </>
+                  ) : (
+                    <>
+                      {item.symbol ? (
+                        <Image source={{ uri: item.symbol }} style={styles.sprite} resizeMode="contain" />
+                      ) : (
+                        <View style={styles.setIconWrap}>
+                          <Ionicons name="albums-outline" size={20} color={colors.textMuted} />
+                        </View>
+                      )}
+                      <Text style={styles.name} numberOfLines={1}>{item.label}</Text>
+                      <Text style={styles.setCount}>{item.cardCount}</Text>
+                    </>
+                  )}
                 </Pressable>
               )}
             />
