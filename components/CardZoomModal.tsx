@@ -25,7 +25,18 @@ const TAP_TOLERANCE = 8;
 export function CardZoomModal({ card, caption, footer, onClose, onSwipeNext, onSwipePrev }: Props) {
   const { width, height } = useWindowDimensions();
   const styles = useThemedStyles((colors) => ({
-    backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center' as const, justifyContent: 'center' as const },
+    // touchAction (RNW-only, absent from RN's ViewStyle type — same cast
+    // pattern as pokemon/[num].tsx's userSelect:'none' fix) stops a swipe
+    // started on this backdrop from also being read as a native browser
+    // scroll gesture on whatever's underneath (the Pokédex grid's own
+    // FlashList) — PanResponder claims the gesture for swipe-to-browse/
+    // tap-to-close, but without this the browser's default touch handling
+    // ran alongside it, letting the same drag scroll the grid or trigger a
+    // tile press through the modal (2026-09-06).
+    backdrop: {
+      flex: 1, backgroundColor: colors.backdrop, alignItems: 'center' as const, justifyContent: 'center' as const,
+      touchAction: 'none',
+    } as any,
     caption: {
       marginTop: spacing.sm, fontSize: 17, fontFamily: fonts.display, color: 'white',
       textAlign: 'center' as const, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6,
