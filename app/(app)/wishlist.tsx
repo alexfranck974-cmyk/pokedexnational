@@ -100,6 +100,8 @@ export default function WishlistScreen() {
   const [setFilter, setSet] = useState<string | null>(null);
   const [rarityFilter, setRarity] = useState<string | null>(null);
   const [generationFilter, setGeneration] = useState<number | null>(null);
+  const [priceMin, setPriceMin] = useState<number | null>(null);
+  const [priceMax, setPriceMax] = useState<number | null>(null);
   const [sort, setSort] = useState<WishSortKey>('num-asc');
   const [viewMode, setViewMode] = useState<'cards' | 'pokemon'>('pokemon');
 
@@ -120,20 +122,20 @@ export default function WishlistScreen() {
   const debouncedSearch = useDebouncedValue(search, 200);
   const filtered = useMemo(() => {
     const base = applyWishlistPipeline(cards as WishlistCard[], ownedIds, TYPES_BY_DEX, {
-      search: debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort,
+      search: debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, priceMin, priceMax, sort,
     });
     // Deliberately not folded into applyWishlistPipeline's own filter options —
     // this is a one-off view toggle off the alert pill, not a persisted/URL-driven
     // filter dimension like the others in WishlistFilterBar.
     return showAlertsOnly ? base.filter(isPriceAlertTriggered) : base;
-  }, [cards, ownedIds, debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort, showAlertsOnly]);
+  }, [cards, ownedIds, debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, priceMin, priceMax, sort, showAlertsOnly]);
 
   const grouped = useMemo(() => groupWishlistByPokemon(filtered, ownedIds), [filtered, ownedIds]);
   // Off the unfiltered list on purpose — a triggered card shouldn't vanish
   // from this count just because the active filters happen to hide it.
   const triggeredCount = useMemo(() => (cards as WishlistCard[]).filter(isPriceAlertTriggered).length, [cards]);
 
-  const reset = () => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); };
+  const reset = () => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); setPriceMin(null); setPriceMax(null); };
 
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
@@ -461,6 +463,7 @@ export default function WishlistScreen() {
         setFilter={setFilter} onSet={setSet}
         rarityFilter={rarityFilter} onRarity={setRarity}
         generationFilter={generationFilter} onGeneration={setGeneration}
+        priceMin={priceMin} priceMax={priceMax} onPriceRange={(min, max) => { setPriceMin(min); setPriceMax(max); }}
         sort={sort} onSort={setSort}
         sets={availableSets} rarities={availableRarities}
         onReset={reset}

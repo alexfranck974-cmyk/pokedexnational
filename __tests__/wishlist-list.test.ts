@@ -1,4 +1,4 @@
-import { applyWishlistPipeline, groupWishlistByPokemon, isPriceAlertTriggered, type WishlistCard } from '../lib/wishlist-list';
+import { applyWishlistPipeline, groupWishlistByPokemon, isPriceAlertTriggered, wishlistCardPrice, type WishlistCard } from '../lib/wishlist-list';
 import type { PokemonType } from '../lib/types';
 
 const cards: WishlistCard[] = [
@@ -94,6 +94,49 @@ describe('applyWishlistPipeline', () => {
     const withPriority = cards.map(c => c.id === 'base1-58' ? { ...c, is_priority: true } : c);
     const r = applyWishlistPipeline(withPriority, new Set(), typesByDex, { ...noFilters, sort: 'num-asc' });
     expect(r.map(c => c.id)).toEqual(['base1-58', 'base1-1', 'jungle-1', 'base1-46']);
+  });
+
+  describe('price sort and filter', () => {
+    // base1-1: no price at all; jungle-1: trend only; base1-46: low only (no trend);
+    // base1-58: both trend and low, trend should win.
+    const priced: WishlistCard[] = [
+      { ...cards[0], cardmarket_trend_eur: null, cardmarket_low_eur: null },
+      { ...cards[1], cardmarket_trend_eur: 30, cardmarket_low_eur: null },
+      { ...cards[2], cardmarket_trend_eur: null, cardmarket_low_eur: 3 },
+      { ...cards[3], cardmarket_trend_eur: 10, cardmarket_low_eur: 999 },
+    ];
+
+    it('falls back from trend to low, and is null when neither is set', () => {
+      expect(wishlistCardPrice(priced[0])).toBeNull();
+      expect(wishlistCardPrice(priced[1])).toBe(30);
+      expect(wishlistCardPrice(priced[2])).toBe(3);
+      expect(wishlistCardPrice(priced[3])).toBe(10);
+    });
+
+    it('sorts cheapest first, sinking unpriced cards to the bottom', () => {
+      const r = applyWishlistPipeline(priced, new Set(), typesByDex, { ...noFilters, sort: 'price-asc' });
+      expect(r.map(c => c.id)).toEqual(['base1-46', 'base1-58', 'jungle-1', 'base1-1']);
+    });
+
+    it('sorts most expensive first, still sinking unpriced cards to the bottom', () => {
+      const r = applyWishlistPipeline(priced, new Set(), typesByDex, { ...noFilters, sort: 'price-desc' });
+      expect(r.map(c => c.id)).toEqual(['jungle-1', 'base1-58', 'base1-46', 'base1-1']);
+    });
+
+    it('filters to a price range, excluding unpriced cards', () => {
+      const r = applyWishlistPipeline(priced, new Set(), typesByDex, { ...noFilters, priceMin: 5, priceMax: 20 });
+      expect(r.map(c => c.id)).toEqual(['base1-58']);
+    });
+
+    it('filters with only a max bound (e.g. "< 5€")', () => {
+      const r = applyWishlistPipeline(priced, new Set(), typesByDex, { ...noFilters, priceMax: 5 });
+      expect(r.map(c => c.id)).toEqual(['base1-46']);
+    });
+
+    it('filters with only a min bound (e.g. "50€+")', () => {
+      const r = applyWishlistPipeline(priced, new Set(), typesByDex, { ...noFilters, priceMin: 20 });
+      expect(r.map(c => c.id)).toEqual(['jungle-1']);
+    });
   });
 });
 

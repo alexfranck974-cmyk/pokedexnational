@@ -6,7 +6,7 @@ import type { WishStatusFilter, WishSortKey } from '@/lib/wishlist-list';
 import { TYPE_LABEL_FR, getTypeLabel } from '@/lib/types-colors';
 import { GENERATIONS, getGenerationLabel } from '@/lib/generations';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
-import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts, SCREEN_FAB_CLEARANCE } from '@/lib/theme';
+import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts } from '@/lib/theme';
 import { useLocale, useT } from '@/lib/locale';
 
 interface Props {
@@ -16,15 +16,33 @@ interface Props {
   setFilter: string | null;             onSet: (v: string | null) => void;
   rarityFilter: string | null;          onRarity: (v: string | null) => void;
   generationFilter: number | null;      onGeneration: (v: number | null) => void;
+  priceMin: number | null;              priceMax: number | null;      onPriceRange: (min: number | null, max: number | null) => void;
   sort: WishSortKey;                    onSort: (v: WishSortKey) => void;
   sets: { id: string; name: string; region?: string }[];
   rarities: string[];
   onReset: () => void;
 }
 
+// This screen's own search+filter FABs stack in the same bottom-right corner
+// as app/(app)/_layout.tsx's global search+settings FABs (Wishlist isn't the
+// Pokédex screen, so it doesn't get that layout's "more" collapse — it keeps
+// both global FABs stacked 2-deep on the right, unlike SearchFilterBar's
+// SCREEN_FAB_CLEARANCE default which was tuned for the Pokédex's 1-deep
+// case). Clearance = fabSlot(1) + FAB_SIZE (the top edge of that 2nd global
+// FAB, 24+62+8+52+44=190) plus a visible gap.
+const WISHLIST_FAB_CLEARANCE = 202;
+
+const PRICE_PRESETS: { min: number | null; max: number | null }[] = [
+  { min: null, max: null },
+  { min: null, max: 5 },
+  { min: 5, max: 20 },
+  { min: 20, max: 50 },
+  { min: 50, max: null },
+];
+
 function makeStyles(colors: ColorTokens, shadow: ShadowTokens) {
   return {
-    overlay: { position: 'absolute' as const, left: 0, right: 0, top: 0, bottom: 0, alignItems: 'flex-end' as const, justifyContent: 'flex-end' as const, paddingHorizontal: spacing.lg, paddingBottom: SCREEN_FAB_CLEARANCE, gap: spacing.md },
+    overlay: { position: 'absolute' as const, left: 0, right: 0, top: 0, bottom: 0, alignItems: 'flex-end' as const, justifyContent: 'flex-end' as const, paddingHorizontal: spacing.lg, paddingBottom: WISHLIST_FAB_CLEARANCE, gap: spacing.md },
 
     floatingSearch: { alignSelf: 'stretch' as const, flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, ...shadow.md },
     floatingSearchInput: { flex: 1, fontSize: 15, fontFamily: fonts.body, color: colors.text, padding: 0 },
@@ -127,7 +145,7 @@ export function WishlistFilterBar(p: Props) {
   const { locale } = useLocale();
   const t = useT();
   const styles = useThemedStyles(makeStyles);
-  const hasFilters = p.statusFilter !== 'all' || p.typeFilter || p.setFilter || p.rarityFilter || p.generationFilter !== null;
+  const hasFilters = p.statusFilter !== 'all' || p.typeFilter || p.setFilter || p.rarityFilter || p.generationFilter !== null || p.priceMin != null || p.priceMax != null;
 
   const typeOptions: PickerOption[] = (Object.keys(TYPE_LABEL_FR) as PokemonType[])
     .map(pt => ({ id: pt, label: getTypeLabel(pt, locale) }));
@@ -195,10 +213,30 @@ export function WishlistFilterBar(p: Props) {
                 <Chip label={rarityChipLabel} active={p.rarityFilter !== null} onPress={() => setOpenPicker('rarity')} />
               </View>
 
+              <Text style={styles.sectionLabel}>{t('wishlist.priceLabel')}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+                {PRICE_PRESETS.map(({ min, max }) => (
+                  <Chip
+                    key={`${min}-${max}`}
+                    label={
+                      min == null && max == null ? t('wishlist.priceAll')
+                      : min == null ? t('wishlist.priceUnder5')
+                      : max == null ? t('wishlist.priceOver50')
+                      : max === 20 ? t('wishlist.price5to20')
+                      : t('wishlist.price20to50')
+                    }
+                    active={p.priceMin === min && p.priceMax === max}
+                    onPress={() => p.onPriceRange(min, max)}
+                  />
+                ))}
+              </ScrollView>
+
               <Text style={styles.sectionLabel}>{t('search.sortLabel')}</Text>
               <View style={styles.chipRow}>
                 <Chip label={t('wishlist.sortNumAsc')}     active={p.sort === 'num-asc'}     onPress={() => p.onSort('num-asc')} />
                 <Chip label={t('wishlist.sortNumDesc')}    active={p.sort === 'num-desc'}    onPress={() => p.onSort('num-desc')} />
+                <Chip label={t('wishlist.sortPriceAsc')}   active={p.sort === 'price-asc'}   onPress={() => p.onSort('price-asc')} />
+                <Chip label={t('wishlist.sortPriceDesc')}  active={p.sort === 'price-desc'}  onPress={() => p.onSort('price-desc')} />
                 <Chip label={t('wishlist.sortWishedDesc')} active={p.sort === 'wished-desc'} onPress={() => p.onSort('wished-desc')} />
                 <Chip label={t('wishlist.sortWishedAsc')}  active={p.sort === 'wished-asc'}  onPress={() => p.onSort('wished-asc')} />
                 <Chip label={t('wishlist.sortNameAsc')}    active={p.sort === 'name-asc'}    onPress={() => p.onSort('name-asc')} />

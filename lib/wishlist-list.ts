@@ -26,8 +26,15 @@ export function isPriceAlertTriggered(card: WishlistCard): boolean {
   return card.price_alert_eur != null && card.cardmarket_trend_eur != null && card.cardmarket_trend_eur <= card.price_alert_eur;
 }
 
+// Trend is the "current" market price; low is the best fallback when a card
+// has no trend yet (e.g. a very recent listing) — same fallback convention
+// isPriceAlertTriggered's callers already expect from cardmarket_trend_eur.
+export function wishlistCardPrice(card: WishlistCard): number | null {
+  return card.cardmarket_trend_eur ?? card.cardmarket_low_eur ?? null;
+}
+
 export type WishStatusFilter = 'all' | 'not_owned' | 'owned';
-export type WishSortKey = 'wished-desc' | 'wished-asc' | 'name-asc' | 'name-desc' | 'num-asc' | 'num-desc';
+export type WishSortKey = 'wished-desc' | 'wished-asc' | 'name-asc' | 'name-desc' | 'num-asc' | 'num-desc' | 'price-asc' | 'price-desc';
 
 export interface WishlistPipelineOpts {
   search: string;
@@ -37,6 +44,11 @@ export interface WishlistPipelineOpts {
   rarityFilter: string | null;
   generationFilter?: number | null;
   sort: WishSortKey;
+  /** Cards with no known price are excluded once either bound is set — an
+   * unpriced card can't be judged against "under 5€", so it can't honestly
+   * match a range filter. */
+  priceMin?: number | null;
+  priceMax?: number | null;
 }
 
 function normalize(s: string): string {
@@ -64,6 +76,12 @@ export function applyWishlistPipeline(
       const g = GENERATIONS.find(x => x.gen === opts.generationFilter);
       if (!g || c.dex_num < g.min || c.dex_num > g.max) return false;
     }
+    if (opts.priceMin != null || opts.priceMax != null) {
+      const price = wishlistCardPrice(c);
+      if (price == null) return false;
+      if (opts.priceMin != null && price < opts.priceMin) return false;
+      if (opts.priceMax != null && price > opts.priceMax) return false;
+    }
     if (searchN) {
       const nameMatch = normalize(c.name).includes(searchN);
       const setMatch = normalize(c.set_name).includes(searchN);
@@ -82,6 +100,25 @@ export function applyWishlistPipeline(
     case 'name-desc': sorted.sort((a, b) => cmpName(b, a)); break;
     case 'num-asc':  sorted.sort((a, b) => a.dex_num - b.dex_num); break;
     case 'num-desc': sorted.sort((a, b) => b.dex_num - a.dex_num); break;
+    // Unpriced cards sink to the bottom regardless of direction — there's
+    // nothing to triage them against, so they shouldn't cluster at the top
+    // of a "cheapest first" sort just because null sorts low.
+    case 'price-asc':
+      sorted.sort((a, b) => {
+        const pa = wishlistCardPrice(a), pb = wishlistCardPrice(b);
+        if (pa == null) return pb == null ? 0 : 1;
+        if (pb == null) return -1;
+        return pa - pb;
+      });
+      break;
+    case 'price-desc':
+      sorted.sort((a, b) => {
+        const pa = wishlistCardPrice(a), pb = wishlistCardPrice(b);
+        if (pa == null) return pb == null ? 0 : 1;
+        if (pb == null) return -1;
+        return pb - pa;
+      });
+      break;
   }
   // Coups de cœur always float to the top, regardless of the chosen sort —
   // a second, stable pass (Array.sort is spec-guaranteed stable since
