@@ -11,7 +11,7 @@ import { TypeBadge } from '@/components/TypeBadge';
 import { CardGallery } from '@/components/CardGallery';
 import { CardFilterTree } from '@/components/CardFilterTree';
 import { CardZoomModal } from '@/components/CardZoomModal';
-import { CardCopySheet, EditCopyFooterButton } from '@/components/CardCopySheet';
+import { CardCopySheet, EditCopyFooterButton, RemoveWishFooterButton } from '@/components/CardCopySheet';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EmptyState } from '@/components/EmptyState';
 import { TYPE_COLORS } from '@/lib/types-colors';
@@ -405,9 +405,13 @@ export default function PokemonDetail() {
       <CardZoomModal
         card={zoomCard}
         onClose={() => setZoomCard(null)}
-        footer={zoomCard && ledgerSet.has(zoomCard.id) ? (
-          <EditCopyFooterButton onPress={() => { setDetailsCard(zoomCard); setZoomCard(null); }} />
-        ) : undefined}
+        footer={
+          zoomCard && ledgerSet.has(zoomCard.id) ? (
+            <EditCopyFooterButton onPress={() => { setDetailsCard(zoomCard); setZoomCard(null); }} />
+          ) : zoomCard && wishedSet.has(zoomCard.id) ? (
+            <RemoveWishFooterButton onPress={() => { toggleWish.mutate({ cardId: zoomCard.id, currentlyWished: true, dexNum: num }); setZoomCard(null); }} />
+          ) : undefined
+        }
       />
       <CardCopySheet card={detailsCard} onClose={() => setDetailsCard(null)} />
       <ConfirmDialog

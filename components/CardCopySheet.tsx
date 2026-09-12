@@ -132,6 +132,10 @@ const footerStyles = StyleSheet.create({
     marginTop: spacing.md, paddingHorizontal: spacing.md, paddingVertical: 8,
     borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.15)',
   },
+  // CardZoomModal's backdrop is always dark regardless of app theme, so this
+  // stays a fixed tone (same hue as the `danger` token's dark-palette value)
+  // rather than pulling from useTheme.
+  btnDanger: { backgroundColor: 'rgba(242,153,74,0.85)' },
   text: { color: 'white', fontSize: 13, fontFamily: fonts.bodyBold },
 });
 
@@ -143,6 +147,21 @@ export function EditCopyFooterButton({ onPress }: { onPress: () => void }) {
     <Pressable style={footerStyles.btn} onPress={onPress}>
       <Ionicons name="information-circle-outline" size={16} color="white" />
       <Text style={footerStyles.text}>{t('cardCopy.editButton')}</Text>
+    </Pressable>
+  );
+}
+
+/** "Retirer de la wishlist" action for CardZoomModal's footer slot — the same
+ * action already available as a small ✕ badge on wishlist thumbnails, surfaced
+ * here too since the zoomed view is where a card is easiest to actually look at
+ * before deciding to drop it. Red-tinted (unlike EditCopyFooterButton's neutral
+ * pill) since this one is destructive. */
+export function RemoveWishFooterButton({ onPress }: { onPress: () => void }) {
+  const t = useT();
+  return (
+    <Pressable style={[footerStyles.btn, footerStyles.btnDanger]} onPress={onPress}>
+      <Ionicons name="heart-dislike-outline" size={16} color="white" />
+      <Text style={footerStyles.text}>{t('wishlist.a11yRemove')}</Text>
     </Pressable>
   );
 }

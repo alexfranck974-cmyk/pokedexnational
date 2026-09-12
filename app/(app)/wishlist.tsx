@@ -61,6 +61,10 @@ export default function WishlistScreen() {
   const { data: cards = [], isLoading } = useAllWishedCards(userId);
   const { data: ownedIds = new Set<string>() } = useAllOwnedCardIds(userId);
   const toggleWish = useToggleWish();
+  // .mutate is stable across renders (react-query), unlike toggleWish itself —
+  // declared this early so both the reactive `gallery` derivation below and
+  // renderPokemonRow/renderCardTile's useCallback dep arrays can use it.
+  const wishMutate = toggleWish.mutate;
   const togglePriority = useToggleWishPriority();
   const [priceAlertTarget, setPriceAlertTarget] = useState<WishlistCard | null>(null);
   const [showAlertsOnly, setShowAlertsOnly] = useState(false);
@@ -76,7 +80,7 @@ export default function WishlistScreen() {
   const { refreshing, onRefresh } = usePullToRefresh();
   const hideOnScrollProps = useHideOnScrollProps();
   const swipeGesture = useSectionSwipeGesture('wishlist');
-  const [gallery, setGallery] = useState<FriendSetGalleryTarget | null>(null);
+  const [galleryDexNum, setGalleryDexNum] = useState<number | null>(null);
 
   // Slide-in direction for arriving from Pokédex/Collection via PokedexSectionTabs
   // — see the matching effect in app/(app)/pokedex.tsx for why navToken (not the
@@ -131,6 +135,27 @@ export default function WishlistScreen() {
   }, [cards, ownedIds, debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, priceMin, priceMax, sort, showAlertsOnly]);
 
   const grouped = useMemo(() => groupWishlistByPokemon(filtered, ownedIds), [filtered, ownedIds]);
+
+  // Derived (not stored) from the live `grouped` data, keyed only by which
+  // Pokémon's gallery is open — so removing a card from inside the gallery
+  // updates it immediately, and it closes itself once the group is empty,
+  // instead of showing a stale snapshot from when it was opened.
+  const gallery: FriendSetGalleryTarget | null = useMemo(() => {
+    if (galleryDexNum == null) return null;
+    const group = grouped.find(g => g.dexNum === galleryDexNum);
+    if (!group) return null;
+    const mon = POKEDEX_BY_DEX.get(galleryDexNum);
+    return {
+      setName: mon ? getName(mon, locale) : `#${String(galleryDexNum).padStart(4, '0')}`,
+      owned: group.cards.filter(c => ownedIds.has(c.id)).length,
+      total: group.cards.length,
+      cards: group.cards.map(c => ({
+        key: c.id, imageSmall: c.image_small, imageLarge: c.image_large,
+        cardmarketLowEur: c.cardmarket_low_eur, cardmarketTrendEur: c.cardmarket_trend_eur,
+      })),
+      onRemoveCard: (cardId: string) => wishMutate({ cardId, currentlyWished: true, dexNum: galleryDexNum }),
+    };
+  }, [galleryDexNum, grouped, ownedIds, locale, wishMutate]);
   // Off the unfiltered list on purpose — a triggered card shouldn't vanish
   // from this count just because the active filters happen to hide it.
   const triggeredCount = useMemo(() => (cards as WishlistCard[]).filter(isPriceAlertTriggered).length, [cards]);
@@ -217,11 +242,6 @@ export default function WishlistScreen() {
     heartFilled: { fontSize: 18, color: colors.danger, lineHeight: 22 },
   }));
 
-  // .mutate is stable across renders (react-query), unlike toggleWish itself
-  // — needed here (not just in renderCardTile below) now that renderPokemonRow
-  // also has a per-thumbnail remove button, same useCallback-stability reasoning.
-  const wishMutate = toggleWish.mutate;
-
   // Stable across re-renders triggered by unrelated state (e.g. opening the
   // card gallery sheet) — an inline renderItem is a fresh function every
   // render, and FlashList treats that as "the list changed", re-laying out
@@ -236,15 +256,7 @@ export default function WishlistScreen() {
     const ownedCount = item.cards.filter(c => ownedIds.has(c.id)).length;
     return (
       <Pressable
-        onPress={() => setGallery({
-          setName: mon ? getName(mon, locale) : `#${String(item.dexNum).padStart(4, '0')}`,
-          owned: ownedCount,
-          total: item.cards.length,
-          cards: item.cards.map(c => ({
-            key: c.id, imageSmall: c.image_small, imageLarge: c.image_large,
-            cardmarketLowEur: c.cardmarket_low_eur, cardmarketTrendEur: c.cardmarket_trend_eur,
-          })),
-        })}
+        onPress={() => setGalleryDexNum(item.dexNum)}
         style={({ pressed }) => [styles.pokemonRow, ownedCount > 0 && styles.pokemonRowOwned, pressed && { backgroundColor: colors.surfaceAlt }]}>
         <View style={styles.pokemonSpriteWrap}>
           {mon && <Image source={{ uri: mon.sprite_url }} style={styles.pokemonSprite} resizeMode="contain" />}
@@ -287,8 +299,7 @@ export default function WishlistScreen() {
   );
 
   // .mutate is stable across renders (react-query), unlike togglePriority
-  // itself — same useCallback-stability reasoning (wishMutate is declared
-  // above, next to renderPokemonRow, which also needs it now).
+  // itself — same useCallback-stability reasoning as wishMutate above.
   const priorityMutate = togglePriority.mutate;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const renderCardTile = useCallback(({ item }: { item: WishlistCard }) => {
@@ -468,7 +479,7 @@ export default function WishlistScreen() {
         sets={availableSets} rarities={availableRarities}
         onReset={reset}
       />
-      <FriendSetGalleryModal target={gallery} onClose={() => setGallery(null)} />
+      <FriendSetGalleryModal target={gallery} onClose={() => setGalleryDexNum(null)} />
       <PriceAlertSheet card={priceAlertTarget} onClose={() => setPriceAlertTarget(null)} />
     </SafeAreaView>
   );

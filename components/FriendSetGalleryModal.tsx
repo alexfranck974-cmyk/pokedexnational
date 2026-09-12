@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { View, Text, Pressable, Modal, StyleSheet, useWindowDimensions } from 'react-native';
 import { ReadonlyCardGrid } from './ReadonlyCardGrid';
-import { CardZoomModal, type ZoomableCard } from './CardZoomModal';
+import { CardZoomModal } from './CardZoomModal';
+import { RemoveWishFooterButton } from './CardCopySheet';
 import { useModalBackClose } from '@/lib/useModalBackClose';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useT } from '@/lib/locale';
@@ -15,6 +16,10 @@ export interface FriendSetGalleryTarget {
     /** Omit where price isn't relevant/available (e.g. a friend's public gallery) — ReadonlyCardGrid just skips the price line. */
     cardmarketLowEur?: number | null; cardmarketTrendEur?: number | null;
   }[];
+  /** Wishlist galleries pass this to let a card be dropped straight from here
+   * (grid thumbnail badge + zoomed-view footer) — read-only galleries (a
+   * friend's public collection/wishlist) just omit it. */
+  onRemoveCard?: (key: string) => void;
 }
 
 interface Props {
@@ -25,7 +30,7 @@ interface Props {
 export function FriendSetGalleryModal({ target, onClose }: Props) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
-  const [zoomCard, setZoomCard] = useState<ZoomableCard | null>(null);
+  const [zoomed, setZoomed] = useState<{ key: string; image_small: string; image_large: string | null } | null>(null);
   const t = useT();
   useModalBackClose(target !== null, onClose);
 
@@ -62,9 +67,10 @@ export function FriendSetGalleryModal({ target, onClose }: Props) {
                     key: c.key, image: c.imageSmall,
                     cardmarketLowEur: c.cardmarketLowEur, cardmarketTrendEur: c.cardmarketTrendEur,
                   }))}
+                  onRemove={target.onRemoveCard}
                   onZoom={(key) => {
                     const card = target.cards.find(c => c.key === key);
-                    if (card) setZoomCard({ image_small: card.imageSmall, image_large: card.imageLarge });
+                    if (card) setZoomed({ key, image_small: card.imageSmall, image_large: card.imageLarge });
                   }}
                 />
               </View>
@@ -72,7 +78,13 @@ export function FriendSetGalleryModal({ target, onClose }: Props) {
           )}
         </Pressable>
       </Pressable>
-      <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
+      <CardZoomModal
+        card={zoomed}
+        onClose={() => setZoomed(null)}
+        footer={zoomed && target?.onRemoveCard ? (
+          <RemoveWishFooterButton onPress={() => { target.onRemoveCard!(zoomed.key); setZoomed(null); }} />
+        ) : undefined}
+      />
     </Modal>
   );
 }
