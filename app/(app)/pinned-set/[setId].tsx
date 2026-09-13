@@ -75,6 +75,11 @@ export default function PinnedSetDetail() {
   const exitSelectionMode = () => { setSelectionMode(false); setSelectedIds(new Set()); };
 
   const confirmBulkAdd = () => {
+    // Guards against an eager double-tap firing the same batch twice before the
+    // button below re-renders as disabled — the second insert would otherwise
+    // race the first and collide on the primary key (fixed defensively in
+    // useBulkMarkOwned too, but there's no reason to send the duplicate request).
+    if (bulkMarkOwned.isPending) return;
     const toAdd = sortedCards.filter(c => selectedIds.has(c.id));
     if (toAdd.length === 0) { exitSelectionMode(); return; }
     // Same completion-celebration logic as the single-card onToggle below, just folded
@@ -148,6 +153,7 @@ export default function PinnedSetDetail() {
     bulkBarCancel: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
     bulkBarCancelText: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted },
     bulkBarConfirm: { backgroundColor: colors.primary, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
+    bulkBarConfirmDisabled: { opacity: 0.6 },
     bulkBarConfirmText: { fontSize: 13, fontFamily: fonts.bodyBold, color: 'white' },
   }));
 
@@ -300,8 +306,8 @@ export default function PinnedSetDetail() {
             <Pressable onPress={exitSelectionMode} style={styles.bulkBarCancel}>
               <Text style={styles.bulkBarCancelText}>Annuler</Text>
             </Pressable>
-            <Pressable onPress={confirmBulkAdd} style={styles.bulkBarConfirm}>
-              <Text style={styles.bulkBarConfirmText}>Marquer possédées</Text>
+            <Pressable onPress={confirmBulkAdd} disabled={bulkMarkOwned.isPending} style={[styles.bulkBarConfirm, bulkMarkOwned.isPending && styles.bulkBarConfirmDisabled]}>
+              <Text style={styles.bulkBarConfirmText}>{bulkMarkOwned.isPending ? '…' : 'Marquer possédées'}</Text>
             </Pressable>
           </View>
         </View>

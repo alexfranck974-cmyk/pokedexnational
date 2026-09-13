@@ -508,9 +508,18 @@ export function useBulkMarkOwned() {
     mutationFn: async ({ cards }: { cards: { cardId: string; rarity?: string | null }[] }) => {
       if (!userId) throw new Error('Not signed in');
       if (cards.length === 0) return;
+      // upsert + ignoreDuplicates rather than a plain insert: a card already owned by
+      // the time this lands (stale ownedAll cache, or the same batch submitted twice by
+      // an eager double-tap before the button below disables) would otherwise collide on
+      // the (user_id, card_id, finish) primary key and fail the *entire* batch with a
+      // 23505 — silently skipping the already-owned row is the correct outcome here, not
+      // an error, since the goal ("this card is owned") is already satisfied.
       const { error } = await supabase
         .from('user_owned_cards')
-        .insert(cards.map(c => ({ user_id: userId, card_id: c.cardId, finish: 'normal' })));
+        .upsert(
+          cards.map(c => ({ user_id: userId, card_id: c.cardId, finish: 'normal' })),
+          { onConflict: 'user_id,card_id,finish', ignoreDuplicates: true },
+        );
       if (error) throw error;
       for (const c of cards) await postFriendNewsIfNotable(userId, c.cardId, c.rarity ?? null);
     },
