@@ -4,7 +4,9 @@ import type { Pokemon } from '../lib/types';
 function mon(overrides: Partial<Pokemon> & { num: number }): Pokemon {
   return {
     name_fr: `mon-${overrides.num}`, name_en: `mon-${overrides.num}`,
-    types: ['normal'], sprite_url: '', evolvesFromNum: null,
+    types: ['normal'], sprite_url: '', evolvesFromNum: null, evolvesToNums: [],
+    stats: { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 },
+    description_fr: null, description_en: null,
     ...overrides,
   };
 }

@@ -7,10 +7,12 @@ import type { Pokemon } from '../lib/types';
 import type { SetGoal } from '../lib/collection-goals';
 import type { TcgSetInfo } from '../lib/tcg-index';
 
+const TEST_STATS = { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 };
+
 const sample: Pokemon[] = [
-  { num: 1, name_fr: 'Bulbizarre', name_en: 'Bulbasaur', types: ['grass', 'poison'], sprite_url: '', evolvesFromNum: null },
-  { num: 4, name_fr: 'Salamèche', name_en: 'Charmander', types: ['fire'], sprite_url: '', evolvesFromNum: null },
-  { num: 152, name_fr: 'Germignon', name_en: 'Chikorita', types: ['grass'], sprite_url: '', evolvesFromNum: null }, // gen 2
+  { num: 1, name_fr: 'Bulbizarre', name_en: 'Bulbasaur', types: ['grass', 'poison'], sprite_url: '', evolvesFromNum: null, evolvesToNums: [], stats: TEST_STATS, description_fr: null, description_en: null },
+  { num: 4, name_fr: 'Salamèche', name_en: 'Charmander', types: ['fire'], sprite_url: '', evolvesFromNum: null, evolvesToNums: [], stats: TEST_STATS, description_fr: null, description_en: null },
+  { num: 152, name_fr: 'Germignon', name_en: 'Chikorita', types: ['grass'], sprite_url: '', evolvesFromNum: null, evolvesToNums: [], stats: TEST_STATS, description_fr: null, description_en: null }, // gen 2
 ];
 
 describe('computeOverallProgress', () => {

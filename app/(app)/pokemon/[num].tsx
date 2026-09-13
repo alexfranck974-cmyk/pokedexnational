@@ -12,6 +12,7 @@ import { CardGallery } from '@/components/CardGallery';
 import { CardFilterTree } from '@/components/CardFilterTree';
 import { CardZoomModal } from '@/components/CardZoomModal';
 import { CardCopySheet, EditCopyFooterButton, RemoveWishFooterButton } from '@/components/CardCopySheet';
+import { PokemonInfoPanel } from '@/components/PokemonInfoPanel';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EmptyState } from '@/components/EmptyState';
 import { TYPE_COLORS } from '@/lib/types-colors';
@@ -33,6 +34,7 @@ import { BackButton } from '@/components/BackButton';
 import { hrefToSection } from '@/components/PokedexSectionTabs';
 
 const POKEDEX = pokedexData as Pokemon[];
+const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
 
 // Per-Pokémon colored glow on the hero sprite (primary type) — dynamic per
 // screen instance, same pattern as the Pokedex grid's generation headers.
@@ -329,6 +331,15 @@ export default function PokemonDetail() {
           </View>
         </View>
       </LinearGradient>
+
+      <PokemonInfoPanel
+        pokemon={p}
+        byDex={POKEDEX_BY_DEX}
+        onSelectPokemon={targetNum => {
+          const pokemonUrl = from ? withReturnTo(`/pokemon/${num}`, safeDecodeURIComponent(from)) : `/pokemon/${num}`;
+          router.push(withReturnTo(`/pokemon/${targetNum}`, pokemonUrl) as never);
+        }}
+      />
 
       <View style={styles.regionRow}>
         {REGIONS.map(r => (

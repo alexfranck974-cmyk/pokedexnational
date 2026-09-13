@@ -34,3 +34,39 @@ export function buildEvolutionFamilies(pokedex: Pokemon[]): EvolutionFamily[] {
   }
   return Array.from(groups.values()).map(members => ({ members: members.sort((a, b) => a - b) }));
 }
+
+// Walks evolvesFromNum back to the family's root, then evolvesToNums forward
+// stage by stage — handles both linear chains (Charmander -> Charmeleon ->
+// Charizard) and branching ones (Eevee -> its 8 Eeveelutions) the same way,
+// regardless of which member of the family `pokemon` itself is. Each stage is
+// an array since branches place several Pokémon at the same depth.
+export function buildEvolutionStages(pokemon: Pokemon, byDex: Map<number, Pokemon>): Pokemon[][] {
+  let root = pokemon;
+  const rootGuard = new Set([root.num]);
+  while (root.evolvesFromNum != null) {
+    const prev = byDex.get(root.evolvesFromNum);
+    if (!prev || rootGuard.has(prev.num)) break;
+    root = prev;
+    rootGuard.add(root.num);
+  }
+
+  const stages: Pokemon[][] = [[root]];
+  const seen = new Set([root.num]);
+  let current = [root];
+  while (current.length > 0) {
+    const next: Pokemon[] = [];
+    for (const mon of current) {
+      for (const childNum of mon.evolvesToNums) {
+        const child = byDex.get(childNum);
+        if (child && !seen.has(child.num)) {
+          next.push(child);
+          seen.add(child.num);
+        }
+      }
+    }
+    if (next.length === 0) break;
+    stages.push(next);
+    current = next;
+  }
+  return stages;
+}
