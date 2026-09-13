@@ -21,6 +21,7 @@ import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { eurFormatter } from '@/lib/trades';
 import { useLocale, useT } from '@/lib/locale';
 import { PokedexHeroCard } from '@/components/PokedexHeroCard';
+import { RecentAdditionsStrip } from '@/components/RecentAdditionsStrip';
 import { NewSetBanner } from '@/components/NewSetBanner';
 import { BadgesSection } from '@/components/BadgesSection';
 import { VitrineCarousel } from '@/components/VitrineCarousel';
@@ -142,9 +143,11 @@ export default function DashboardScreen() {
   const recentCards = useMemo(() => [...ledgerCards]
     .sort((a, b) => new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime())
     .slice(0, 10), [ledgerCards]);
-  const recentCarouselItems = useMemo(() => recentCards.map((c, i) => ({
+  const recentAdditionItems = useMemo(() => recentCards.map((c, i) => ({
     key: `${c.cardId}-${c.finish}`,
-    image: c.imageLarge ?? c.imageSmall,
+    image: c.imageSmall,
+    dexNum: c.dexNum,
+    acquiredAt: c.acquiredAt,
     onPress: () => setRecentZoomIndex(i),
   })), [recentCards]);
   const recentZoomCard = recentZoomIndex !== null ? recentCards[recentZoomIndex] : null;
@@ -152,7 +155,7 @@ export default function DashboardScreen() {
   const { colors } = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
   const hideOnScrollProps = useHideOnScrollProps();
-  const styles = useThemedStyles((colors) => ({
+  const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
     center: { flex: 1, justifyContent: 'center' as const, alignItems: 'center' as const },
     scroll: { padding: spacing.lg, paddingBottom: spacing.lg + TAB_BAR_CLEARANCE, gap: spacing.lg },
@@ -167,6 +170,12 @@ export default function DashboardScreen() {
       backgroundColor: colors.surface,
     },
     heroBackdropImg: { ...StyleSheet.absoluteFillObject, opacity: 0.55 },
+    // Distinct card + shadow around the Vitrine (vs. the plain-strip Recent
+    // Additions below) — the curated showcase reads as the page's "hero"
+    // content, Recent Additions as a lightweight, automatic log underneath.
+    vitrineFrame: {
+      borderRadius: radius.xl, backgroundColor: colors.surface, paddingVertical: spacing.xs, ...shadow.md,
+    },
     titleRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
     titleActions: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md },
     h1: { fontSize: 30, fontFamily: fonts.display, color: colors.text },
@@ -307,9 +316,9 @@ export default function DashboardScreen() {
 
         <NewSetBanner userId={userId} joinedAt={joinedAt} />
 
-        <VitrineCarousel items={vitrineItems} />
-
-        <VitrineCarousel title={t('dashboard.recentAdditionsTitle')} items={recentCarouselItems} />
+        <View style={styles.vitrineFrame}>
+          <VitrineCarousel title={t('dashboard.vitrineHighlightTitle')} items={vitrineItems} />
+        </View>
 
         <PokedexHeroCard
           userId={userId}
@@ -323,6 +332,8 @@ export default function DashboardScreen() {
             </View>
           ))}
         </View>
+
+        <RecentAdditionsStrip items={recentAdditionItems} />
 
         {goals.length > 0 && (
           <Animated.View style={{ height: collectionAccordionHeight, overflow: 'hidden' as const }}>

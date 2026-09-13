@@ -309,6 +309,14 @@ export default function PinnedSetDetail() {
       <CardZoomModal
         card={zoomCard}
         onClose={() => setZoomCard(null)}
+        onSwipeNext={() => setZoomCard(c => {
+          const i = sortedCards.findIndex(x => x.id === c?.id);
+          return i === -1 ? c : sortedCards[(i + 1) % sortedCards.length];
+        })}
+        onSwipePrev={() => setZoomCard(c => {
+          const i = sortedCards.findIndex(x => x.id === c?.id);
+          return i === -1 ? c : sortedCards[(i - 1 + sortedCards.length) % sortedCards.length];
+        })}
         footer={zoomCard && ownedAll.has(zoomCard.id) ? (
           <EditCopyFooterButton onPress={() => { setDetailsCard(zoomCard); setZoomCard(null); }} />
         ) : undefined}
