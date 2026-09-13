@@ -3,18 +3,21 @@ import { View, Text, Pressable, ScrollView, FlatList, ActivityIndicator } from '
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useSession } from '@/lib/auth';
 import { useFriends, type FriendProfile } from '@/lib/friends';
 import { useFriendNewsHistory, useReactToFriendNews, type FriendNewsItem } from '@/lib/friend-news';
+import { useMyAdditionsHistory } from '@/lib/collection';
 import { useFriendLeaderboard } from '@/lib/leaderboard';
 import { Avatar } from '@/components/Avatar';
 import { NewsRow, NewsGroupRow, groupConsecutiveByAuthor } from '@/components/NewsRow';
+import { MyAdditionRow } from '@/components/MyAdditionRow';
 import { NewsCommentSheet } from '@/components/NewsCommentSheet';
 import { FriendCardReveal } from '@/components/FriendCardReveal';
 import { EmptyState } from '@/components/EmptyState';
 import { BackButton } from '@/components/BackButton';
 import { CHASE_GOLD } from '@/lib/rarity-tiers';
-import { useBackTo } from '@/lib/navigation';
+import { useBackTo, enterPokemonDetail } from '@/lib/navigation';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useT } from '@/lib/locale';
 
@@ -23,9 +26,11 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 export default function NewsScreen() {
   const { session } = useSession();
   const userId = session?.user.id;
+  const router = useRouter();
   const { colors, heroGradient, heroText, heroTextMuted } = useTheme();
   const t = useT();
 
+  const [tab, setTab] = useState<'friends' | 'mine'>('friends');
   const goBack = useBackTo('/friends');
   const { data: friends = [] } = useFriends(userId);
   const leaderboardIds = useMemo(
@@ -40,6 +45,12 @@ export default function NewsScreen() {
   } = useFriendNewsHistory(userId, true);
   const news = useMemo(() => historyPages?.pages.flatMap(p => p.items) ?? [], [historyPages]);
   const groups = useMemo(() => groupConsecutiveByAuthor(news), [news]);
+
+  const {
+    data: minePages, fetchNextPage: fetchNextMine, hasNextPage: hasNextMine,
+    isFetchingNextPage: isFetchingNextMine, isLoading: mineLoading,
+  } = useMyAdditionsHistory(userId, tab === 'mine');
+  const mine = useMemo(() => minePages?.pages.flatMap(p => p.items) ?? [], [minePages]);
 
   const react = useReactToFriendNews();
   const [reveal, setReveal] = useState<FriendNewsItem | null>(null);
@@ -63,6 +74,14 @@ export default function NewsScreen() {
     activeDot: { position: 'absolute' as const, bottom: 2, right: 2, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
     list: { padding: spacing.md, paddingBottom: spacing.md + TAB_BAR_CLEARANCE, gap: spacing.sm },
     center: { flex: 1, alignItems: 'center' as const, justifyContent: 'center' as const, padding: spacing.xl },
+    tabRow: { flexDirection: 'row' as const, gap: spacing.sm, padding: spacing.md, paddingBottom: 0 },
+    tabBtn: {
+      flex: 1, alignItems: 'center' as const, paddingVertical: spacing.sm,
+      borderRadius: radius.pill, backgroundColor: colors.surface,
+    },
+    tabBtnActive: { backgroundColor: colors.primary },
+    tabBtnText: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
+    tabBtnTextActive: { color: 'white' },
   }));
 
   return (
@@ -72,7 +91,7 @@ export default function NewsScreen() {
           <BackButton onPress={goBack} color={heroText} />
           <Text style={styles.heroTitle}>{t('news.pageTitle')}</Text>
         </View>
-        {leaderboard.length > 1 && (
+        {tab === 'friends' && leaderboard.length > 1 && (
           <View style={styles.leaderboardSection}>
             <Text style={styles.leaderboardTitle}>{t('news.leaderboardTitle')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.leaderboardRow}>
@@ -94,34 +113,68 @@ export default function NewsScreen() {
         )}
       </LinearGradient>
 
-      {isLoading ? (
-        <View style={styles.center}><ActivityIndicator /></View>
-      ) : groups.length === 0 ? (
-        <View style={styles.center}>
-          <EmptyState icon="sparkles-outline" hint={t('friends.newsEmpty')} />
-        </View>
+      <View style={styles.tabRow}>
+        <Pressable onPress={() => setTab('friends')} style={[styles.tabBtn, tab === 'friends' && styles.tabBtnActive]}>
+          <Text style={[styles.tabBtnText, tab === 'friends' && styles.tabBtnTextActive]}>{t('news.tabFriends')}</Text>
+        </Pressable>
+        <Pressable onPress={() => setTab('mine')} style={[styles.tabBtn, tab === 'mine' && styles.tabBtnActive]}>
+          <Text style={[styles.tabBtnText, tab === 'mine' && styles.tabBtnTextActive]}>{t('news.tabMine')}</Text>
+        </Pressable>
+      </View>
+
+      {tab === 'friends' ? (
+        isLoading ? (
+          <View style={styles.center}><ActivityIndicator /></View>
+        ) : groups.length === 0 ? (
+          <View style={styles.center}>
+            <EmptyState icon="sparkles-outline" hint={t('friends.newsEmpty')} />
+          </View>
+        ) : (
+          <FlatList
+            data={groups}
+            keyExtractor={g => g.items[0].id}
+            contentContainerStyle={styles.list}
+            renderItem={({ item: g }) =>
+              g.items.length === 1 ? (
+                <NewsRow
+                  item={g.items[0]}
+                  onOpenCard={setReveal}
+                  from="/news"
+                  onReact={(newsId, emoji) => react.mutate({ newsId, emoji })}
+                  onComment={item => setCommentTarget(item.id)}
+                />
+              ) : (
+                <NewsGroupRow group={g} onOpen={setReveal} from="/news" />
+              )
+            }
+            onEndReachedThreshold={0.4}
+            onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+            ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginTop: spacing.sm }} /> : null}
+          />
+        )
       ) : (
-        <FlatList
-          data={groups}
-          keyExtractor={g => g.items[0].id}
-          contentContainerStyle={styles.list}
-          renderItem={({ item: g }) =>
-            g.items.length === 1 ? (
-              <NewsRow
-                item={g.items[0]}
-                onOpenCard={setReveal}
-                from="/news"
-                onReact={(newsId, emoji) => react.mutate({ newsId, emoji })}
-                onComment={item => setCommentTarget(item.id)}
+        mineLoading ? (
+          <View style={styles.center}><ActivityIndicator /></View>
+        ) : mine.length === 0 ? (
+          <View style={styles.center}>
+            <EmptyState icon="albums-outline" hint={t('news.mineEmpty')} />
+          </View>
+        ) : (
+          <FlatList
+            data={mine}
+            keyExtractor={item => `${item.cardId}-${item.acquiredAt}`}
+            contentContainerStyle={styles.list}
+            renderItem={({ item }) => (
+              <MyAdditionRow
+                item={item}
+                onPress={() => enterPokemonDetail(router, `/pokemon/${item.dexNum}`, '/news')}
               />
-            ) : (
-              <NewsGroupRow group={g} onOpen={setReveal} from="/news" />
-            )
-          }
-          onEndReachedThreshold={0.4}
-          onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
-          ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginTop: spacing.sm }} /> : null}
-        />
+            )}
+            onEndReachedThreshold={0.4}
+            onEndReached={() => { if (hasNextMine && !isFetchingNextMine) fetchNextMine(); }}
+            ListFooterComponent={isFetchingNextMine ? <ActivityIndicator style={{ marginTop: spacing.sm }} /> : null}
+          />
+        )
       )}
 
       <FriendCardReveal item={reveal} mode="history" onClose={() => setReveal(null)} />

@@ -31,6 +31,10 @@ interface Props {
   onOpenDetails?: (card: TcgCardRow) => void;
   /** Owned finishes per card id — when provided, tiles show a holo/reverse shimmer border. */
   finishesByCard?: Map<string, OwnedCardFinish[]>;
+  /** Bulk-add mode — see CardTile/CardListRow. */
+  selectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (card: TcgCardRow) => void;
 }
 
 function numColsFor(width: number): number {
@@ -39,7 +43,7 @@ function numColsFor(width: number): number {
   return 6;
 }
 
-export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, viewMode = 'grid', columnsOverride, quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails, finishesByCard }: Props) {
+export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, viewMode = 'grid', columnsOverride, quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails, finishesByCard, selectionMode, selectedIds, onToggleSelect }: Props) {
   const { width } = useWindowDimensions();
   const hideOnScrollProps = useHideOnScrollProps();
   if (viewMode === 'list') {
@@ -65,6 +69,9 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
             onZoom={onZoom ? () => onZoom(item) : undefined}
             onOpenDetails={onOpenDetails ? () => onOpenDetails(item) : undefined}
             finishes={finishesByCard?.get(item.id)}
+            selectionMode={selectionMode}
+            selected={selectedIds?.has(item.id)}
+            onToggleSelect={onToggleSelect ? () => onToggleSelect(item) : undefined}
           />
         )}
       />
@@ -93,6 +100,9 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
           onZoom={onZoom ? () => onZoom(item) : undefined}
           onOpenDetails={onOpenDetails ? () => onOpenDetails(item) : undefined}
           finishes={finishesByCard?.get(item.id)}
+          selectionMode={selectionMode}
+          selected={selectedIds?.has(item.id)}
+          onToggleSelect={onToggleSelect ? () => onToggleSelect(item) : undefined}
         />
       )}
     />

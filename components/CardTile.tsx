@@ -33,9 +33,14 @@ interface Props {
   onOpenDetails?: () => void;
   /** Finishes owned for this exact card — drives the border shimmer (holo/reverse) when set. */
   finishes?: OwnedCardFinish[];
+  /** Bulk-add mode (pinned-set/[setId].tsx): tapping an unowned card toggles `selected`
+   * instead of calling onToggle — nothing is written until the caller confirms the batch. */
+  selectionMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
-export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails, finishes }: Props) {
+export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails, finishes, selectionMode, selected, onToggleSelect }: Props) {
   const { colors } = useTheme();
   const t = useT();
   const { locale } = useLocale();
@@ -59,6 +64,7 @@ export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, o
       width: 28, height: 28, borderRadius: 14, backgroundColor: colors.overlay,
       alignItems: 'center' as const, justifyContent: 'center' as const,
     },
+    checkboxBadgeChecked: { backgroundColor: colors.primary },
     set: { fontSize: 11, fontFamily: fonts.bodyBold, marginTop: 4, color: colors.text },
     rarity: { fontSize: 10, fontFamily: fonts.body, color: colors.textMuted },
     price: { fontSize: 10, fontFamily: fonts.monoBold, color: colors.success },
@@ -92,7 +98,11 @@ export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, o
   }));
 
   return (
-    <Pressable onPress={readOnly ? undefined : () => { if (!owned) hapticCardAdded(); onToggle(); }}
+    <Pressable onPress={readOnly ? undefined : () => {
+        if (selectionMode) { if (!owned) onToggleSelect?.(); return; }
+        if (!owned) hapticCardAdded();
+        onToggle();
+      }}
       onLongPress={onZoom}
       delayLongPress={350}
       style={({ pressed }) => [
@@ -119,8 +129,12 @@ export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, o
         ) : (
           <View style={styles.plainInner}>
             <Image source={{ uri: card.image_small }} style={[styles.img, styles.imgMissing]} resizeMode="contain" />
-            <View style={styles.lockBadge}>
-              <Ionicons name="lock-closed" size={14} color={colors.textMuted} />
+            <View style={[styles.lockBadge, selectionMode && selected && styles.checkboxBadgeChecked]}>
+              {selectionMode ? (
+                <Ionicons name={selected ? 'checkmark' : 'square-outline'} size={16} color={selected ? 'white' : colors.textMuted} />
+              ) : (
+                <Ionicons name="lock-closed" size={14} color={colors.textMuted} />
+              )}
             </View>
           </View>
         )}

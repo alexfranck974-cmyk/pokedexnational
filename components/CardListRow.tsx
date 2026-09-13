@@ -30,9 +30,14 @@ interface Props {
   onOpenDetails?: () => void;
   /** Finishes owned for this exact card — drives the border shimmer (holo/reverse) when set. */
   finishes?: OwnedCardFinish[];
+  /** Bulk-add mode (pinned-set/[setId].tsx): tapping an unowned card toggles `selected`
+   * instead of calling onToggle — nothing is written until the caller confirms the batch. */
+  selectionMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
-export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails, finishes }: Props) {
+export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails, finishes, selectionMode, selected, onToggleSelect }: Props) {
   const { colors } = useTheme();
   const t = useT();
   const { locale } = useLocale();
@@ -65,6 +70,7 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
       width: 22, height: 22, borderRadius: 11, backgroundColor: colors.overlay,
       alignItems: 'center' as const, justifyContent: 'center' as const,
     },
+    checkboxBadgeChecked: { backgroundColor: colors.primary },
     info: { flex: 1, gap: 2 },
     name: { fontSize: 15, fontFamily: fonts.bodyBold, color: colors.text },
     nameMissing: { color: colors.textMuted },
@@ -82,7 +88,11 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
   }));
 
   return (
-    <Pressable onPress={readOnly ? undefined : () => { if (!owned) hapticCardAdded(); onToggle(); }}
+    <Pressable onPress={readOnly ? undefined : () => {
+        if (selectionMode) { if (!owned) onToggleSelect?.(); return; }
+        if (!owned) hapticCardAdded();
+        onToggle();
+      }}
       onLongPress={onZoom}
       delayLongPress={350}
       style={({ pressed }) => [
@@ -109,8 +119,12 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
         ) : (
           <View style={styles.plainInner}>
             <Image source={{ uri: card.image_small }} style={[styles.thumb, styles.thumbMissing]} resizeMode="contain" />
-            <View style={styles.lockBadge}>
-              <Ionicons name="lock-closed" size={11} color={colors.textMuted} />
+            <View style={[styles.lockBadge, selectionMode && selected && styles.checkboxBadgeChecked]}>
+              {selectionMode ? (
+                <Ionicons name={selected ? 'checkmark' : 'square-outline'} size={13} color={selected ? 'white' : colors.textMuted} />
+              ) : (
+                <Ionicons name="lock-closed" size={11} color={colors.textMuted} />
+              )}
             </View>
           </View>
         )}

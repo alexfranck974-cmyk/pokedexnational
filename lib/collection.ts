@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { useSession } from './auth';
 import { toast } from './toast';
@@ -494,6 +494,50 @@ export function useToggleOwnedCard() {
   });
 }
 
+// Bulk counterpart to useToggleOwnedCard — one insert for N cards instead of N
+// round trips, for the "select several cards in a set, mark them all owned at
+// once" flow (pinned-set/[setId].tsx). Only ever adds (no bulk-remove use case
+// yet) and, like useToggleOwnedCard on this same screen, never touches
+// user_cards (the National Dex pick stays a one-at-a-time, single-card choice).
+export function useBulkMarkOwned() {
+  const qc = useQueryClient();
+  const { session } = useSession();
+  const userId = session?.user.id;
+
+  return useMutation({
+    mutationFn: async ({ cards }: { cards: { cardId: string; rarity?: string | null }[] }) => {
+      if (!userId) throw new Error('Not signed in');
+      if (cards.length === 0) return;
+      const { error } = await supabase
+        .from('user_owned_cards')
+        .insert(cards.map(c => ({ user_id: userId, card_id: c.cardId, finish: 'normal' })));
+      if (error) throw error;
+      for (const c of cards) await postFriendNewsIfNotable(userId, c.cardId, c.rarity ?? null);
+    },
+    onMutate: async ({ cards }) => {
+      await qc.cancelQueries({ queryKey: ['all_owned_card_ids', userId] });
+      const prev = qc.getQueryData<Set<string>>(['all_owned_card_ids', userId]);
+      const next = new Set(prev ?? []);
+      for (const c of cards) next.add(c.cardId);
+      qc.setQueryData(['all_owned_card_ids', userId], next);
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['all_owned_card_ids', userId], ctx.prev);
+      toast('Impossible de sauvegarder, réessaie.');
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['all_owned_card_ids', userId] });
+      qc.invalidateQueries({ queryKey: ['owned_dex_nums', userId] });
+      qc.invalidateQueries({ queryKey: ['all_owned_cards_ledger_detailed', userId] });
+      qc.invalidateQueries({ queryKey: ['user_dex', userId] });
+      qc.invalidateQueries({ queryKey: ['owned_card_images', userId] });
+      qc.invalidateQueries({ queryKey: ['all_owned_cards_detailed', userId] });
+      qc.invalidateQueries({ queryKey: ['owned_card_finishes', userId] });
+    },
+  });
+}
+
 // How many normal-finish copies of each card the user owns — a foundation for
 // future trading (knowing which duplicates are spare). Separate from
 // useAllOwnedCardIds (which only answers "owned or not", finish-agnostic) so
@@ -620,6 +664,62 @@ export function useAllOwnedCardsLedgerDetailed(userId?: string) {
         };
       }) as (OwnedCardDetail & { setId: string; setName: string; cardNumber: string })[];
     },
+  });
+}
+
+export interface MyAdditionItem {
+  cardId: string;
+  acquiredAt: string;
+  dexNum: number;
+  name: string;
+  imageSmall: string;
+  imageLarge: string | null;
+  setId: string;
+  setName: string;
+  cardNumber: string;
+  rarity: string | null;
+}
+
+const MY_ADDITIONS_PAGE_SIZE = 20;
+
+// Full personal history of every card ever added — unlike friend_news (which
+// only logs "notable" chase-tier pulls and explicitly excludes the viewer's
+// own rows, see lib/friend-news.ts), this reads straight off the ledger with
+// no rarity gate. Cursor-paginated on acquired_at, same shape/pattern as
+// useFriendNewsHistory, for the "Moi" tab on the /news screen.
+export function useMyAdditionsHistory(userId?: string, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: ['my_additions_history', userId],
+    enabled: !!userId && enabled,
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }: { pageParam: string | null }) => {
+      let query = supabase
+        .from('user_owned_cards')
+        .select('card_id, acquired_at, tcg_cards(dex_num, name, image_small, image_large, set_id, set_name, card_number, rarity)')
+        .eq('user_id', userId!)
+        .order('acquired_at', { ascending: false })
+        .limit(MY_ADDITIONS_PAGE_SIZE);
+      if (pageParam) query = query.lt('acquired_at', pageParam);
+      const { data, error } = await query;
+      if (error) throw error;
+      const items: MyAdditionItem[] = (data ?? []).map(r => {
+        const card = r.tcg_cards as any;
+        return {
+          cardId: r.card_id as string,
+          acquiredAt: r.acquired_at as string,
+          dexNum: (card?.dex_num as number | undefined) ?? 0,
+          name: (card?.name as string | undefined) ?? '',
+          imageSmall: (card?.image_small as string | undefined) ?? '',
+          imageLarge: (card?.image_large as string | undefined) ?? null,
+          setId: (card?.set_id as string | undefined) ?? '',
+          setName: (card?.set_name as string | undefined) ?? '',
+          cardNumber: (card?.card_number as string | undefined) ?? '',
+          rarity: (card?.rarity as string | undefined) ?? null,
+        };
+      });
+      return { items, nextCursor: items.length === MY_ADDITIONS_PAGE_SIZE ? items[items.length - 1].acquiredAt : null };
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
 }
 

@@ -15,7 +15,7 @@ import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForSet } from '@/lib/tcg';
 import { useTcgSets } from '@/lib/tcg-index';
 import { useSession } from '@/lib/auth';
-import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity, useAllWishedCards, useToggleWish, useOwnedCardFinishes } from '@/lib/collection';
+import { useAllOwnedCardIds, useToggleOwnedCard, useBulkMarkOwned, useOwnedCardQuantities, useAdjustOwnedCardQuantity, useAllWishedCards, useToggleWish, useOwnedCardFinishes } from '@/lib/collection';
 import { useFriends } from '@/lib/friends';
 import { useFriendsWantedCards } from '@/lib/trades';
 import { TradeMatchPopup, type TradeMatch } from '@/components/TradeMatchPopup';
@@ -26,7 +26,7 @@ import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { currentSetTier } from '@/lib/set-tiers';
 import { classifyRarity } from '@/lib/rarity-tiers';
 import { buildSetTypeGroups, typesCompletedByToggle } from '@/lib/set-type-completion';
-import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 
 const COLUMN_CYCLE: (3 | 4 | null)[] = [null, 3, 4];
 
@@ -49,6 +49,7 @@ export default function PinnedSetDetail() {
   const { data: finishesByCard } = useOwnedCardFinishes(userId);
   const { data: allSets = [] } = useTcgSets();
   const toggleOwned = useToggleOwnedCard();
+  const bulkMarkOwned = useBulkMarkOwned();
   const adjustQuantity = useAdjustOwnedCardQuantity();
   const { data: wishedCards = [] } = useAllWishedCards(userId);
   const wishedSet = useMemo(() => new Set(wishedCards.map(c => c.id)), [wishedCards]);
@@ -63,11 +64,39 @@ export default function PinnedSetDetail() {
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [columns, setColumns] = useState<3 | 4 | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [zoomCard, setZoomCard] = useState<TcgCardRow | null>(null);
   const [detailsCard, setDetailsCard] = useState<TcgCardRow | null>(null);
   const [captureQueue, setCaptureQueue] = useState<CaptureEvent[]>([]);
   const currentCapture = captureQueue[0] ?? null;
   const typeGroups = useMemo(() => buildSetTypeGroups(cards), [cards]);
+
+  const exitSelectionMode = () => { setSelectionMode(false); setSelectedIds(new Set()); };
+
+  const confirmBulkAdd = () => {
+    const toAdd = sortedCards.filter(c => selectedIds.has(c.id));
+    if (toAdd.length === 0) { exitSelectionMode(); return; }
+    // Same completion-celebration logic as the single-card onToggle below, just folded
+    // over the whole batch with a running copy of ownedAll so a type that only
+    // completes because of *this* selection (not any one single card in it) still fires.
+    const runningOwned = new Set(ownedAll);
+    const events: CaptureEvent[] = [];
+    for (const c of toAdd) {
+      const completedTypes = typesCompletedByToggle(c, cards, runningOwned, typeGroups);
+      events.push(...completedTypes.map(t => ({ id: `type-${t}-${c.id}`, kind: 'type' as const, type: t })));
+      if (completedTypes.length === 0) {
+        const tier = classifyRarity(c.rarity);
+        if (tier !== 'basic') events.push({ id: `rarity-${c.id}`, kind: 'rarity' as const, tier, rarityLabel: c.rarity ?? '', imageSmall: c.image_small });
+      }
+      runningOwned.add(c.id);
+    }
+    if (events.length > 0) setCaptureQueue(q => [...q, ...events]);
+    bulkMarkOwned.mutate(
+      { cards: toAdd.map(c => ({ cardId: c.id, rarity: c.rarity })) },
+      { onSuccess: () => { qc.invalidateQueries({ queryKey: ['set_goal_progress', userId, setId] }); exitSelectionMode(); } },
+    );
+  };
 
   const set = useMemo(() => allSets.find(s => s.id === setId), [allSets, setId]);
   const setName = set ? setFlagLabel(set.name, set.region, set.id) : (setId ?? '');
@@ -108,6 +137,18 @@ export default function PinnedSetDetail() {
       backgroundColor: colors.primarySoft, borderRadius: radius.md,
     },
     bannerText: { flex: 1, fontSize: 11, fontFamily: fonts.body, color: colors.text, lineHeight: 15 },
+    bulkBar: {
+      position: 'absolute' as const, left: spacing.md, right: spacing.md, bottom: TAB_BAR_CLEARANCE + spacing.sm,
+      flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
+      backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.sm, gap: spacing.sm,
+      ...shadow.md,
+    },
+    bulkBarText: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.text },
+    bulkBarActions: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
+    bulkBarCancel: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+    bulkBarCancelText: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted },
+    bulkBarConfirm: { backgroundColor: colors.primary, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
+    bulkBarConfirmText: { fontSize: 13, fontFamily: fonts.bodyBold, color: 'white' },
   }));
 
   return (
@@ -122,6 +163,11 @@ export default function PinnedSetDetail() {
             <Text style={styles.backText}>Retour</Text>
           </Pressable>
           <View style={styles.heroViewToggle}>
+            <Pressable
+              onPress={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
+              style={[styles.viewBtn, selectionMode && styles.viewBtnActive]}>
+              <Ionicons name={selectionMode ? 'close' : 'checkbox-outline'} size={15} color={selectionMode ? heroSurfaceActiveText : heroText} />
+            </Pressable>
             <Pressable
               onPress={() => setViewMode('grid')}
               style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>
@@ -238,7 +284,27 @@ export default function PinnedSetDetail() {
           onZoom={c => setZoomCard(c)}
           onOpenDetails={c => setDetailsCard(c)}
           finishesByCard={finishesByCard}
+          selectionMode={selectionMode}
+          selectedIds={selectedIds}
+          onToggleSelect={c => setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
+            return next;
+          })}
         />
+      )}
+      {selectionMode && selectedIds.size > 0 && (
+        <View style={styles.bulkBar}>
+          <Text style={styles.bulkBarText}>{selectedIds.size} sélectionnée{selectedIds.size > 1 ? 's' : ''}</Text>
+          <View style={styles.bulkBarActions}>
+            <Pressable onPress={exitSelectionMode} style={styles.bulkBarCancel}>
+              <Text style={styles.bulkBarCancelText}>Annuler</Text>
+            </Pressable>
+            <Pressable onPress={confirmBulkAdd} style={styles.bulkBarConfirm}>
+              <Text style={styles.bulkBarConfirmText}>Marquer possédées</Text>
+            </Pressable>
+          </View>
+        </View>
       )}
       <CardZoomModal
         card={zoomCard}

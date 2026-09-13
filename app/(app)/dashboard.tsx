@@ -138,6 +138,17 @@ export default function DashboardScreen() {
   })), [vitrineCards]);
   const zoomCard = zoomIndex !== null ? vitrineCards[zoomIndex] : null;
 
+  const [recentZoomIndex, setRecentZoomIndex] = useState<number | null>(null);
+  const recentCards = useMemo(() => [...ledgerCards]
+    .sort((a, b) => new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime())
+    .slice(0, 10), [ledgerCards]);
+  const recentCarouselItems = useMemo(() => recentCards.map((c, i) => ({
+    key: `${c.cardId}-${c.finish}`,
+    image: c.imageLarge ?? c.imageSmall,
+    onPress: () => setRecentZoomIndex(i),
+  })), [recentCards]);
+  const recentZoomCard = recentZoomIndex !== null ? recentCards[recentZoomIndex] : null;
+
   const { colors } = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
   const hideOnScrollProps = useHideOnScrollProps();
@@ -298,6 +309,8 @@ export default function DashboardScreen() {
 
         <VitrineCarousel items={vitrineItems} />
 
+        <VitrineCarousel title={t('dashboard.recentAdditionsTitle')} items={recentCarouselItems} />
+
         <PokedexHeroCard
           userId={userId}
           onSelectMissing={(dexNum) => enterPokemonDetail(router, `/pokemon/${dexNum}`, '/dashboard')}
@@ -340,6 +353,13 @@ export default function DashboardScreen() {
         onClose={() => setZoomIndex(null)}
         onSwipeNext={() => setZoomIndex(i => i === null ? null : (i + 1) % vitrineCards.length)}
         onSwipePrev={() => setZoomIndex(i => i === null ? null : (i - 1 + vitrineCards.length) % vitrineCards.length)}
+      />
+      <CardZoomModal
+        card={recentZoomCard ? { image_small: recentZoomCard.imageSmall, image_large: recentZoomCard.imageLarge } : null}
+        caption={recentZoomCard ? `${recentZoomCard.name}\n${t('pokemon.addedOn', { date: new Date(recentZoomCard.acquiredAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'fr-FR') })}` : undefined}
+        onClose={() => setRecentZoomIndex(null)}
+        onSwipeNext={() => setRecentZoomIndex(i => i === null ? null : (i + 1) % recentCards.length)}
+        onSwipePrev={() => setRecentZoomIndex(i => i === null ? null : (i - 1 + recentCards.length) % recentCards.length)}
       />
       <SetGoalPicker visible={goalPickerOpen} pinnedSetIds={pinnedSetIds} tint={OBJECTIVES_TINT} onClose={() => setGoalPickerOpen(false)} />
       <DashboardLayoutSheet visible={layoutSheetOpen} layout={ringLayout} onClose={() => setLayoutSheetOpen(false)} />
