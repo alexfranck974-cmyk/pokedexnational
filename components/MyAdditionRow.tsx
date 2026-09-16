@@ -2,6 +2,7 @@ import { View, Text, Image, Pressable } from 'react-native';
 import type { MyAdditionItem } from '@/lib/collection';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useLocale } from '@/lib/locale';
+import { cardDisplayName } from '@/lib/tcg-name';
 
 interface Props {
   item: MyAdditionItem;
@@ -36,7 +37,7 @@ export function MyAdditionRow({ item, onPress }: Props) {
         <Image source={{ uri: item.imageSmall }} style={styles.thumb} resizeMode="contain" />
       </View>
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.name} numberOfLines={1}>{cardDisplayName(item, item.dexNum, locale)}</Text>
         <Text style={styles.meta} numberOfLines={1}>{item.setName} · {item.cardNumber}</Text>
       </View>
       <Text style={styles.date}>{new Date(item.acquiredAt).toLocaleDateString(locale)}</Text>

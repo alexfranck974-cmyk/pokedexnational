@@ -19,6 +19,7 @@ import { TYPE_COLORS } from '@/lib/types-colors';
 import { withAlpha } from '@/lib/color-utils';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForPokemon } from '@/lib/tcg';
+import { cardDisplayName } from '@/lib/tcg-name';
 import { useSession } from '@/lib/auth';
 import {
   useUserCards, useLedgerCardsForDex, useUserWishlist, useToggleCard, useToggleWish, useCardAcquiredAt,
@@ -436,7 +437,7 @@ export default function PokemonDetail() {
       <ConfirmDialog
         target={pendingCard ? {
           title: t('pokemon.chooseCardTitle'),
-          message: t('pokemon.chooseCardMessage', { cardName: pendingCard.name, pokemonName: getName(p, locale) }),
+          message: t('pokemon.chooseCardMessage', { cardName: cardDisplayName(pendingCard, pendingCard.dex_num, locale), pokemonName: getName(p, locale) }),
         } : null}
         confirmLabel={t('common.choose')}
         cancelLabel={t('common.cancel')}

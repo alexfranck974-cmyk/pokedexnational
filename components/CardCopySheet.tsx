@@ -10,6 +10,7 @@ import {
   type OwnedCardFinish, type OwnedCardCondition,
 } from '@/lib/collection';
 import { hapticCardAdded } from '@/lib/haptics';
+import { cardDisplayName } from '@/lib/tcg-name';
 
 const FINISHES: OwnedCardFinish[] = ['normal', 'holo', 'reverse_holo'];
 const CONDITIONS: OwnedCardCondition[] = ['mint', 'near_mint', 'excellent', 'good', 'played', 'poor'];
@@ -70,7 +71,7 @@ export function CardCopySheet({ card, onClose }: Props) {
         <View style={styles.header}>
           <Image source={{ uri: card.image_small }} style={styles.thumb} resizeMode="contain" />
           <View style={styles.headerText}>
-            <Text style={styles.name} numberOfLines={1}>{card.name}</Text>
+            <Text style={styles.name} numberOfLines={1}>{cardDisplayName(card, card.dex_num, locale)}</Text>
             <Text style={styles.setLine} numberOfLines={1}>{card.set_name} · {card.card_number}</Text>
           </View>
         </View>

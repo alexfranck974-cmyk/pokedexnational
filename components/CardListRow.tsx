@@ -11,6 +11,7 @@ import { FINISH_GRADIENT, pickPrimaryFinish } from '@/lib/finish-visuals';
 import { ReverseHoloShimmer } from '@/components/ReverseHoloShimmer';
 import type { OwnedCardFinish } from '@/lib/collection';
 import { formatCardPriceRange } from '@/lib/trades';
+import { cardDisplayName } from '@/lib/tcg-name';
 
 interface Props {
   card: TcgCardRow;
@@ -135,7 +136,7 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
         )}
       </View>
       <View style={styles.info}>
-        <Text style={[styles.name, !owned && styles.nameMissing]} numberOfLines={1}>{card.name}</Text>
+        <Text style={[styles.name, !owned && styles.nameMissing]} numberOfLines={1}>{cardDisplayName(card, card.dex_num, locale)}</Text>
         <Text style={styles.meta} numberOfLines={1}>{card.set_name} · {card.card_number}</Text>
         {card.rarity && <Text style={styles.rarity} numberOfLines={1}>{card.rarity}</Text>}
         {priceLabel != null && (

@@ -16,6 +16,7 @@ import { useTcgSets } from '@/lib/tcg-index';
 import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
 import { totalCollectionValue, computeSetGoalsProgress, averageProgress } from '@/lib/dashboard-stats';
 import { classifyRarity } from '@/lib/rarity-tiers';
+import { cardDisplayName } from '@/lib/tcg-name';
 import { useRecentAdditionsFilter } from '@/lib/recent-additions-filter';
 import { isPriceAlertTriggered, type WishlistCard } from '@/lib/wishlist-list';
 import { withAlpha } from '@/lib/color-utils';
@@ -373,7 +374,7 @@ export default function DashboardScreen() {
       />
       <CardZoomModal
         card={recentZoomCard ? { image_small: recentZoomCard.imageSmall, image_large: recentZoomCard.imageLarge } : null}
-        caption={recentZoomCard ? `${recentZoomCard.name}\n${t('pokemon.addedOn', { date: new Date(recentZoomCard.acquiredAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'fr-FR') })}` : undefined}
+        caption={recentZoomCard ? `${cardDisplayName(recentZoomCard, recentZoomCard.dexNum, locale)}\n${t('pokemon.addedOn', { date: new Date(recentZoomCard.acquiredAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'fr-FR') })}` : undefined}
         onClose={() => setRecentZoomIndex(null)}
         onSwipeNext={() => setRecentZoomIndex(i => i === null ? null : (i + 1) % recentCards.length)}
         onSwipePrev={() => setRecentZoomIndex(i => i === null ? null : (i - 1 + recentCards.length) % recentCards.length)}

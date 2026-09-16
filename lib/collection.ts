@@ -665,7 +665,7 @@ export function useAllOwnedCardsLedgerDetailed(userId?: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_owned_cards')
-        .select('card_id, finish, condition, acquired_at, tcg_cards(dex_num, name, image_small, image_large, set_id, set_name, card_number, rarity, cardmarket_trend_eur, artist)')
+        .select('card_id, finish, condition, acquired_at, tcg_cards(dex_num, name, image_small, image_large, set_id, set_name, card_number, rarity, cardmarket_trend_eur, artist, region)')
         .eq('user_id', userId!);
       if (error) throw error;
       return (data ?? []).map(r => {
@@ -678,6 +678,7 @@ export function useAllOwnedCardsLedgerDetailed(userId?: string) {
           acquiredAt: r.acquired_at as string,
           rarity: (card?.rarity as string | undefined) ?? null,
           name: (card?.name as string | undefined) ?? '',
+          region: (card?.region as 'global' | 'jp' | 'cn' | undefined) ?? 'global',
           imageSmall: (card?.image_small as string | undefined) ?? '',
           imageLarge: (card?.image_large as string | undefined) ?? null,
           setId: (card?.set_id as string | undefined) ?? '',
@@ -686,7 +687,7 @@ export function useAllOwnedCardsLedgerDetailed(userId?: string) {
           cardmarketTrendEur: (card?.cardmarket_trend_eur as number | undefined) ?? null,
           artist: (card?.artist as string | undefined) ?? null,
         };
-      }) as (OwnedCardDetail & { setId: string; setName: string; cardNumber: string })[];
+      }) as (OwnedCardDetail & { setId: string; setName: string; cardNumber: string; region: 'global' | 'jp' | 'cn' })[];
     },
   });
 }
@@ -696,6 +697,7 @@ export interface MyAdditionItem {
   acquiredAt: string;
   dexNum: number;
   name: string;
+  region: 'global' | 'jp' | 'cn';
   imageSmall: string;
   imageLarge: string | null;
   setId: string;
@@ -719,7 +721,7 @@ export function useMyAdditionsHistory(userId?: string, enabled = true) {
     queryFn: async ({ pageParam }: { pageParam: string | null }) => {
       let query = supabase
         .from('user_owned_cards')
-        .select('card_id, acquired_at, tcg_cards(dex_num, name, image_small, image_large, set_id, set_name, card_number, rarity)')
+        .select('card_id, acquired_at, tcg_cards(dex_num, name, image_small, image_large, set_id, set_name, card_number, rarity, region)')
         .eq('user_id', userId!)
         .order('acquired_at', { ascending: false })
         .limit(MY_ADDITIONS_PAGE_SIZE);
@@ -733,6 +735,7 @@ export function useMyAdditionsHistory(userId?: string, enabled = true) {
           acquiredAt: r.acquired_at as string,
           dexNum: (card?.dex_num as number | undefined) ?? 0,
           name: (card?.name as string | undefined) ?? '',
+          region: (card?.region as 'global' | 'jp' | 'cn' | undefined) ?? 'global',
           imageSmall: (card?.image_small as string | undefined) ?? '',
           imageLarge: (card?.image_large as string | undefined) ?? null,
           setId: (card?.set_id as string | undefined) ?? '',
