@@ -15,6 +15,8 @@ import { useDashboardRingLayout, type RingKey } from '@/lib/dashboard-layout';
 import { useTcgSets } from '@/lib/tcg-index';
 import { enterPokemonDetail, withReturnTo } from '@/lib/navigation';
 import { totalCollectionValue, computeSetGoalsProgress, averageProgress } from '@/lib/dashboard-stats';
+import { classifyRarity } from '@/lib/rarity-tiers';
+import { useRecentAdditionsFilter } from '@/lib/recent-additions-filter';
 import { isPriceAlertTriggered, type WishlistCard } from '@/lib/wishlist-list';
 import { withAlpha } from '@/lib/color-utils';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
@@ -140,9 +142,11 @@ export default function DashboardScreen() {
   const zoomCard = zoomIndex !== null ? vitrineCards[zoomIndex] : null;
 
   const [recentZoomIndex, setRecentZoomIndex] = useState<number | null>(null);
+  const { filter: recentFilter, setFilter: setRecentFilter } = useRecentAdditionsFilter();
   const recentCards = useMemo(() => [...ledgerCards]
+    .filter(c => recentFilter === 'all' || classifyRarity(c.rarity) === recentFilter)
     .sort((a, b) => new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime())
-    .slice(0, 10), [ledgerCards]);
+    .slice(0, 10), [ledgerCards, recentFilter]);
   const recentAdditionItems = useMemo(() => recentCards.map((c, i) => ({
     key: `${c.cardId}-${c.finish}`,
     image: c.imageSmall,
@@ -333,7 +337,9 @@ export default function DashboardScreen() {
           ))}
         </View>
 
-        <RecentAdditionsStrip items={recentAdditionItems} />
+        {ledgerCards.length > 0 && (
+          <RecentAdditionsStrip items={recentAdditionItems} filter={recentFilter} onFilterChange={setRecentFilter} />
+        )}
 
         {goals.length > 0 && (
           <Animated.View style={{ height: collectionAccordionHeight, overflow: 'hidden' as const }}>
