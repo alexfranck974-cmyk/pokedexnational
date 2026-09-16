@@ -344,7 +344,10 @@ export function useToggleWish() {
         const { error } = await supabase.from('user_wishlist').delete().eq('user_id', userId).eq('card_id', cardId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('user_wishlist').insert({ user_id: userId, card_id: cardId });
+        // upsert + ignoreDuplicates — same double-tap race as the ownership mutations above.
+        const { error } = await supabase
+          .from('user_wishlist')
+          .upsert({ user_id: userId, card_id: cardId }, { onConflict: 'user_id,card_id', ignoreDuplicates: true });
         if (error) throw error;
       }
     },
@@ -465,7 +468,14 @@ export function useToggleOwnedCard() {
         const { error: officialError } = await supabase.from('user_cards').delete().eq('user_id', userId).eq('card_id', cardId);
         if (officialError) throw officialError;
       } else {
-        const { error } = await supabase.from('user_owned_cards').insert({ user_id: userId, card_id: cardId, finish: 'normal' });
+        // upsert + ignoreDuplicates rather than a plain insert — see useBulkMarkOwned's
+        // comment below for why: a rapid double-tap on the same tile fires this mutation
+        // twice before the optimistic cache update above lands, and the second insert of
+        // an identical (user_id, card_id, finish) row would 23505 and surface a scary
+        // save-failed toast for a card that had, in fact, already been saved.
+        const { error } = await supabase
+          .from('user_owned_cards')
+          .upsert({ user_id: userId, card_id: cardId, finish: 'normal' }, { onConflict: 'user_id,card_id,finish', ignoreDuplicates: true });
         if (error) throw error;
         await postFriendNewsIfNotable(userId, cardId, rarity ?? null);
       }
@@ -606,7 +616,12 @@ export function useAdjustOwnedCardQuantity() {
           if (officialError) throw officialError;
         }
       } else if (currentQuantity <= 0) {
-        const { error } = await supabase.from('user_owned_cards').insert({ user_id: userId, card_id: cardId, finish, quantity: next });
+        // upsert + ignoreDuplicates — same double-tap race as useToggleOwnedCard/
+        // useBulkMarkOwned above: two rapid taps on the "+" pill before the optimistic
+        // cache update lands would otherwise 23505 on the second insert.
+        const { error } = await supabase
+          .from('user_owned_cards')
+          .upsert({ user_id: userId, card_id: cardId, finish, quantity: next }, { onConflict: 'user_id,card_id,finish', ignoreDuplicates: true });
         if (error) throw error;
         await postFriendNewsIfNotable(userId, cardId, rarity ?? null);
       } else {
