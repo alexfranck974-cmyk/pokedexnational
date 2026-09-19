@@ -2,10 +2,13 @@ import { useMemo, useState, type ReactElement } from 'react';
 import { View, Text, TextInput, ActivityIndicator, Pressable, Image, ScrollView, StyleSheet, type RefreshControlProps } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter, usePathname } from 'expo-router';
 import { CardZoomModal } from './CardZoomModal';
 import { Pokeball } from './Pokeball';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useAllOwnedCardIds, useAllWishedCards, useToggleWish } from '@/lib/collection';
+import { withReturnTo } from '@/lib/navigation';
+import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useT, useLocale } from '@/lib/locale';
@@ -44,6 +47,8 @@ export function DexCardPanel({ cards, cardsLoading, userId, refreshControl, coun
   const { colors } = useTheme();
   const { locale } = useLocale();
   const t = useT();
+  const router = useRouter();
+  const pathname = usePathname();
   const { data: ownedAll = new Set<string>() } = useAllOwnedCardIds(userId);
   const { data: wishedCards = [] } = useAllWishedCards(userId);
   const wishedIds = useMemo(() => new Set(wishedCards.map(c => c.id)), [wishedCards]);
@@ -222,7 +227,16 @@ export function DexCardPanel({ cards, cardsLoading, userId, refreshControl, coun
           }}
         />
       )}
-      <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
+      <CardZoomModal
+        card={zoomCard}
+        setLabel={zoomCard ? `${setFlagLabel(zoomCard.set_name, zoomCard.region, zoomCard.set_id)} · ${zoomCard.card_number}` : undefined}
+        onOpenSet={zoomCard ? () => {
+          const setId = zoomCard.set_id;
+          setZoomCard(null);
+          router.push(withReturnTo(`/pinned-set/${setId}`, pathname) as never);
+        } : undefined}
+        onClose={() => setZoomCard(null)}
+      />
     </View>
   );
 }

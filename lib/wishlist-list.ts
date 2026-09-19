@@ -4,6 +4,7 @@ import { GENERATIONS } from './generations';
 export interface WishlistCard {
   id: string;
   name: string;
+  region?: 'global' | 'jp' | 'cn';
   dex_num: number;
   set_id: string;
   set_name: string;

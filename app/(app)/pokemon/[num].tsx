@@ -20,6 +20,7 @@ import { withAlpha } from '@/lib/color-utils';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForPokemon } from '@/lib/tcg';
 import { cardDisplayName } from '@/lib/tcg-name';
+import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useSession } from '@/lib/auth';
 import {
   useUserCards, useLedgerCardsForDex, useUserWishlist, useToggleCard, useToggleWish, useCardAcquiredAt,
@@ -416,6 +417,17 @@ export default function PokemonDetail() {
       )}
       <CardZoomModal
         card={zoomCard}
+        setLabel={zoomCard ? `${setFlagLabel(zoomCard.set_name, zoomCard.region, zoomCard.set_id)} · ${zoomCard.card_number}` : undefined}
+        onOpenSet={zoomCard ? () => {
+          const setId = zoomCard.set_id;
+          setZoomCard(null);
+          // Same return-to chain as CardFilterTree's onOpenSet above, so the
+          // extension screen's "Retour" lands back on this Pokémon (not its
+          // hardcoded /dashboard default) and, from there, wherever this
+          // screen was itself entered from.
+          const pokemonUrl = from ? withReturnTo(`/pokemon/${num}`, safeDecodeURIComponent(from)) : `/pokemon/${num}`;
+          router.push(withReturnTo(`/pinned-set/${setId}`, pokemonUrl) as never);
+        } : undefined}
         onClose={() => setZoomCard(null)}
         onSwipeNext={() => setZoomCard(c => {
           const i = sortedCards.findIndex(x => x.id === c?.id);

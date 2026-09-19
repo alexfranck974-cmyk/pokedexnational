@@ -19,11 +19,13 @@ import { EmptyState } from '@/components/EmptyState';
 import { WishlistFilterBar } from '@/components/WishlistFilterBar';
 import { RefreshButton } from '@/components/RefreshButton';
 import { FriendSetGalleryModal, type FriendSetGalleryTarget } from '@/components/FriendSetGalleryModal';
+import { CardZoomModal } from '@/components/CardZoomModal';
 import { PokedexSectionTabs, sectionIndex, hrefToSection, useSectionSwipeGesture } from '@/components/PokedexSectionTabs';
 import { SlideTransition } from '@/components/SlideTransition';
-import { enterPokemonDetail, safeDecodeURIComponent } from '@/lib/navigation';
+import { withReturnTo, safeDecodeURIComponent } from '@/lib/navigation';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { getName } from '@/lib/i18n';
+import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useLocale, useT } from '@/lib/locale';
 import { formatCardPriceRange } from '@/lib/trades';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
@@ -81,6 +83,7 @@ export default function WishlistScreen() {
   const hideOnScrollProps = useHideOnScrollProps();
   const swipeGesture = useSectionSwipeGesture('wishlist');
   const [galleryDexNum, setGalleryDexNum] = useState<number | null>(null);
+  const [zoomedCardId, setZoomedCardId] = useState<string | null>(null);
 
   // Slide-in direction for arriving from Pokédex/Collection via PokedexSectionTabs
   // — see the matching effect in app/(app)/pokedex.tsx for why navToken (not the
@@ -152,13 +155,27 @@ export default function WishlistScreen() {
       cards: group.cards.map(c => ({
         key: c.id, imageSmall: c.image_small, imageLarge: c.image_large,
         cardmarketLowEur: c.cardmarket_low_eur, cardmarketTrendEur: c.cardmarket_trend_eur,
+        setId: c.set_id, setLabel: setFlagLabel(c.set_name, c.region, c.set_id),
       })),
       onRemoveCard: (cardId: string) => wishMutate({ cardId, currentlyWished: true, dexNum: galleryDexNum }),
+      returnTo: '/wishlist',
     };
   }, [galleryDexNum, grouped, ownedIds, locale, wishMutate]);
   // Off the unfiltered list on purpose — a triggered card shouldn't vanish
   // from this count just because the active filters happen to hide it.
   const triggeredCount = useMemo(() => (cards as WishlistCard[]).filter(isPriceAlertTriggered).length, [cards]);
+
+  // Derived from the live `filtered` list (not a stored snapshot) so the
+  // zoom stays in sync if the underlying data changes while it's open, same
+  // reasoning as `gallery` above. Tap-to-zoom on a card tile used to navigate
+  // straight to the Pokémon's detail page instead — jarring when you just
+  // wanted a closer look, so that's now a deliberate action (the row/chevron
+  // in "pokemon" view mode still opens the gallery, unaffected).
+  const zoomedCardIndex = useMemo(
+    () => zoomedCardId == null ? -1 : filtered.findIndex(c => c.id === zoomedCardId),
+    [zoomedCardId, filtered],
+  );
+  const zoomedCard = zoomedCardIndex !== -1 ? filtered[zoomedCardIndex] : null;
 
   const reset = () => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); setPriceMin(null); setPriceMax(null); };
 
@@ -308,7 +325,7 @@ export default function WishlistScreen() {
     const triggered = isPriceAlertTriggered(item);
     return (
       <Pressable
-        onPress={() => enterPokemonDetail(router, `/pokemon/${item.dex_num}`, '/wishlist')}
+        onPress={() => setZoomedCardId(item.id)}
         style={({ pressed }) => [styles.tile, pressed && { transform: [{ scale: 0.97 }] }]}>
         <View style={styles.imgWrap}>
           {owned ? (
@@ -369,7 +386,7 @@ export default function WishlistScreen() {
         )}
       </Pressable>
     );
-  }, [ownedIds, locale, styles, colors, router, wishMutate, priorityMutate]);
+  }, [ownedIds, locale, styles, colors, wishMutate, priorityMutate]);
 
   if (isLoading) {
     return (
@@ -480,6 +497,28 @@ export default function WishlistScreen() {
         onReset={reset}
       />
       <FriendSetGalleryModal target={gallery} onClose={() => setGalleryDexNum(null)} />
+      <CardZoomModal
+        card={zoomedCard ? { image_small: zoomedCard.image_small, image_large: zoomedCard.image_large } : null}
+        caption={zoomedCard ? (() => {
+          const mon = POKEDEX_BY_DEX.get(zoomedCard.dex_num);
+          return mon ? getName(mon, locale) : `#${String(zoomedCard.dex_num).padStart(4, '0')}`;
+        })() : undefined}
+        setLabel={zoomedCard ? `${setFlagLabel(zoomedCard.set_name, zoomedCard.region, zoomedCard.set_id)} · ${zoomedCard.card_number}` : undefined}
+        onOpenSet={zoomedCard ? () => {
+          const setId = zoomedCard.set_id;
+          setZoomedCardId(null);
+          router.push(withReturnTo(`/pinned-set/${setId}`, '/wishlist') as never);
+        } : undefined}
+        onClose={() => setZoomedCardId(null)}
+        onSwipeNext={() => setZoomedCardId(id => {
+          const i = id == null ? -1 : filtered.findIndex(c => c.id === id);
+          return i === -1 || filtered.length === 0 ? id : filtered[(i + 1) % filtered.length].id;
+        })}
+        onSwipePrev={() => setZoomedCardId(id => {
+          const i = id == null ? -1 : filtered.findIndex(c => c.id === id);
+          return i === -1 || filtered.length === 0 ? id : filtered[(i - 1 + filtered.length) % filtered.length].id;
+        })}
+      />
       <PriceAlertSheet card={priceAlertTarget} onClose={() => setPriceAlertTarget(null)} />
     </SafeAreaView>
   );

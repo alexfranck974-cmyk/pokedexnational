@@ -3,13 +3,14 @@ import { View, Text, Image, Pressable, ScrollView, Animated, ActivityIndicator, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSession } from '@/lib/auth';
 import { useBinders, useBinderCards, BINDER_LAYOUT_COLS } from '@/lib/binders';
-import { useOwnedCardFinishes, type OwnedCardFinish } from '@/lib/collection';
+import { useOwnedCardFinishes, useAllOwnedCardsLedgerDetailed, type OwnedCardFinish } from '@/lib/collection';
 import { Pokeball } from '@/components/Pokeball';
 import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
-import { useBackTo } from '@/lib/navigation';
+import { useBackTo, withReturnTo } from '@/lib/navigation';
+import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useT } from '@/lib/locale';
 
@@ -20,6 +21,7 @@ import { useT } from '@/lib/locale';
 // pages up to the last filled one — an empty binder still gets one blank page.
 export default function BinderViewerScreen() {
   const { binderId } = useLocalSearchParams<{ binderId: string }>();
+  const router = useRouter();
   const goBack = useBackTo('/favorites');
   const { session } = useSession();
   const userId = session?.user.id;
@@ -31,9 +33,16 @@ export default function BinderViewerScreen() {
   const binder = binders.find((b) => b.id === binderId);
   const { data: slots = [], isLoading: slotsLoading } = useBinderCards(binderId);
   const { data: finishesByCard = new Map<string, OwnedCardFinish[]>() } = useOwnedCardFinishes(userId);
+  const { data: ledgerCards = [] } = useAllOwnedCardsLedgerDetailed(userId);
+  const ledgerByCardId = useMemo(() => new Map(ledgerCards.map(c => [c.cardId, c])), [ledgerCards]);
 
   const [pageIndex, setPageIndex] = useState(0);
-  const [zoomTarget, setZoomTarget] = useState<ZoomableCard | null>(null);
+  // `cardId` tags along with the zoomed image purely to look up the card's
+  // TCG set for the extension link — same split as favorites.tsx's editor
+  // (binder slots carry their own `imageUrl`, not necessarily the card's
+  // default art, so the displayed image still comes from the slot).
+  const [zoomTarget, setZoomTarget] = useState<{ image: ZoomableCard; cardId?: string } | null>(null);
+  const zoomTargetCard = zoomTarget?.cardId ? ledgerByCardId.get(zoomTarget.cardId) ?? null : null;
   const scrollRef = useRef<ScrollView>(null);
   // Drives the page-turn transform below — continuous, tied 1:1 to actual
   // scroll position (not a fire-and-forget timer), so it stays responsive
@@ -159,7 +168,7 @@ export default function BinderViewerScreen() {
                     <Pressable
                       key={position}
                       style={[styles.slot, { width: slotWidth + 12 }]}
-                      onPress={() => setZoomTarget({ image_small: item.imageUrl })}>
+                      onPress={() => setZoomTarget({ image: { image_small: item.imageUrl }, cardId: isCard ? (item.cardId as string) : undefined })}>
                       <View style={styles.slotImgWrap}>
                         <Image
                           source={{ uri: item.imageUrl }}
@@ -198,7 +207,16 @@ export default function BinderViewerScreen() {
         )}
       </View>
 
-      <CardZoomModal card={zoomTarget} onClose={() => setZoomTarget(null)} />
+      <CardZoomModal
+        card={zoomTarget?.image ?? null}
+        setLabel={zoomTargetCard?.setId ? `${setFlagLabel(zoomTargetCard.setName ?? '', zoomTargetCard.region, zoomTargetCard.setId)} · ${zoomTargetCard.cardNumber ?? ''}` : undefined}
+        onOpenSet={zoomTargetCard?.setId ? () => {
+          const setId = zoomTargetCard.setId!;
+          setZoomTarget(null);
+          router.push(withReturnTo(`/pinned-set/${setId}`, `/binder/${binderId}`) as never);
+        } : undefined}
+        onClose={() => setZoomTarget(null)}
+      />
     </SafeAreaView>
   );
 }

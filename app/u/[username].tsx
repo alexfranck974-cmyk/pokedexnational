@@ -29,7 +29,7 @@ import { Pokeball } from '@/components/Pokeball';
 import { IconBubble } from '@/components/IconBubble';
 import { getName } from '@/lib/i18n';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
-import { useBackTo } from '@/lib/navigation';
+import { useBackTo, withReturnTo } from '@/lib/navigation';
 import { TabBarVisibilityProvider } from '@/lib/tab-bar-visibility';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useLocale, useT } from '@/lib/locale';
@@ -98,7 +98,9 @@ function PublicProfileInner() {
   // grid) — wishlist thumbnails also zoom via 'grid' but leave it undefined,
   // since you can't propose a trade for a card someone doesn't have yet.
   const [zoom, setZoom] = useState<
-    { kind: 'grid'; card: ZoomableCard; tradeCard?: PickedCard } | { kind: 'vitrine'; index: number } | null
+    | { kind: 'grid'; card: ZoomableCard; tradeCard?: PickedCard; setId?: string; setLabel?: string }
+    | { kind: 'vitrine'; index: number }
+    | null
   >(null);
   const [tradeTarget, setTradeTarget] = useState<TradeTarget | null>(null);
   const [tradePreset, setTradePreset] = useState<PickedCard | undefined>(undefined);
@@ -120,6 +122,15 @@ function PublicProfileInner() {
     zoom?.kind === 'grid' ? zoom.card
     : zoom?.kind === 'vitrine' ? { image_small: vitrineCards[zoom.index].imageSmall, image_large: vitrineCards[zoom.index].imageLarge }
     : null;
+  const activeZoomSetId =
+    zoom?.kind === 'grid' ? zoom.setId
+    : zoom?.kind === 'vitrine' ? vitrineCards[zoom.index]?.setId
+    : undefined;
+  const activeZoomSetLabel =
+    zoom?.kind === 'grid' ? zoom.setLabel
+    : zoom?.kind === 'vitrine' && vitrineCards[zoom.index]?.setId
+      ? setFlagLabel(vitrineCards[zoom.index].setName ?? '', vitrineCards[zoom.index].region, vitrineCards[zoom.index].setId!)
+    : undefined;
 
   const [search, setSearch]       = useState('');
   const [statusFilter, setStatus] = useState<StatusFilter>('all');
@@ -306,6 +317,7 @@ function PublicProfileInner() {
               if (card) setZoom({
                 kind: 'grid', card: { image_small: card.imageSmall, image_large: card.imageLarge },
                 tradeCard: { cardId: card.cardId, name: card.name, imageSmall: card.imageSmall, cardmarketTrendEur: card.cardmarketTrendEur },
+                setId: card.setId, setLabel: card.setId ? setFlagLabel(card.setName ?? '', card.region, card.setId) : undefined,
               });
             }}
             onLongSelect={(num) => {
@@ -313,6 +325,7 @@ function PublicProfileInner() {
               if (card) setZoom({
                 kind: 'grid', card: { image_small: card.imageSmall, image_large: card.imageLarge },
                 tradeCard: { cardId: card.cardId, name: card.name, imageSmall: card.imageSmall, cardmarketTrendEur: card.cardmarketTrendEur },
+                setId: card.setId, setLabel: card.setId ? setFlagLabel(card.setName ?? '', card.region, card.setId) : undefined,
               });
             }}
           />
@@ -395,7 +408,11 @@ function PublicProfileInner() {
                       setName: mon ? getName(mon, locale) : `#${String(group.dexNum).padStart(4, '0')}`,
                       owned: groupOwnedCount,
                       total: group.cards.length,
-                      cards: group.cards.map(c => ({ key: c.id, imageSmall: c.image_small, imageLarge: c.image_large })),
+                      cards: group.cards.map(c => ({
+                        key: c.id, imageSmall: c.image_small, imageLarge: c.image_large,
+                        setId: c.set_id, setLabel: setFlagLabel(c.set_name, c.region, c.set_id),
+                      })),
+                      returnTo: `/u/${username}`,
                     })}>
                     <View style={styles.pokemonSpriteWrap}>
                       {mon && <Image source={{ uri: mon.sprite_url }} style={styles.pokemonSprite} resizeMode="contain" />}
@@ -415,7 +432,10 @@ function PublicProfileInner() {
                     {group.cards.slice(0, 4).map(c => (
                       <Pressable
                         key={c.id}
-                        onPress={() => setZoom({ kind: 'grid', card: { image_small: c.image_small, image_large: c.image_large } })}
+                        onPress={() => setZoom({
+                          kind: 'grid', card: { image_small: c.image_small, image_large: c.image_large },
+                          setId: c.set_id, setLabel: setFlagLabel(c.set_name, c.region, c.set_id),
+                        })}
                         style={[styles.pokemonThumbWrap, ownedCardIds.has(c.id) && styles.pokemonThumbWrapOwned]}>
                         <Image source={{ uri: c.image_small }} style={styles.pokemonThumb} resizeMode="contain" />
                       </Pressable>
@@ -430,6 +450,12 @@ function PublicProfileInner() {
       <FriendSetGalleryModal target={gallerySet} onClose={() => setGallerySet(null)} />
       <CardZoomModal
         card={activeZoomCard}
+        setLabel={activeZoomSetLabel}
+        onOpenSet={activeZoomSetId ? () => {
+          const setId = activeZoomSetId;
+          setZoom(null);
+          router.push(withReturnTo(`/pinned-set/${setId}`, `/u/${username}`) as never);
+        } : undefined}
         onClose={() => setZoom(null)}
         onSwipeNext={zoom?.kind === 'vitrine' ? () => setZoom({ kind: 'vitrine', index: (zoom.index + 1) % vitrineCards.length }) : undefined}
         onSwipePrev={zoom?.kind === 'vitrine' ? () => setZoom({ kind: 'vitrine', index: (zoom.index - 1 + vitrineCards.length) % vitrineCards.length }) : undefined}

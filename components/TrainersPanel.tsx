@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactElement } from 'react';
 import { View, Text, TextInput, ActivityIndicator, Pressable, Image, useWindowDimensions, type RefreshControlProps } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter, usePathname } from 'expo-router';
 import { CardGallery } from './CardGallery';
 import { CardFilterTree } from './CardFilterTree';
 import { CardZoomModal } from './CardZoomModal';
@@ -9,6 +10,8 @@ import { CardCopySheet, EditCopyFooterButton } from './CardCopySheet';
 import type { TcgCardRow } from '@/lib/tcg';
 import { useTrainerCards } from '@/lib/tcg';
 import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity, useOwnedCardFinishes } from '@/lib/collection';
+import { withReturnTo } from '@/lib/navigation';
+import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useT } from '@/lib/locale';
@@ -59,6 +62,8 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
   const t = useT();
+  const router = useRouter();
+  const pathname = usePathname();
   const { data: cards = [], isLoading: cardsLoading } = useTrainerCards();
   const { data: ownedAll = new Set<string>() } = useAllOwnedCardIds(userId);
   const { data: quantities = new Map<string, number>() } = useOwnedCardQuantities(userId);
@@ -272,6 +277,12 @@ export function TrainersPanel({ userId, refreshControl }: Props) {
       )}
       <CardZoomModal
         card={zoomCard}
+        setLabel={zoomCard ? `${setFlagLabel(zoomCard.set_name, zoomCard.region, zoomCard.set_id)} · ${zoomCard.card_number}` : undefined}
+        onOpenSet={zoomCard ? () => {
+          const setId = zoomCard.set_id;
+          setZoomCard(null);
+          router.push(withReturnTo(`/pinned-set/${setId}`, pathname) as never);
+        } : undefined}
         onClose={() => setZoomCard(null)}
         footer={zoomCard && ownedAll.has(zoomCard.id) ? (
           <EditCopyFooterButton onPress={() => { setDetailsCard(zoomCard); setZoomCard(null); }} />

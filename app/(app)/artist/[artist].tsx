@@ -3,7 +3,7 @@ import { View, Text, ActivityIndicator, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CardGallery } from '@/components/CardGallery';
 import { CardZoomModal } from '@/components/CardZoomModal';
 import { CardCopySheet, EditCopyFooterButton } from '@/components/CardCopySheet';
@@ -13,7 +13,8 @@ import type { TcgCardRow } from '@/lib/tcg';
 import { useCardsForArtist } from '@/lib/tcg';
 import { useSession } from '@/lib/auth';
 import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity, useAllWishedCards, useToggleWish, useOwnedCardFinishes } from '@/lib/collection';
-import { useBackTo } from '@/lib/navigation';
+import { useBackTo, withReturnTo } from '@/lib/navigation';
+import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useHistoryBackGuard } from '@/lib/history-back-guard';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
@@ -27,6 +28,7 @@ export default function ArtistGallery() {
   const { artist: artistParam } = useLocalSearchParams<{ artist: string }>();
   const artist = decodeURIComponent(artistParam ?? '');
   const goBack = useBackTo('/favorites');
+  const router = useRouter();
 
   useHistoryBackGuard(goBack);
 
@@ -162,6 +164,12 @@ export default function ArtistGallery() {
       )}
       <CardZoomModal
         card={zoomCard}
+        setLabel={zoomCard ? `${setFlagLabel(zoomCard.set_name, zoomCard.region, zoomCard.set_id)} · ${zoomCard.card_number}` : undefined}
+        onOpenSet={zoomCard ? () => {
+          const setId = zoomCard.set_id;
+          setZoomCard(null);
+          router.push(withReturnTo(`/pinned-set/${setId}`, `/artist/${encodeURIComponent(artist)}`) as never);
+        } : undefined}
         onClose={() => setZoomCard(null)}
         footer={zoomCard && ownedAll.has(zoomCard.id) ? (
           <EditCopyFooterButton onPress={() => { setDetailsCard(zoomCard); setZoomCard(null); }} />

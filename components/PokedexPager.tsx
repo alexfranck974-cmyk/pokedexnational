@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Animated, useWindowDimensions, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PokemonTile } from './PokemonTile';
@@ -41,6 +41,22 @@ export function PokedexPager({ items, pageLayout, ownedImages, wishedInDexSet, c
     [items, pageCount, pageLayout],
   );
 
+  // A filter/search/sort change (new `items`) or a layout cycle (3x3/4x3/4x4,
+  // changing how many items fit per page) can both shrink `pageCount` or
+  // reshuffle what page N means. Without this, the ScrollView's native scroll
+  // offset stays at the old pageIndex*width — past the new (shorter) content
+  // width when pageCount shrank, which reads as a swipe "stuck" past the last
+  // real page (blank page, can't swipe back to content without first swiping
+  // forward into the clamped void and back). Re-sync whenever the makeup of
+  // pages changes under the user, not just on mount.
+  useEffect(() => {
+    setPageIndex(i => {
+      const clamped = Math.max(0, Math.min(pageCount - 1, i));
+      scrollRef.current?.scrollTo({ x: clamped * width, animated: false });
+      return clamped;
+    });
+  }, [pageCount, pageLayout, width]);
+
   const goToPage = (i: number) => {
     const clamped = Math.max(0, Math.min(pageCount - 1, i));
     setPageIndex(clamped);
@@ -57,15 +73,22 @@ export function PokedexPager({ items, pageLayout, ownedImages, wishedInDexSet, c
     page: { justifyContent: 'center' as const, padding: spacing.md, paddingTop: spacing.md + PAGE_TOOLBAR_HEIGHT },
     grid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, justifyContent: 'center' as const },
     slot: { padding: 6 },
+    // Bottom row (same height as pageBadge below, flanking it left/right)
+    // instead of vertically centered over the grid — centered arrows sat on
+    // top of the middle row of Pokémon tiles, right where thumbs naturally
+    // rest, so they were blocking the view they were meant to help navigate.
+    // This band is NOT clear on the sides though: app/(app)/_layout.tsx's
+    // GlobalSearchBubble/more-actions FABs are pinned at the same height on
+    // both edges (bottom: fabSlot(0) = 94, ~44px wide) on every screen —
+    // confirmed live 2026-09-19, the right arrow rendered directly under the
+    // global search bubble at spacing.sm. 76px clears both (matches the
+    // inset this component's right arrow already used before it lived in
+    // this band, now needed on the left arrow too).
     navBtn: {
-      position: 'absolute' as const, top: '50%' as const, marginTop: -22, width: 44, height: 44, borderRadius: 22,
+      position: 'absolute' as const, bottom: TAB_BAR_CLEARANCE, width: 44, height: 44, borderRadius: 22,
       backgroundColor: colors.surface, alignItems: 'center' as const, justifyContent: 'center' as const, opacity: 0.92, ...shadow.md,
     },
-    navBtnLeft: { left: spacing.sm },
-    // Clears SearchFilterBar's right-edge FAB stack (search/filter/columns/
-    // values/viewMode, ~52px wide + spacing.lg inset) — sitting under
-    // spacing.sm like the binder viewer's arrow does would collide with it,
-    // since this screen (unlike the binder viewer) also renders that overlay.
+    navBtnLeft: { left: 76 },
     navBtnRight: { right: 76 },
     // Clears the floating tab bar (same TAB_BAR_CLEARANCE the FlashList grid
     // uses as contentContainerStyle padding) — sitting at spacing.md like the

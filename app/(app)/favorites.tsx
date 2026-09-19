@@ -384,8 +384,16 @@ export default function FavoritesScreen() {
   const [artistSearch, setArtistSearch] = useState('');
   const [dupSearch, setDupSearch] = useState('');
   const [dupSort, setDupSort] = useState<'value' | 'quantity' | 'name'>('value');
-  const [dupZoom, setDupZoom] = useState<ZoomableCard | null>(null);
-  const [binderZoom, setBinderZoom] = useState<ZoomableCard | null>(null);
+  // Keyed on id, not a stored snapshot — same reasoning as wishlist.tsx's
+  // `zoomedCard`/`gallery` derivation.
+  const [dupZoomId, setDupZoomId] = useState<string | null>(null);
+  // Binder slots carry their own `imageUrl` (not necessarily the card's
+  // default art), so the zoomed image still comes from the slot — `cardId`
+  // is only along for the ride to look up its TCG set for the extension link.
+  const [binderZoom, setBinderZoom] = useState<{ image: ZoomableCard; cardId?: string } | null>(null);
+  const ledgerByCardId = useMemo(() => new Map(ledgerCards.map(c => [c.cardId, c])), [ledgerCards]);
+  const dupZoomCard = dupZoomId ? ledgerByCardId.get(dupZoomId) ?? null : null;
+  const binderZoomCard = binderZoom?.cardId ? ledgerByCardId.get(binderZoom.cardId) ?? null : null;
 
   const ownedPokemon = useMemo(() => POKEDEX.filter(p => owned.has(p.num)), [owned]);
 
@@ -1119,7 +1127,7 @@ export default function FavoritesScreen() {
                         )}
                         <Pressable
                           hitSlop={8}
-                          onPress={() => setBinderZoom({ image_small: item.imageUrl })}
+                          onPress={() => setBinderZoom({ image: { image_small: item.imageUrl }, cardId: isCard ? (item.cardId as string) : undefined })}
                           style={styles.zoomBtn}
                           accessibilityLabel={t('favorites.a11yZoomCard')}>
                           <Ionicons name="search" size={14} color="white" />
@@ -1373,7 +1381,7 @@ export default function FavoritesScreen() {
                 return (
                   <Pressable
                     style={styles.dupTile}
-                    onPress={() => setDupZoom({ image_small: item.imageSmall, image_large: item.imageLarge })}>
+                    onPress={() => setDupZoomId(item.cardId)}>
                     <View style={styles.dupImgWrap}>
                       <Image source={{ uri: item.imageSmall }} style={styles.dupImg} resizeMode="contain" />
                       <View style={styles.dupQtyBadge}>
@@ -1714,8 +1722,26 @@ export default function FavoritesScreen() {
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
-      <CardZoomModal card={dupZoom} onClose={() => setDupZoom(null)} />
-      <CardZoomModal card={binderZoom} onClose={() => setBinderZoom(null)} />
+      <CardZoomModal
+        card={dupZoomCard ? { image_small: dupZoomCard.imageSmall, image_large: dupZoomCard.imageLarge } : null}
+        setLabel={dupZoomCard?.setId ? `${setFlagLabel(dupZoomCard.setName ?? '', dupZoomCard.region, dupZoomCard.setId)} · ${dupZoomCard.cardNumber ?? ''}` : undefined}
+        onOpenSet={dupZoomCard?.setId ? () => {
+          const setId = dupZoomCard.setId!;
+          setDupZoomId(null);
+          router.push(withReturnTo(`/pinned-set/${setId}`, '/favorites') as never);
+        } : undefined}
+        onClose={() => setDupZoomId(null)}
+      />
+      <CardZoomModal
+        card={binderZoom?.image ?? null}
+        setLabel={binderZoomCard?.setId ? `${setFlagLabel(binderZoomCard.setName ?? '', binderZoomCard.region, binderZoomCard.setId)} · ${binderZoomCard.cardNumber ?? ''}` : undefined}
+        onOpenSet={binderZoomCard?.setId ? () => {
+          const setId = binderZoomCard.setId!;
+          setBinderZoom(null);
+          router.push(withReturnTo(`/pinned-set/${setId}`, '/favorites') as never);
+        } : undefined}
+        onClose={() => setBinderZoom(null)}
+      />
       <CaptureEffect event={completionCelebration} onDone={() => setCompletionCelebration(null)} />
       <CollectionToolsDrawer
         activeTab={isToolTab ? (subTab as ToolTab) : null}

@@ -253,7 +253,7 @@ export function useAllWishedCards(userId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_wishlist')
-        .select('card_id, wished_at, is_priority, price_alert_eur, tcg_cards(id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, cardmarket_trend_eur, cardmarket_low_eur)')
+        .select('card_id, wished_at, is_priority, price_alert_eur, tcg_cards(id, name, dex_num, set_id, set_name, card_number, rarity, image_small, image_large, release_date, cardmarket_trend_eur, cardmarket_low_eur, region)')
         .eq('user_id', userId!)
         .order('wished_at', { ascending: false });
       if (error) throw error;
@@ -483,9 +483,19 @@ export function useToggleOwnedCard() {
     onMutate: async ({ cardId, currentlyOwned }) => {
       await qc.cancelQueries({ queryKey: ['all_owned_card_ids', userId] });
       const prev = qc.getQueryData<Set<string>>(['all_owned_card_ids', userId]);
-      const next = new Set(prev ?? []);
-      if (currentlyOwned) next.delete(cardId); else next.add(cardId);
-      qc.setQueryData(['all_owned_card_ids', userId], next);
+      // If the cache hasn't loaded yet (screen just mounted, query still
+      // in flight when the tap lands), building the optimistic Set from `[]`
+      // would show ONLY this card as owned — every other already-owned card
+      // in the set silently reads as unowned until onSettled's refetch lands
+      // a moment later. That flash briefly resets the just-tapped card's own
+      // checkmark too, mid-flight, reading as "tap didn't save". Skip the
+      // optimistic write entirely when the cache is empty; the real mutation
+      // + invalidate below still lands the correct state shortly after.
+      if (prev) {
+        const next = new Set(prev);
+        if (currentlyOwned) next.delete(cardId); else next.add(cardId);
+        qc.setQueryData(['all_owned_card_ids', userId], next);
+      }
       return { prev };
     },
     onError: (_e, _v, ctx) => {
@@ -536,9 +546,13 @@ export function useBulkMarkOwned() {
     onMutate: async ({ cards }) => {
       await qc.cancelQueries({ queryKey: ['all_owned_card_ids', userId] });
       const prev = qc.getQueryData<Set<string>>(['all_owned_card_ids', userId]);
-      const next = new Set(prev ?? []);
-      for (const c of cards) next.add(c.cardId);
-      qc.setQueryData(['all_owned_card_ids', userId], next);
+      // See useToggleOwnedCard's onMutate above for why an empty cache skips
+      // the optimistic write instead of building the Set from `[]`.
+      if (prev) {
+        const next = new Set(prev);
+        for (const c of cards) next.add(c.cardId);
+        qc.setQueryData(['all_owned_card_ids', userId], next);
+      }
       return { prev };
     },
     onError: (_e, _v, ctx) => {
@@ -635,18 +649,21 @@ export function useAdjustOwnedCardQuantity() {
       const prevQuantities = qc.getQueryData<Map<string, number>>(['owned_card_quantities', userId]);
       const prevIds = qc.getQueryData<Set<string>>(['all_owned_card_ids', userId]);
       const nextQty = currentQuantity + delta;
-      const nextQuantities = new Map(prevQuantities ?? []);
-      const nextIds = new Set(prevIds ?? []);
-      // Both caches are scoped/reasoned about in terms of the normal finish —
-      // adjusting another finish still settles correctly via onSettled's
-      // invalidation, just without an optimistic flash (acceptable: this path
-      // is the detail sheet, not the fast primary tap).
+      // See useToggleOwnedCard's onMutate above for why each cache's optimistic
+      // write is skipped when it hasn't loaded yet, rather than building it
+      // from `[]`/`new Map()`.
       if (finish === 'normal') {
-        if (nextQty <= 0) { nextQuantities.delete(cardId); nextIds.delete(cardId); }
-        else { nextQuantities.set(cardId, nextQty); nextIds.add(cardId); }
+        if (prevQuantities) {
+          const nextQuantities = new Map(prevQuantities);
+          if (nextQty <= 0) nextQuantities.delete(cardId); else nextQuantities.set(cardId, nextQty);
+          qc.setQueryData(['owned_card_quantities', userId], nextQuantities);
+        }
+        if (prevIds) {
+          const nextIds = new Set(prevIds);
+          if (nextQty <= 0) nextIds.delete(cardId); else nextIds.add(cardId);
+          qc.setQueryData(['all_owned_card_ids', userId], nextIds);
+        }
       }
-      qc.setQueryData(['owned_card_quantities', userId], nextQuantities);
-      qc.setQueryData(['all_owned_card_ids', userId], nextIds);
       return { prevQuantities, prevIds };
     },
     onError: (_e, _v, ctx) => {
@@ -793,6 +810,13 @@ export interface OwnedCardDetail {
   imageLarge: string | null;
   cardmarketTrendEur: number | null;
   artist: string | null;
+  /** TCG set this printing belongs to — undefined only on callers that never
+   * select it (there are none left; kept optional so this widened interface
+   * stays a safe supertype of the pre-existing `& { setId, setName, ... }`
+   * intersections some call sites still declare locally). */
+  setId?: string;
+  setName?: string;
+  region?: 'global' | 'jp' | 'cn';
 }
 
 export interface OwnedCardFinishRow {
@@ -875,7 +899,7 @@ export function useAllOwnedCardsDetailed(userId?: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_cards')
-        .select('card_id, dex_num, acquired_at, tcg_cards(rarity, name, image_small, image_large, cardmarket_trend_eur, artist)')
+        .select('card_id, dex_num, acquired_at, tcg_cards(rarity, name, image_small, image_large, cardmarket_trend_eur, artist, set_id, set_name, region)')
         .eq('user_id', userId!);
       if (error) throw error;
       return (data ?? []).map(r => {
@@ -890,6 +914,9 @@ export function useAllOwnedCardsDetailed(userId?: string) {
           imageLarge: (card?.image_large as string | undefined) ?? null,
           cardmarketTrendEur: (card?.cardmarket_trend_eur as number | undefined) ?? null,
           artist: (card?.artist as string | undefined) ?? null,
+          setId: (card?.set_id as string | undefined) ?? undefined,
+          setName: (card?.set_name as string | undefined) ?? undefined,
+          region: (card?.region as 'global' | 'jp' | 'cn' | undefined) ?? 'global',
         };
       }) as OwnedCardDetail[];
     },

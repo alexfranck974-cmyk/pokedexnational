@@ -247,6 +247,12 @@ export default function PokedexScreen() {
         <CardZoomModal
           card={zoomCardImage}
           caption={zoomPokemon ? `#${String(zoomPokemon.num).padStart(4, '0')} · ${getName(zoomPokemon, locale)}` : undefined}
+          setLabel={zoomCard?.setId ? setFlagLabel(zoomCard.setName ?? '', zoomCard.region, zoomCard.setId) : undefined}
+          onOpenSet={zoomCard?.setId ? () => {
+            const setId = zoomCard.setId!;
+            setZoomIndex(null);
+            router.push(withReturnTo(`/pinned-set/${setId}`, '/pokedex') as never);
+          } : undefined}
           onClose={() => setZoomIndex(null)}
           onSwipeNext={() => setZoomIndex(i => i === null || ownedItems.length === 0 ? null : (i + 1) % ownedItems.length)}
           onSwipePrev={() => setZoomIndex(i => i === null || ownedItems.length === 0 ? null : (i - 1 + ownedItems.length) % ownedItems.length)}

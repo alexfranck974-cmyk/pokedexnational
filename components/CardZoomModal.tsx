@@ -1,6 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
-import { Modal, Image, Text, View, PanResponder, useWindowDimensions } from 'react-native';
-import { useThemedStyles, fonts, spacing } from '@/lib/theme';
+import { Modal, Image, Text, View, Pressable, PanResponder, useWindowDimensions } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useThemedStyles, fonts, radius, spacing } from '@/lib/theme';
 import { useModalBackClose } from '@/lib/useModalBackClose';
 
 export interface ZoomableCard {
@@ -11,6 +12,12 @@ export interface ZoomableCard {
 interface Props {
   card: ZoomableCard | null;
   caption?: string;
+  /** Name of the TCG set/expansion this card belongs to — when paired with
+   * `onOpenSet`, shows a small tappable pill under the caption linking to
+   * that set's own screen. Omit both on screens where the link would be
+   * redundant (e.g. already browsing that set) or the set isn't known here. */
+  setLabel?: string;
+  onOpenSet?: () => void;
   /** Extra content below the caption (e.g. a "Proposer un échange" action on a
    * friend's profile) — omit to keep the modal purely a viewer, as elsewhere. */
   footer?: ReactNode;
@@ -22,7 +29,7 @@ interface Props {
 const SWIPE_THRESHOLD = 50;
 const TAP_TOLERANCE = 8;
 
-export function CardZoomModal({ card, caption, footer, onClose, onSwipeNext, onSwipePrev }: Props) {
+export function CardZoomModal({ card, caption, setLabel, onOpenSet, footer, onClose, onSwipeNext, onSwipePrev }: Props) {
   const { width, height } = useWindowDimensions();
   const styles = useThemedStyles((colors) => ({
     // touchAction (RNW-only, absent from RN's ViewStyle type — same cast
@@ -41,6 +48,11 @@ export function CardZoomModal({ card, caption, footer, onClose, onSwipeNext, onS
       marginTop: spacing.sm, fontSize: 17, fontFamily: fonts.display, color: 'white',
       textAlign: 'center' as const, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6,
     },
+    setLink: {
+      marginTop: spacing.xs, flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4,
+      paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.14)',
+    },
+    setLinkText: { fontSize: 13, fontFamily: fonts.bodyBold, color: 'white' },
   }));
 
   // Keyed on isOpen (not `card` itself) so browsing between cards via swipe
@@ -84,6 +96,13 @@ export function CardZoomModal({ card, caption, footer, onClose, onSwipeNext, onS
           resizeMode="contain"
         />
         {caption && <Text style={styles.caption}>{caption}</Text>}
+        {setLabel && onOpenSet && (
+          <Pressable onPress={onOpenSet} style={styles.setLink} hitSlop={8}>
+            <Ionicons name="albums-outline" size={14} color="white" />
+            <Text style={styles.setLinkText}>{setLabel}</Text>
+            <Ionicons name="chevron-forward" size={14} color="white" />
+          </Pressable>
+        )}
         {footer}
       </View>
     </Modal>

@@ -368,6 +368,12 @@ export default function DashboardScreen() {
       </ScrollView>
       <CardZoomModal
         card={zoomCard ? { image_small: zoomCard.imageSmall, image_large: zoomCard.imageLarge } : null}
+        setLabel={zoomCard?.setId ? setFlagLabel(zoomCard.setName ?? '', zoomCard.region, zoomCard.setId) : undefined}
+        onOpenSet={zoomCard?.setId ? () => {
+          const setId = zoomCard.setId!;
+          setZoomIndex(null);
+          router.push(withReturnTo(`/pinned-set/${setId}`, '/dashboard') as never);
+        } : undefined}
         onClose={() => setZoomIndex(null)}
         onSwipeNext={() => setZoomIndex(i => i === null ? null : (i + 1) % vitrineCards.length)}
         onSwipePrev={() => setZoomIndex(i => i === null ? null : (i - 1 + vitrineCards.length) % vitrineCards.length)}
@@ -375,6 +381,12 @@ export default function DashboardScreen() {
       <CardZoomModal
         card={recentZoomCard ? { image_small: recentZoomCard.imageSmall, image_large: recentZoomCard.imageLarge } : null}
         caption={recentZoomCard ? `${cardDisplayName(recentZoomCard, recentZoomCard.dexNum, locale)}\n${t('pokemon.addedOn', { date: new Date(recentZoomCard.acquiredAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'fr-FR') })}` : undefined}
+        setLabel={recentZoomCard ? `${setFlagLabel(recentZoomCard.setName, recentZoomCard.region, recentZoomCard.setId)} · ${recentZoomCard.cardNumber}` : undefined}
+        onOpenSet={recentZoomCard ? () => {
+          const setId = recentZoomCard.setId;
+          setRecentZoomIndex(null);
+          router.push(withReturnTo(`/pinned-set/${setId}`, '/dashboard') as never);
+        } : undefined}
         onClose={() => setRecentZoomIndex(null)}
         onSwipeNext={() => setRecentZoomIndex(i => i === null ? null : (i + 1) % recentCards.length)}
         onSwipePrev={() => setRecentZoomIndex(i => i === null ? null : (i - 1 + recentCards.length) % recentCards.length)}
