@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
+import { useHudDensity } from '@/lib/hud-density';
 import { eurFormatter } from '@/lib/trades';
 import { useTheme, useThemedStyles, radius, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
@@ -28,6 +29,7 @@ export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCou
   const inColor = collected ?? owned;
   const { colors } = useTheme();
   const { locale } = useLocale();
+  const { density } = useHudDensity();
 
   const styles = useThemedStyles((colors, shadow) => ({
     // Image region is card-shaped (aspectRatio 0.72, same as binder slots/CardTile)
@@ -95,17 +97,23 @@ export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCou
           {badges}
         </View>
       )}
-      <Text style={[styles.num, !inColor && styles.textDim]}>
-        #{String(pokemon.num).padStart(4, '0')}
-      </Text>
-      <Text style={[styles.name, !inColor && styles.textDim]} numberOfLines={1}>
-        {getName(pokemon, locale)}
-      </Text>
-      {owned && priceEur !== undefined ? (
-        <Text style={styles.cardCount} numberOfLines={1}>{priceEur == null ? '—' : eurFormatter(locale).format(priceEur)}</Text>
-      ) : (
-        owned && cardCount !== undefined && cardCount > 0 && (
-          <Text style={styles.cardCount}>×{cardCount}</Text>
+      {density !== 'minimal' && (
+        <>
+          <Text style={[styles.num, !inColor && styles.textDim]}>
+            #{String(pokemon.num).padStart(4, '0')}
+          </Text>
+          <Text style={[styles.name, !inColor && styles.textDim]} numberOfLines={1}>
+            {getName(pokemon, locale)}
+          </Text>
+        </>
+      )}
+      {density !== 'minimal' && (
+        density === 'detailed' && owned && priceEur !== undefined ? (
+          <Text style={styles.cardCount} numberOfLines={1}>{priceEur == null ? '—' : eurFormatter(locale).format(priceEur)}</Text>
+        ) : (
+          owned && cardCount !== undefined && cardCount > 0 && (
+            <Text style={styles.cardCount}>×{cardCount}</Text>
+          )
         )
       )}
     </Pressable>

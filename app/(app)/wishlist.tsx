@@ -20,6 +20,7 @@ import { WishlistFilterBar } from '@/components/WishlistFilterBar';
 import { RefreshButton } from '@/components/RefreshButton';
 import { FriendSetGalleryModal, type FriendSetGalleryTarget } from '@/components/FriendSetGalleryModal';
 import { CardZoomModal } from '@/components/CardZoomModal';
+import { useHudDensity, HUD_DENSITY_ICON } from '@/lib/hud-density';
 import { PokedexSectionTabs, sectionIndex, hrefToSection, useSectionSwipeGesture } from '@/components/PokedexSectionTabs';
 import { SlideTransition } from '@/components/SlideTransition';
 import { withReturnTo, safeDecodeURIComponent } from '@/lib/navigation';
@@ -82,6 +83,7 @@ export default function WishlistScreen() {
   const { refreshing, onRefresh } = usePullToRefresh();
   const hideOnScrollProps = useHideOnScrollProps();
   const swipeGesture = useSectionSwipeGesture('wishlist');
+  const { density, cycleDensity } = useHudDensity();
   const [galleryDexNum, setGalleryDexNum] = useState<number | null>(null);
   const [zoomedCardId, setZoomedCardId] = useState<string | null>(null);
 
@@ -283,10 +285,12 @@ export default function WishlistScreen() {
           <Text style={styles.pokemonName} numberOfLines={1}>
             #{String(item.dexNum).padStart(4, '0')} · {mon ? getName(mon, locale) : item.dexNum}
           </Text>
-          <Text style={styles.pokemonSub}>
-            {t(item.cards.length > 1 ? 'wishlist.cardsInWishlistPlural' : 'wishlist.cardsInWishlistSingular', { n: item.cards.length })}
-            {ownedCount > 0 ? t(ownedCount > 1 ? 'wishlist.alreadyOwnedPlural' : 'wishlist.alreadyOwnedSingular', { n: ownedCount }) : ''}
-          </Text>
+          {density !== 'minimal' && (
+            <Text style={styles.pokemonSub}>
+              {t(item.cards.length > 1 ? 'wishlist.cardsInWishlistPlural' : 'wishlist.cardsInWishlistSingular', { n: item.cards.length })}
+              {ownedCount > 0 ? t(ownedCount > 1 ? 'wishlist.alreadyOwnedPlural' : 'wishlist.alreadyOwnedSingular', { n: ownedCount }) : ''}
+            </Text>
+          )}
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pokemonThumbs}>
           {item.cards.slice(0, 4).map(c => (
@@ -306,7 +310,7 @@ export default function WishlistScreen() {
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </Pressable>
     );
-  }, [ownedIds, locale, styles, colors]);
+  }, [ownedIds, locale, styles, colors, density]);
 
   // Same reasoning as renderPokemonRow above — a fresh element every render
   // reads to FlashList as a changed prop, not just re-rendered.
@@ -374,19 +378,23 @@ export default function WishlistScreen() {
             <Ionicons name={item.price_alert_eur != null ? 'notifications' : 'notifications-outline'} size={15} color={triggered ? colors.success : 'white'} />
           </Pressable>
         </View>
-        <Text style={styles.set} numberOfLines={1}>{item.set_name} · {item.card_number}</Text>
-        {item.rarity && <Text style={styles.rarity} numberOfLines={1}>{item.rarity}</Text>}
-        {formatCardPriceRange(item.cardmarket_low_eur, item.cardmarket_trend_eur, locale) != null && (
-          <Text style={styles.price} numberOfLines={1}>{formatCardPriceRange(item.cardmarket_low_eur, item.cardmarket_trend_eur, locale)}</Text>
-        )}
-        {triggered && (
-          <View style={styles.alertTriggeredBadge}>
-            <Text style={styles.alertTriggeredBadgeText}>{t('wishlist.alertTriggeredBadge')}</Text>
-          </View>
+        {density !== 'minimal' && (
+          <>
+            <Text style={styles.set} numberOfLines={1}>{item.set_name} · {item.card_number}</Text>
+            {item.rarity && <Text style={styles.rarity} numberOfLines={1}>{item.rarity}</Text>}
+            {formatCardPriceRange(item.cardmarket_low_eur, item.cardmarket_trend_eur, locale) != null && (
+              <Text style={styles.price} numberOfLines={1}>{formatCardPriceRange(item.cardmarket_low_eur, item.cardmarket_trend_eur, locale)}</Text>
+            )}
+            {triggered && (
+              <View style={styles.alertTriggeredBadge}>
+                <Text style={styles.alertTriggeredBadgeText}>{t('wishlist.alertTriggeredBadge')}</Text>
+              </View>
+            )}
+          </>
         )}
       </Pressable>
     );
-  }, [ownedIds, locale, styles, colors, wishMutate, priorityMutate]);
+  }, [ownedIds, locale, styles, colors, wishMutate, priorityMutate, density]);
 
   if (isLoading) {
     return (
@@ -434,6 +442,13 @@ export default function WishlistScreen() {
               <Ionicons name="list" size={15} color={viewMode === 'pokemon' ? heroSurfaceActiveText : heroText} />
             </Pressable>
           </View>
+          <Pressable
+            onPress={cycleDensity}
+            accessibilityRole="button"
+            accessibilityLabel={t('search.a11yCycleHudDensity')}
+            style={styles.viewBtn}>
+            <Ionicons name={HUD_DENSITY_ICON[density]} size={15} color={density !== 'standard' ? heroSurfaceActiveText : heroText} />
+          </Pressable>
           <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
         </View>
       </LinearGradient>

@@ -7,6 +7,7 @@ import { TYPE_LABEL_FR, getTypeLabel } from '@/lib/types-colors';
 import { GENERATIONS, getGenerationLabel } from '@/lib/generations';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useLocale, useT } from '@/lib/locale';
+import { useHudDensity, HUD_DENSITY_ICON } from '@/lib/hud-density';
 import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts, SCREEN_FAB_CLEARANCE } from '@/lib/theme';
 import { useTabBarVisibility, TAB_BAR_HIDE_OFFSET } from '@/lib/tab-bar-visibility';
 
@@ -29,9 +30,6 @@ interface Props {
   columns: 2 | 3 | 4 | null;            onColumns: (v: 2 | 3 | 4 | null) => void;
   /** Clearance above the floating tab bar + Settings FAB (app/(app)/_layout.tsx). Screens without that chrome (e.g. the public profile) pass spacing.lg instead. */
   bottomInset?: number;
-  /** Optional 4th FAB toggling a per-card €-value overlay — omit to keep the
-   * 3-button stack (e.g. Wishlist, which doesn't wire this yet). */
-  showValues?: boolean;                 onToggleValues?: () => void;
   /** Binder-style paged view toggle (Pokédex national only). When in page
    * mode, the columns-cycle FAB is repurposed to cycle the page layout
    * (9/12/16) instead of scroll-mode column overrides — same slot, different
@@ -222,6 +220,7 @@ export function SearchFilterBar(p: Props) {
   const { colors } = useTheme();
   const { locale } = useLocale();
   const t = useT();
+  const { density, cycleDensity } = useHudDensity();
   const styles = useThemedStyles((colors, shadow) => makeStyles(colors, shadow, p.bottomInset));
   const hasFilters = p.statusFilter !== 'all' || p.typeFilter.length > 0 || p.setFilter || p.rarityFilter || p.generationFilter.length > 0;
 
@@ -282,11 +281,9 @@ export function SearchFilterBar(p: Props) {
                 <Pressable onPress={() => p.onCyclePageLayout?.()} style={styles.toolbarBtn} accessibilityRole="button" accessibilityLabel={t('search.a11yCyclePageLayout')}>
                   <Text style={styles.columnsLabel}>×{p.pageLayout}</Text>
                 </Pressable>
-                {p.onToggleValues && (
-                  <Pressable onPress={p.onToggleValues} style={styles.toolbarBtn} accessibilityRole="button" accessibilityLabel={t('search.a11yTogglePrice')}>
-                    <Ionicons name="pricetag" size={18} color={p.showValues ? colors.primary : colors.text} />
-                  </Pressable>
-                )}
+                <Pressable onPress={cycleDensity} style={styles.toolbarBtn} accessibilityRole="button" accessibilityLabel={t('search.a11yCycleHudDensity')}>
+                  <Ionicons name={HUD_DENSITY_ICON[density]} size={18} color={density !== 'standard' ? colors.primary : colors.text} />
+                </Pressable>
                 {p.onToggleViewMode && (
                   <Pressable onPress={p.onToggleViewMode} style={styles.toolbarBtn} accessibilityRole="button" accessibilityLabel={t('search.a11yToggleViewMode')}>
                     <Ionicons name="book" size={18} color={colors.primary} />
@@ -344,9 +341,9 @@ export function SearchFilterBar(p: Props) {
                 )}
               </Pressable>
             )}
-            {p.onToggleValues && (!p.collapsible || moreExpanded) && (
-              <Pressable onPress={p.onToggleValues} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yTogglePrice')}>
-                <Ionicons name="pricetag" size={20} color={p.showValues ? colors.primary : colors.text} />
+            {(!p.collapsible || moreExpanded) && (
+              <Pressable onPress={cycleDensity} style={styles.fab} accessibilityRole="button" accessibilityLabel={t('search.a11yCycleHudDensity')}>
+                <Ionicons name={HUD_DENSITY_ICON[density]} size={20} color={density !== 'standard' ? colors.primary : colors.text} />
               </Pressable>
             )}
             {p.onToggleViewMode && (!p.collapsible || moreExpanded) && (

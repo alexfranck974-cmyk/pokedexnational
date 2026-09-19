@@ -5,6 +5,7 @@ import type { TcgCardRow } from '@/lib/tcg';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { Pokeball } from '@/components/Pokeball';
 import { hapticCardAdded } from '@/lib/haptics';
+import { useHudDensity } from '@/lib/hud-density';
 import { CHASE_GOLD } from '@/lib/rarity-tiers';
 import { useT } from '@/lib/locale';
 import { FINISH_GRADIENT, pickPrimaryFinish } from '@/lib/finish-visuals';
@@ -44,6 +45,7 @@ export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, o
   const { colors } = useTheme();
   const t = useT();
   const { locale } = useLocale();
+  const { density } = useHudDensity();
   const primaryFinish = pickPrimaryFinish(finishes);
   const priceLabel = formatCardPriceRange(card.cardmarket_low_eur, card.cardmarket_trend_eur, locale);
   const styles = useThemedStyles((colors, shadow) => ({
@@ -179,10 +181,14 @@ export function CardTile({ card, owned, wished, readOnly, isDexCard, quantity, o
           </View>
         )}
       </View>
-      <Text style={styles.set} numberOfLines={1}>{card.set_name} · {card.card_number}</Text>
-      {card.rarity && <Text style={styles.rarity} numberOfLines={1}>{card.rarity}</Text>}
-      {priceLabel != null && (
-        <Text style={styles.price} numberOfLines={1}>{priceLabel}</Text>
+      {density !== 'minimal' && (
+        <>
+          <Text style={styles.set} numberOfLines={1}>{card.set_name} · {card.card_number}</Text>
+          {card.rarity && <Text style={styles.rarity} numberOfLines={1}>{card.rarity}</Text>}
+          {priceLabel != null && (
+            <Text style={styles.price} numberOfLines={1}>{priceLabel}</Text>
+          )}
+        </>
       )}
     </Pressable>
   );

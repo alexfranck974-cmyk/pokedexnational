@@ -10,6 +10,7 @@ import { Karla_400Regular, Karla_700Bold } from '@expo-google-fonts/karla';
 import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
 import { ThemeProvider } from '@/lib/theme';
 import { MotionProvider } from '@/lib/motion';
+import { HudDensityProvider } from '@/lib/hud-density';
 import { LocaleProvider } from '@/lib/locale';
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -87,16 +88,18 @@ function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <MotionProvider>
-            <LocaleProvider>
-              <ThemedStatusBar />
-              <QueryClientProvider client={queryClient}>
-                <RootSiblingParent>
-                  <ErrorBoundary>
-                    <Stack screenOptions={{ headerShown: false }} />
-                  </ErrorBoundary>
-                </RootSiblingParent>
-              </QueryClientProvider>
-            </LocaleProvider>
+            <HudDensityProvider>
+              <LocaleProvider>
+                <ThemedStatusBar />
+                <QueryClientProvider client={queryClient}>
+                  <RootSiblingParent>
+                    <ErrorBoundary>
+                      <Stack screenOptions={{ headerShown: false }} />
+                    </ErrorBoundary>
+                  </RootSiblingParent>
+                </QueryClientProvider>
+              </LocaleProvider>
+            </HudDensityProvider>
           </MotionProvider>
         </ThemeProvider>
       </SafeAreaProvider>

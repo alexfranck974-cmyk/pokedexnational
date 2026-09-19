@@ -12,6 +12,7 @@ import { ReverseHoloShimmer } from '@/components/ReverseHoloShimmer';
 import type { OwnedCardFinish } from '@/lib/collection';
 import { formatCardPriceRange } from '@/lib/trades';
 import { cardDisplayName } from '@/lib/tcg-name';
+import { useHudDensity } from '@/lib/hud-density';
 
 interface Props {
   card: TcgCardRow;
@@ -42,6 +43,7 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
   const { colors } = useTheme();
   const t = useT();
   const { locale } = useLocale();
+  const { density } = useHudDensity();
   const primaryFinish = pickPrimaryFinish(finishes);
   const priceLabel = formatCardPriceRange(card.cardmarket_low_eur, card.cardmarket_trend_eur, locale);
   const styles = useThemedStyles((colors) => ({
@@ -137,10 +139,14 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
       </View>
       <View style={styles.info}>
         <Text style={[styles.name, !owned && styles.nameMissing]} numberOfLines={1}>{cardDisplayName(card, card.dex_num, locale)}</Text>
-        <Text style={styles.meta} numberOfLines={1}>{card.set_name} · {card.card_number}</Text>
-        {card.rarity && <Text style={styles.rarity} numberOfLines={1}>{card.rarity}</Text>}
-        {priceLabel != null && (
-          <Text style={styles.price} numberOfLines={1}>{priceLabel}</Text>
+        {density !== 'minimal' && (
+          <>
+            <Text style={styles.meta} numberOfLines={1}>{card.set_name} · {card.card_number}</Text>
+            {card.rarity && <Text style={styles.rarity} numberOfLines={1}>{card.rarity}</Text>}
+            {priceLabel != null && (
+              <Text style={styles.price} numberOfLines={1}>{priceLabel}</Text>
+            )}
+          </>
         )}
       </View>
       <View style={styles.actions}>

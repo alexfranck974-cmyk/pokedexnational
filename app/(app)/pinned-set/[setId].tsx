@@ -16,6 +16,7 @@ import { useCardsForSet } from '@/lib/tcg';
 import { useTcgSets } from '@/lib/tcg-index';
 import { useSession } from '@/lib/auth';
 import { useAllOwnedCardIds, useToggleOwnedCard, useBulkMarkOwned, useOwnedCardQuantities, useAdjustOwnedCardQuantity, useAllWishedCards, useToggleWish, useOwnedCardFinishes } from '@/lib/collection';
+import { useHudDensity, HUD_DENSITY_ICON } from '@/lib/hud-density';
 import { useFriends } from '@/lib/friends';
 import { useFriendsWantedCards } from '@/lib/trades';
 import { TradeMatchPopup, type TradeMatch } from '@/components/TradeMatchPopup';
@@ -62,6 +63,7 @@ export default function PinnedSetDetail() {
   const [tradeTarget, setTradeTarget] = useState<TradeTarget | null>(null);
   const [tradePreset, setTradePreset] = useState<PickedCard | undefined>(undefined);
 
+  const { density, cycleDensity } = useHudDensity();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [columns, setColumns] = useState<3 | 4 | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
@@ -195,6 +197,13 @@ export default function PinnedSetDetail() {
                 )}
               </Pressable>
             )}
+            <Pressable
+              onPress={cycleDensity}
+              accessibilityRole="button"
+              accessibilityLabel="Changer la densité d'affichage"
+              style={styles.viewBtn}>
+              <Ionicons name={HUD_DENSITY_ICON[density]} size={15} color={density !== 'standard' ? heroSurfaceActiveText : heroText} />
+            </Pressable>
           </View>
         </View>
         {set?.logo && (

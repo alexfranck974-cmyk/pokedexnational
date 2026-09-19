@@ -74,7 +74,6 @@ export default function PokedexScreen() {
     () => new Map(ownedCardsDetailed.map(c => [c.dexNum, c.cardmarketTrendEur])),
     [ownedCardsDetailed],
   );
-  const [showValues, setShowValues] = useState(false);
   const { data: tcgIndex = new Map() } = useTcgIndex();
   const { data: sets = [] } = useTcgSets();
   const { data: rarities = [] } = useTcgRarities();
@@ -214,7 +213,7 @@ export default function PokedexScreen() {
               pageLayout={pageLayout}
               ownedImages={ownedImages}
               wishedInDexSet={wishedInDexSet}
-              cardPrices={showValues ? dexPrices : undefined}
+              cardPrices={dexPrices}
               onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
               onLongSelect={num => {
                 const idx = ownedItems.findIndex(p => p.num === num);
@@ -233,7 +232,7 @@ export default function PokedexScreen() {
                 ownedImages={ownedImages}
                 wishedInDexSet={wishedInDexSet}
                 columnsOverride={columns}
-                cardPrices={showValues ? dexPrices : undefined}
+                cardPrices={dexPrices}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
                 onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
                 onLongSelect={num => {
@@ -268,7 +267,6 @@ export default function PokedexScreen() {
           sets={sets} rarities={rarities}
           onReset={reset}
           columns={columns} onColumns={setColumns}
-          showValues={showValues} onToggleValues={() => setShowValues(v => !v)}
           viewMode={viewMode} onToggleViewMode={toggleViewMode}
           pageLayout={pageLayout} onCyclePageLayout={cyclePageLayout}
           collapsible
