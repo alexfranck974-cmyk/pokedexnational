@@ -3,6 +3,7 @@ import { View, Text, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon, PokemonType } from '@/lib/types';
 import { useSession } from '@/lib/auth';
@@ -37,6 +38,17 @@ const POKEDEX = pokedexData as Pokemon[];
 export default function PokedexScreen() {
   const router = useRouter();
   const { newCard, from } = useLocalSearchParams<{ newCard?: string; from?: string }>();
+  // pokemon/[num] (and pinned-set/[setId], binder/[binderId], artist/[artist])
+  // are hidden Tabs.Screen siblings, reached via router.push from here — that
+  // makes THIS screen lose focus, but confirmed live (2026-09-20) that its
+  // content stays visibly mounted on top of/alongside the new screen instead
+  // of actually disappearing (search → a Pokémon result was the repro: the
+  // full Pokédex grid stayed on screen, superimposed with the Pokémon detail
+  // page). React Navigation's own "hide the unfocused tab" mechanism doesn't
+  // reliably kick in here on web, the same underlying gap PokedexSectionTabs
+  // already works around for its own tab-row UI — this is the same fix
+  // applied to the screen's actual content instead of just that row.
+  const isFocused = useIsFocused();
   const { session } = useSession();
   const userId = session?.user.id;
   const { colors, heroGradient, heroText: heroTextColor, heroTextMuted, heroSurfaceActive, heroTrack } = useTheme();
@@ -173,7 +185,7 @@ export default function PokedexScreen() {
 
   if (dexLoading) {
     return (
-      <SafeAreaView style={styles.screen}>
+      <SafeAreaView style={[styles.screen, !isFocused && { display: 'none' as const }]}>
         <PokedexSectionTabs active="pokedex" />
         <View style={styles.center}><ActivityIndicator /></View>
       </SafeAreaView>
@@ -181,7 +193,7 @@ export default function PokedexScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={[styles.screen, !isFocused && { display: 'none' as const }]}>
       <LinearGradient
         colors={heroGradient}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
