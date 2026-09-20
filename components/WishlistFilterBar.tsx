@@ -6,7 +6,7 @@ import type { WishStatusFilter, WishSortKey } from '@/lib/wishlist-list';
 import { TYPE_LABEL_FR, getTypeLabel } from '@/lib/types-colors';
 import { GENERATIONS, getGenerationLabel } from '@/lib/generations';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
-import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts } from '@/lib/theme';
+import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts, SCREEN_FAB_CLEARANCE } from '@/lib/theme';
 import { useLocale, useT } from '@/lib/locale';
 
 interface Props {
@@ -23,15 +23,6 @@ interface Props {
   onReset: () => void;
 }
 
-// This screen's own search+filter FABs stack in the same bottom-right corner
-// as app/(app)/_layout.tsx's global search+settings FABs (Wishlist isn't the
-// Pokédex screen, so it doesn't get that layout's "more" collapse — it keeps
-// both global FABs stacked 2-deep on the right, unlike SearchFilterBar's
-// SCREEN_FAB_CLEARANCE default which was tuned for the Pokédex's 1-deep
-// case). Clearance = fabSlot(1) + FAB_SIZE (the top edge of that 2nd global
-// FAB, 24+62+8+52+44=190) plus a visible gap.
-const WISHLIST_FAB_CLEARANCE = 202;
-
 const PRICE_PRESETS: { min: number | null; max: number | null }[] = [
   { min: null, max: null },
   { min: null, max: 5 },
@@ -42,7 +33,12 @@ const PRICE_PRESETS: { min: number | null; max: number | null }[] = [
 
 function makeStyles(colors: ColorTokens, shadow: ShadowTokens) {
   return {
-    overlay: { position: 'absolute' as const, left: 0, right: 0, top: 0, bottom: 0, alignItems: 'flex-end' as const, justifyContent: 'flex-end' as const, paddingHorizontal: spacing.lg, paddingBottom: WISHLIST_FAB_CLEARANCE, gap: spacing.md },
+    // Global FABs (app/(app)/_layout.tsx) are now a single 1-deep stack on
+    // every screen (settings/market/trade collapsed behind one "more"
+    // bubble) — this screen's own search+filter FABs, stacked in the same
+    // bottom-right corner, use the same shared clearance every other screen
+    // does instead of the bespoke 2-deep value this used to need.
+    overlay: { position: 'absolute' as const, left: 0, right: 0, top: 0, bottom: 0, alignItems: 'flex-end' as const, justifyContent: 'flex-end' as const, paddingHorizontal: spacing.lg, paddingBottom: SCREEN_FAB_CLEARANCE, gap: spacing.md },
 
     floatingSearch: { alignSelf: 'stretch' as const, flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, ...shadow.md },
     floatingSearchInput: { flex: 1, fontSize: 15, fontFamily: fonts.body, color: colors.text, padding: 0 },
