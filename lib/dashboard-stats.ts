@@ -41,7 +41,10 @@ export function computeByType(pokedex: Pokemon[], owned: Set<number>): TypeProgr
     .sort((a, b) => a.type.localeCompare(b.type));
 }
 
-export interface VariantCard { id: string; name: string; dex_num: number; imageSmall: string; imageLarge: string | null; }
+export interface VariantCard {
+  id: string; name: string; dex_num: number; imageSmall: string; imageLarge: string | null;
+  setId?: string; setName?: string; region?: 'global' | 'jp' | 'cn';
+}
 
 export type VariantCategory = 'mega' | 'alolan' | 'galarian' | 'hisuian' | 'paldean' | 'rotom' | 'deoxys' | 'gigamax';
 

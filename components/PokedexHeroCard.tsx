@@ -132,12 +132,14 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
       key: String(mon.num), dexNum: mon.num,
       image: card?.imageSmall || mon.sprite_url, imageLarge: card?.imageLarge ?? null,
       label: getName(mon), owned: owned.has(mon.num),
+      setId: card?.setId, setName: card?.setName, region: card?.region,
     };
   });
-  const cardItems = (cards: { id: string; dex_num: number; name: string; imageSmall: string; imageLarge?: string | null }[]): BreakdownItem[] =>
+  const cardItems = (cards: { id: string; dex_num: number; name: string; imageSmall: string; imageLarge?: string | null; setId?: string; setName?: string; region?: 'global' | 'jp' | 'cn' }[]): BreakdownItem[] =>
     cards.map(c => ({
       key: c.id, dexNum: c.dex_num, image: c.imageSmall, imageLarge: c.imageLarge ?? null,
       label: c.name, owned: ownedCardIds.has(c.id),
+      setId: c.setId, setName: c.setName, region: c.region,
     }));
   const stateItems = (state: DexState): BreakdownItem[] =>
     pokemonItems(POKEDEX.filter(p => dexStateFor(p.num, owned, capturedDex, wishedDex) === state));
@@ -373,6 +375,7 @@ export function PokedexHeroCard({ userId, onSelectMissing }: Props) {
                       .map(c => ({
                         key: c.cardId, dexNum: c.dexNum, image: c.imageSmall, imageLarge: c.imageLarge,
                         label: c.name, owned: true,
+                        setId: c.setId, setName: c.setName, region: c.region,
                       })),
                   })}>
                   <View style={styles.artistAvatarWrap}>

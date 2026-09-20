@@ -1,9 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { View, Text, Image, Pressable, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter, usePathname } from 'expo-router';
 import { ProgressRing } from './ProgressRing';
 import { BubbleSheet } from './BubbleSheet';
-import { CardZoomModal, type ZoomableCard } from './CardZoomModal';
+import { CardZoomModal } from './CardZoomModal';
+import { withReturnTo } from '@/lib/navigation';
+import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useT } from '@/lib/locale';
 
@@ -14,6 +17,12 @@ export interface BreakdownItem {
   imageLarge?: string | null;
   label: string;
   owned: boolean;
+  /** TCG set this printing belongs to — when present, the zoomed view (owned
+   * items only) shows a "voir l'extension" link. Omit when unknown (item
+   * isn't tied to one specific printing). */
+  setId?: string;
+  setName?: string;
+  region?: 'global' | 'jp' | 'cn';
 }
 
 export interface BreakdownTarget {
@@ -37,9 +46,14 @@ interface Props {
 
 export function StatBreakdownModal({ target, onClose, onSelectItem }: Props) {
   const pct = target && target.total > 0 ? Math.round((target.owned / target.total) * 100) : 0;
-  const [zoomCard, setZoomCard] = useState<ZoomableCard | null>(null);
+  // Keyed on id, not a stored image-only snapshot — needed to carry the
+  // item's setId/setName/region through to the zoom's extension link.
+  const [zoomKey, setZoomKey] = useState<string | null>(null);
+  const zoomItem = zoomKey != null ? target?.items.find(i => i.key === zoomKey) ?? null : null;
   const { colors } = useTheme();
   const t = useT();
+  const router = useRouter();
+  const pathname = usePathname();
   const styles = useThemedStyles((colors, shadow) => ({
     body: { padding: spacing.lg, alignItems: 'center' as const, gap: spacing.md },
     legend: { alignSelf: 'stretch' as const, gap: spacing.sm },
@@ -60,7 +74,7 @@ export function StatBreakdownModal({ target, onClose, onSelectItem }: Props) {
 
   const handlePress = (item: BreakdownItem) => {
     if (item.owned) {
-      setZoomCard({ image_small: item.image, image_large: item.imageLarge });
+      setZoomKey(item.key);
     } else {
       onSelectItem(item.dexNum);
       onClose();
@@ -116,7 +130,17 @@ export function StatBreakdownModal({ target, onClose, onSelectItem }: Props) {
           </>
         )}
       </BubbleSheet>
-      <CardZoomModal card={zoomCard} onClose={() => setZoomCard(null)} />
+      <CardZoomModal
+        card={zoomItem ? { image_small: zoomItem.image, image_large: zoomItem.imageLarge } : null}
+        setLabel={zoomItem?.setId ? setFlagLabel(zoomItem.setName ?? '', zoomItem.region, zoomItem.setId) : undefined}
+        onOpenSet={zoomItem?.setId ? () => {
+          const setId = zoomItem.setId!;
+          setZoomKey(null);
+          onClose();
+          router.push(withReturnTo(`/pinned-set/${setId}`, pathname) as never);
+        } : undefined}
+        onClose={() => setZoomKey(null)}
+      />
     </>
   );
 }

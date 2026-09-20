@@ -85,7 +85,7 @@ export function useVariantCards() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tcg_cards')
-        .select('id, name, dex_num, image_small, image_large')
+        .select('id, name, dex_num, image_small, image_large, set_id, set_name, region')
         .or(VARIANT_NAME_CLAUSES.join(','));
       if (error) throw error;
       return (data ?? []).map(r => ({
@@ -94,6 +94,9 @@ export function useVariantCards() {
         dex_num: r.dex_num as number,
         imageSmall: r.image_small as string,
         imageLarge: (r.image_large as string | undefined) ?? null,
+        setId: r.set_id as string,
+        setName: r.set_name as string,
+        region: (r.region as 'global' | 'jp' | 'cn' | undefined) ?? 'global',
       })) as VariantCard[];
     },
   });
