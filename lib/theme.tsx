@@ -278,8 +278,15 @@ interface ThemeContextValue {
   palette: PaletteId;
   colors: ColorTokens;
   shadow: ShadowTokens;
-  /** Screen hero band gradient (3 stops) — bold/dark in dark mode, soft/light
-   *  in light mode. Use instead of hand-rolling [colors.primaryBg, ...]. */
+  /** Screen hero band background (3 identical stops — a flat colors.surface
+   *  fill via LinearGradient, not an actual gradient; every existing hero
+   *  consumer already renders via LinearGradient, so this is a same-shape
+   *  drop-in). Used to be a bold 3-tone gradient (colors.primaryBg ->
+   *  primaryDark -> primary) repeated at the top of ~10 screens — flattened
+   *  2026-09-20 as part of the visual-redesign track's "calm down the color"
+   *  pass. Dashboard deliberately never consumed this token (it has its own
+   *  blurred-vitrine-backdrop hero instead), so it's untouched and keeps
+   *  its existing visual punch — the one screen the user wanted to keep it. */
   heroGradient: [string, string, string];
   /** Hero title/icon color — white in dark mode, colors.text in light mode. */
   heroText: string;
@@ -349,9 +356,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<ThemeContextValue>(() => {
     const colors = buildTokens(palette, mode);
-    const heroGradient: [string, string, string] = mode === 'dark'
-      ? [colors.primaryBg, colors.primaryDark, colors.primary]
-      : [colors.surface, colors.primarySoft, colors.primarySoft];
+    const heroGradient: [string, string, string] = [colors.surface, colors.surface, colors.surface];
     return {
       mode,
       palette,

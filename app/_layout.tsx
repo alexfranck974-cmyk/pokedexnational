@@ -13,6 +13,7 @@ import { ThemeProvider } from '@/lib/theme';
 import { MotionProvider } from '@/lib/motion';
 import { HudDensityProvider } from '@/lib/hud-density';
 import { CardStyleProvider } from '@/lib/card-style';
+import { DashboardHeroStyleProvider } from '@/lib/dashboard-hero-style';
 import { LocaleProvider } from '@/lib/locale';
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -107,17 +108,19 @@ function RootLayout() {
           <MotionProvider>
             <HudDensityProvider>
               <CardStyleProvider>
-                <LocaleProvider>
-                  <ThemedStatusBar />
-                  <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: PERSIST_MAX_AGE }}>
-                    <RootSiblingParent>
-                      <ErrorBoundary>
-                        <OfflineBanner />
-                        <Stack screenOptions={{ headerShown: false }} />
-                      </ErrorBoundary>
-                    </RootSiblingParent>
-                  </PersistQueryClientProvider>
-                </LocaleProvider>
+                <DashboardHeroStyleProvider>
+                  <LocaleProvider>
+                    <ThemedStatusBar />
+                    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: PERSIST_MAX_AGE }}>
+                      <RootSiblingParent>
+                        <ErrorBoundary>
+                          <OfflineBanner />
+                          <Stack screenOptions={{ headerShown: false }} />
+                        </ErrorBoundary>
+                      </RootSiblingParent>
+                    </PersistQueryClientProvider>
+                  </LocaleProvider>
+                </DashboardHeroStyleProvider>
               </CardStyleProvider>
             </HudDensityProvider>
           </MotionProvider>

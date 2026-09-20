@@ -39,6 +39,7 @@ import { RefreshButton } from '@/components/RefreshButton';
 import { useCompletedTradesCount } from '@/lib/trades';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
 import { useMotion } from '@/lib/motion';
+import { useDashboardHeroStyle } from '@/lib/dashboard-hero-style';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 
@@ -108,6 +109,7 @@ export default function DashboardScreen() {
   const goalsProgress = useMemo(() => computeSetGoalsProgress(goals, ledgerCards, allSets), [goals, ledgerCards, allSets]);
   const collectionAvgPct = useMemo(() => averageProgress(goalsProgress), [goalsProgress]);
   const { animationsEnabled } = useMotion();
+  const { flatDashboardHero } = useDashboardHeroStyle();
   const [collectionExpanded, setCollectionExpanded] = useState(false);
   const collectionAccordionHeight = useRef(new Animated.Value(0)).current;
   const toggleCollectionExpanded = () => {
@@ -278,7 +280,7 @@ export default function DashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         {...hideOnScrollProps}>
         <View style={styles.heroBackdropWrap}>
-          {vitrineCards[0] && (
+          {!flatDashboardHero && vitrineCards[0] && (
             <>
               <Image
                 source={{ uri: vitrineCards[0].imageLarge ?? vitrineCards[0].imageSmall }}

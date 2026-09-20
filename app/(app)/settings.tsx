@@ -12,6 +12,7 @@ import { QRCodeModal } from '@/components/QRCodeModal';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE, PALETTE_ORDER, PALETTE_META } from '@/lib/theme';
 import { useMotion } from '@/lib/motion';
+import { useDashboardHeroStyle } from '@/lib/dashboard-hero-style';
 import { useCardStyle, CARD_STYLE_ORDER, type CardStyle } from '@/lib/card-style';
 import { useLocale, useT } from '@/lib/locale';
 import { useIsAdmin } from '@/lib/feedback';
@@ -33,6 +34,7 @@ export default function Settings() {
   const userId = session?.user.id;
   const { colors, mode, toggleMode, palette, setPalette, heroGradient, heroText, heroTextMuted, heroSurface } = useTheme();
   const { animationsEnabled, setAnimationsEnabled } = useMotion();
+  const { flatDashboardHero, setFlatDashboardHero } = useDashboardHeroStyle();
   const { cardStyle, setCardStyle } = useCardStyle();
   const { locale, setLocale } = useLocale();
   const t = useT();
@@ -274,6 +276,16 @@ export default function Settings() {
             <Text style={styles.label}>{t('settings.animationsLabel')}</Text>
           </View>
           <Switch value={animationsEnabled} onValueChange={setAnimationsEnabled} />
+        </View>
+
+        <View style={styles.rowInline}>
+          <View style={styles.rowHead}>
+            <IconBubble size={28} color={colors.primarySoft}>
+              <Ionicons name="square-outline" size={14} color={colors.primary} />
+            </IconBubble>
+            <Text style={styles.label}>{t('settings.flatDashboardHeroLabel')}</Text>
+          </View>
+          <Switch value={flatDashboardHero} onValueChange={setFlatDashboardHero} />
         </View>
 
         <View style={styles.row}>
