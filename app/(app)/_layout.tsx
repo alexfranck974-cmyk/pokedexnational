@@ -54,14 +54,13 @@ function AppLayoutTabs() {
   const { colors } = useTheme();
   const t = useT();
   const { translateY } = useTabBarVisibility();
-  // The National Pokédex screen gets its own search bubble front and center
-  // (GlobalSearchBubble below), so the usual settings/market/trade FABs fold
-  // into one "more" bubble there instead of cluttering the screen with four
-  // — collapsed by default, tap to reveal, and reset if the user navigates
-  // off the tab without manually collapsing it back.
-  const isPokedexScreen = pathname === '/pokedex';
+  // Settings/market/trade-in-progress fold into one "more" bubble on every
+  // screen — collapsed by default, tap to reveal, reset on navigation so it
+  // never stays expanded across a tab switch. Used to be Pokédex-only (four
+  // separate floating buttons felt fine everywhere else); generalized since
+  // every other screen had the exact same clutter, just less visibly so.
   const [moreExpanded, setMoreExpanded] = useState(false);
-  useEffect(() => { if (!isPokedexScreen) setMoreExpanded(false); }, [isPokedexScreen]);
+  useEffect(() => { setMoreExpanded(false); }, [pathname]);
   const userId = session?.user.id;
   const { data: incomingRequests = [] } = useIncomingRequests(userId);
   const { data: friendNews = [] } = useFriendNewsFeed(userId);
@@ -168,34 +167,46 @@ function AppLayoutTabs() {
         <Tabs.Screen name="binder/[binderId]" options={{ href: null }} />
         <Tabs.Screen name="artist/[artist]" options={{ href: null }} />
       </Tabs>
-      {/* Right column: the search bubble is always the bottom-most slot on
-          every screen. Settings joins it one slot up — except on the
-          Pokédex screen, where it folds into the "more" bubble on the left
-          instead (see isPokedexScreen below). */}
+      {/* Right column: the search bubble is the only always-visible FAB on
+          every screen now — everything else lives in the left column's
+          "more" bubble. */}
       <Animated.View style={[fabWrap('right', 0), { transform: [{ translateY }] }]}>
         <GlobalSearchBubble />
       </Animated.View>
-      {!isPokedexScreen && (
-        <Animated.View style={[fabWrap('right', 1), { transform: [{ translateY }] }]}>
-          <Pressable
-            onPress={() => router.push('/settings')}
-            style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}
-            accessibilityRole="button"
-            accessibilityLabel={t('appLayout.a11ySettings')}>
-            <Ionicons name="settings-outline" size={22} color={colors.text} />
-          </Pressable>
-        </Animated.View>
-      )}
 
-      {/* Left column: settings/market/trade-in-progress, as their own FABs
-          everywhere except the Pokédex screen, where the three fold into one
-          "more" bubble (collapsed by default) so the search bubble isn't
-          competing with a wall of four floating buttons. */}
-      {!isPokedexScreen ? (
+      {/* Left column: settings/market/trade-in-progress fold into one "more"
+          bubble, collapsed by default, on every screen — used to be four
+          separate floating buttons (search + settings + market + trade)
+          fighting for attention outside the Pokédex tab, which was the one
+          screen this got fixed on first. */}
+      <Animated.View style={[fabWrap('left', 0), { transform: [{ translateY }] }]}>
+        <Pressable
+          onPress={() => setMoreExpanded(v => !v)}
+          style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}
+          accessibilityRole="button"
+          accessibilityLabel={t('appLayout.a11yMoreActions')}>
+          <Ionicons name={moreExpanded ? 'close' : 'ellipsis-horizontal'} size={22} color={colors.text} />
+          {!moreExpanded && (marketBadgeCount + inProgressOffers.length) > 0 && (
+            <View style={[styles.tradeBadge, { borderColor: colors.surface }]}>
+              <Text style={styles.tradeBadgeText}>{marketBadgeCount + inProgressOffers.length > 9 ? '9+' : marketBadgeCount + inProgressOffers.length}</Text>
+            </View>
+          )}
+        </Pressable>
+      </Animated.View>
+      {moreExpanded && (
         <>
-          <Animated.View style={[fabWrap('left', 0), { transform: [{ translateY }] }]}>
+          <Animated.View style={[fabWrap('left', 1), { transform: [{ translateY }] }]}>
             <Pressable
-              onPress={() => router.push(withReturnTo('/market', pathname) as never)}
+              onPress={() => { setMoreExpanded(false); router.push('/settings'); }}
+              style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}
+              accessibilityRole="button"
+              accessibilityLabel={t('appLayout.a11ySettings')}>
+              <Ionicons name="settings-outline" size={22} color={colors.text} />
+            </Pressable>
+          </Animated.View>
+          <Animated.View style={[fabWrap('left', 2), { transform: [{ translateY }] }]}>
+            <Pressable
+              onPress={() => { setMoreExpanded(false); router.push(withReturnTo('/market', pathname) as never); }}
               style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}
               accessibilityRole="button"
               accessibilityLabel={t('appLayout.a11yMarket')}>
@@ -208,9 +219,9 @@ function AppLayoutTabs() {
             </Pressable>
           </Animated.View>
           {inProgressOffers.length > 0 && (
-            <Animated.View style={[fabWrap('left', 1), { transform: [{ translateY }] }]}>
+            <Animated.View style={[fabWrap('left', 3), { transform: [{ translateY }] }]}>
               <Pressable
-                onPress={() => setOpenInProgress(inProgressOffers[0])}
+                onPress={() => { setMoreExpanded(false); setOpenInProgress(inProgressOffers[0]); }}
                 style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}
                 accessibilityRole="button"
                 accessibilityLabel={t('appLayout.a11yInProgressTrade')}>
@@ -224,68 +235,6 @@ function AppLayoutTabs() {
                 )}
               </Pressable>
             </Animated.View>
-          )}
-        </>
-      ) : (
-        <>
-          <Animated.View style={[fabWrap('left', 0), { transform: [{ translateY }] }]}>
-            <Pressable
-              onPress={() => setMoreExpanded(v => !v)}
-              style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}
-              accessibilityRole="button"
-              accessibilityLabel={t('appLayout.a11yMoreActions')}>
-              <Ionicons name={moreExpanded ? 'close' : 'ellipsis-horizontal'} size={22} color={colors.text} />
-              {!moreExpanded && (marketBadgeCount + inProgressOffers.length) > 0 && (
-                <View style={[styles.tradeBadge, { borderColor: colors.surface }]}>
-                  <Text style={styles.tradeBadgeText}>{marketBadgeCount + inProgressOffers.length > 9 ? '9+' : marketBadgeCount + inProgressOffers.length}</Text>
-                </View>
-              )}
-            </Pressable>
-          </Animated.View>
-          {moreExpanded && (
-            <>
-              <Animated.View style={[fabWrap('left', 1), { transform: [{ translateY }] }]}>
-                <Pressable
-                  onPress={() => { setMoreExpanded(false); router.push('/settings'); }}
-                  style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('appLayout.a11ySettings')}>
-                  <Ionicons name="settings-outline" size={22} color={colors.text} />
-                </Pressable>
-              </Animated.View>
-              <Animated.View style={[fabWrap('left', 2), { transform: [{ translateY }] }]}>
-                <Pressable
-                  onPress={() => { setMoreExpanded(false); router.push(withReturnTo('/market', pathname) as never); }}
-                  style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('appLayout.a11yMarket')}>
-                  <TradeIcon size={20} color={colors.text} />
-                  {marketBadgeCount > 0 && (
-                    <View style={[styles.tradeBadge, { borderColor: colors.surface }]}>
-                      <Text style={styles.tradeBadgeText}>{marketBadgeCount > 9 ? '9+' : marketBadgeCount}</Text>
-                    </View>
-                  )}
-                </Pressable>
-              </Animated.View>
-              {inProgressOffers.length > 0 && (
-                <Animated.View style={[fabWrap('left', 3), { transform: [{ translateY }] }]}>
-                  <Pressable
-                    onPress={() => { setMoreExpanded(false); setOpenInProgress(inProgressOffers[0]); }}
-                    style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('appLayout.a11yInProgressTrade')}>
-                    <Animated.View style={{ transform: [{ rotate: spinDeg }] }}>
-                      <Pokeball size={22} />
-                    </Animated.View>
-                    {inProgressOffers.length > 1 && (
-                      <View style={[styles.tradeBadge, { borderColor: colors.surface }]}>
-                        <Text style={styles.tradeBadgeText}>{inProgressOffers.length}</Text>
-                      </View>
-                    )}
-                  </Pressable>
-                </Animated.View>
-              )}
-            </>
           )}
         </>
       )}
