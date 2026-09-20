@@ -1,4 +1,5 @@
-import { QueryCache, QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
+import { QueryCache, QueryClient, focusManager } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -14,10 +15,13 @@ import { HudDensityProvider } from '@/lib/hud-density';
 import { LocaleProvider } from '@/lib/locale';
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { toast } from '@/lib/toast';
 import { initSentry, wrapRoot } from '@/lib/sentry';
+import { createAppPersister, setupOnlineManager, PERSIST_MAX_AGE } from '@/lib/query-persist';
 
 initSentry();
+setupOnlineManager();
 
 // Module-level (not per-render) so the throttle survives across the app's
 // whole lifetime, not just one RootLayout instance.
@@ -48,6 +52,7 @@ function RootLayout() {
     }),
     [],
   );
+  const persister = useMemo(() => createAppPersister(), []);
   const [fontsLoaded] = useFonts({
     Fredoka_700Bold,
     Karla_400Regular,
@@ -91,13 +96,14 @@ function RootLayout() {
             <HudDensityProvider>
               <LocaleProvider>
                 <ThemedStatusBar />
-                <QueryClientProvider client={queryClient}>
+                <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: PERSIST_MAX_AGE }}>
                   <RootSiblingParent>
                     <ErrorBoundary>
+                      <OfflineBanner />
                       <Stack screenOptions={{ headerShown: false }} />
                     </ErrorBoundary>
                   </RootSiblingParent>
-                </QueryClientProvider>
+                </PersistQueryClientProvider>
               </LocaleProvider>
             </HudDensityProvider>
           </MotionProvider>

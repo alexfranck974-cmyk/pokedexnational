@@ -7,6 +7,7 @@ export const STRINGS = {
   fr: {
     // Common
     'common.back': 'Retour',
+    'common.offlineBanner': 'Hors ligne — dernières données affichées',
     'common.email': 'Email',
     'common.password': 'Mot de passe',
     'common.save': 'Enregistrer',
@@ -611,6 +612,7 @@ export const STRINGS = {
   },
   en: {
     'common.back': 'Back',
+    'common.offlineBanner': 'Offline — showing last known data',
     'common.email': 'Email',
     'common.password': 'Password',
     'common.save': 'Save',
