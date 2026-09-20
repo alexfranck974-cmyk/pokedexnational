@@ -86,6 +86,17 @@ function RootLayout() {
     return () => document.removeEventListener('contextmenu', onContextMenu);
   }, []);
 
+  // Registers public/sw.js — makes the app shell itself (not just the data,
+  // see lib/query-persist.ts) available on a fully cold, no-network page
+  // load. Production-only: registering it in dev would cache-first-serve the
+  // Metro dev bundle, which is exactly the "why isn't my change showing up"
+  // trap a service worker is notorious for during local development.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || __DEV__) return;
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }, []);
+
   if (!fontsLoaded) return null;
 
   return (
