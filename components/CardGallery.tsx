@@ -1,5 +1,6 @@
+import type { ReactElement } from 'react';
 import { FlashList } from '@shopify/flash-list';
-import { useWindowDimensions } from 'react-native';
+import { useWindowDimensions, type RefreshControlProps } from 'react-native';
 import { CardTile } from './CardTile';
 import { CardListRow } from './CardListRow';
 import type { TcgCardRow } from '@/lib/tcg';
@@ -24,9 +25,11 @@ interface Props {
   quantities?: Map<string, number>;
   onIncrement?: (card: TcgCardRow) => void;
   onDecrement?: (card: TcgCardRow) => void;
-  onToggle: (card: TcgCardRow) => void;
+  /** Required unless primaryAction="zoom" — see CardTile's identical prop. */
+  onToggle?: (card: TcgCardRow) => void;
   onToggleWish?: (card: TcgCardRow) => void;
   onZoom?: (card: TcgCardRow) => void;
+  primaryAction?: 'toggle' | 'zoom';
   /** Opens the per-finish (normale/holo/reverse) quantity + état editor for this card. */
   onOpenDetails?: (card: TcgCardRow) => void;
   /** Owned finishes per card id — when provided, tiles show a holo/reverse shimmer border. */
@@ -35,6 +38,14 @@ interface Props {
   selectionMode?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (card: TcgCardRow) => void;
+  /** Wishlist-only actions — see CardTile/CardListRow's identical props. */
+  priorityIds?: Set<string>;
+  onTogglePriority?: (card: TcgCardRow) => void;
+  priceAlertsByCard?: Map<string, number | null>;
+  alertTriggeredIds?: Set<string>;
+  onSetPriceAlert?: (card: TcgCardRow) => void;
+  /** Pull-to-refresh — omit where the screen doesn't wire refresh (most callers). */
+  refreshControl?: ReactElement<RefreshControlProps>;
 }
 
 function numColsFor(width: number): number {
@@ -43,7 +54,7 @@ function numColsFor(width: number): number {
   return 6;
 }
 
-export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, viewMode = 'grid', columnsOverride, quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails, finishesByCard, selectionMode, selectedIds, onToggleSelect }: Props) {
+export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, viewMode = 'grid', columnsOverride, quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails, finishesByCard, selectionMode, selectedIds, onToggleSelect, priorityIds, onTogglePriority, priceAlertsByCard, alertTriggeredIds, onSetPriceAlert, primaryAction, refreshControl }: Props) {
   const { width } = useWindowDimensions();
   const hideOnScrollProps = useHideOnScrollProps();
   if (viewMode === 'list') {
@@ -53,6 +64,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
         contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
         maintainVisibleContentPosition={{ disabled: true }}
         keyExtractor={c => c.id}
+        refreshControl={refreshControl}
         {...hideOnScrollProps}
         renderItem={({ item }) => !item ? null : (
           <CardListRow
@@ -64,7 +76,8 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
             quantity={quantities?.get(item.id)}
             onIncrement={onIncrement ? () => onIncrement(item) : undefined}
             onDecrement={onDecrement ? () => onDecrement(item) : undefined}
-            onToggle={() => onToggle(item)}
+            onToggle={onToggle ? () => onToggle(item) : undefined}
+            primaryAction={primaryAction}
             onToggleWish={onToggleWish ? () => onToggleWish(item) : undefined}
             onZoom={onZoom ? () => onZoom(item) : undefined}
             onOpenDetails={onOpenDetails ? () => onOpenDetails(item) : undefined}
@@ -72,6 +85,11 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
             selectionMode={selectionMode}
             selected={selectedIds?.has(item.id)}
             onToggleSelect={onToggleSelect ? () => onToggleSelect(item) : undefined}
+            isPriority={priorityIds?.has(item.id)}
+            onTogglePriority={onTogglePriority ? () => onTogglePriority(item) : undefined}
+            hasPriceAlert={priceAlertsByCard?.get(item.id) != null}
+            alertTriggered={alertTriggeredIds?.has(item.id)}
+            onSetPriceAlert={onSetPriceAlert ? () => onSetPriceAlert(item) : undefined}
           />
         )}
       />
@@ -84,6 +102,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
       contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
       maintainVisibleContentPosition={{ disabled: true }}
       keyExtractor={c => c.id}
+      refreshControl={refreshControl}
       {...hideOnScrollProps}
       renderItem={({ item }) => !item ? null : (
         <CardTile
@@ -95,7 +114,8 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
           quantity={quantities?.get(item.id)}
           onIncrement={onIncrement ? () => onIncrement(item) : undefined}
           onDecrement={onDecrement ? () => onDecrement(item) : undefined}
-          onToggle={() => onToggle(item)}
+          onToggle={onToggle ? () => onToggle(item) : undefined}
+          primaryAction={primaryAction}
           onToggleWish={onToggleWish ? () => onToggleWish(item) : undefined}
           onZoom={onZoom ? () => onZoom(item) : undefined}
           onOpenDetails={onOpenDetails ? () => onOpenDetails(item) : undefined}
@@ -103,6 +123,11 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
           selectionMode={selectionMode}
           selected={selectedIds?.has(item.id)}
           onToggleSelect={onToggleSelect ? () => onToggleSelect(item) : undefined}
+          isPriority={priorityIds?.has(item.id)}
+          onTogglePriority={onTogglePriority ? () => onTogglePriority(item) : undefined}
+          hasPriceAlert={priceAlertsByCard?.get(item.id) != null}
+          alertTriggered={alertTriggeredIds?.has(item.id)}
+          onSetPriceAlert={onSetPriceAlert ? () => onSetPriceAlert(item) : undefined}
         />
       )}
     />

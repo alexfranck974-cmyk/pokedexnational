@@ -1,4 +1,5 @@
-import { View, Text, Image, Pressable } from 'react-native';
+import { useState } from 'react';
+import { View, Text, Image, Pressable, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import type { TcgCardRow } from '@/lib/tcg';
@@ -13,6 +14,7 @@ import type { OwnedCardFinish } from '@/lib/collection';
 import { formatCardPriceRange } from '@/lib/trades';
 import { cardDisplayName } from '@/lib/tcg-name';
 import { useHudDensity } from '@/lib/hud-density';
+import { useCardStyle } from '@/lib/card-style';
 
 interface Props {
   card: TcgCardRow;
@@ -25,9 +27,11 @@ interface Props {
   quantity?: number;
   onIncrement?: () => void;
   onDecrement?: () => void;
-  onToggle: () => void;
+  /** Required unless primaryAction="zoom" — see CardTile's identical prop. */
+  onToggle?: () => void;
   onToggleWish?: () => void;
   onZoom?: () => void;
+  primaryAction?: 'toggle' | 'zoom';
   /** Opens the per-finish (normale/holo/reverse) quantity + état editor. */
   onOpenDetails?: () => void;
   /** Finishes owned for this exact card — drives the border shimmer (holo/reverse) when set. */
@@ -37,13 +41,24 @@ interface Props {
   selectionMode?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
+  /** Wishlist-only actions (wishlist.tsx) — see CardTile's identical props for why
+   * these are safe to add without colliding with the collection-only ones above. */
+  isPriority?: boolean;
+  onTogglePriority?: () => void;
+  hasPriceAlert?: boolean;
+  alertTriggered?: boolean;
+  onSetPriceAlert?: () => void;
 }
 
-export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails, finishes, selectionMode, selected, onToggleSelect }: Props) {
+export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails, finishes, selectionMode, selected, onToggleSelect, isPriority, onTogglePriority, hasPriceAlert, alertTriggered, onSetPriceAlert, primaryAction = 'toggle' }: Props) {
   const { colors } = useTheme();
   const t = useT();
   const { locale } = useLocale();
   const { density } = useHudDensity();
+  const { cardStyle } = useCardStyle();
+  const isFlat = cardStyle === 'flat';
+  const isReveal = cardStyle === 'reveal';
+  const [revealed, setRevealed] = useState(false);
   const primaryFinish = pickPrimaryFinish(finishes);
   const priceLabel = formatCardPriceRange(card.cardmarket_low_eur, card.cardmarket_trend_eur, locale);
   const styles = useThemedStyles((colors) => ({
@@ -53,6 +68,7 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
       backgroundColor: colors.surface,
       marginHorizontal: spacing.xs, marginVertical: 3,
     },
+    rowFlatOwned: { backgroundColor: colors.primarySoft },
     thumbWrap: { position: 'relative' as const },
     dexHalo: {
       borderRadius: radius.sm,
@@ -80,6 +96,11 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
     meta: { fontSize: 12, fontFamily: fonts.body, color: colors.textMuted },
     rarity: { fontSize: 11, fontFamily: fonts.body, color: colors.textDim },
     price: { fontSize: 11, fontFamily: fonts.monoBold, color: colors.success },
+    alertTriggeredBadge: {
+      alignSelf: 'flex-start' as const, paddingHorizontal: 6, paddingVertical: 1,
+      borderRadius: radius.pill, backgroundColor: colors.success, marginTop: 1,
+    },
+    alertTriggeredBadgeText: { fontSize: 9, fontFamily: fonts.bodyBold, color: 'white' },
     actions: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
     heart: { fontSize: 22, color: colors.textDim },
     heartFilled: { color: colors.danger },
@@ -91,25 +112,32 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
   }));
 
   return (
-    <Pressable onPress={readOnly ? undefined : () => {
+    <Pressable
+      {...(isReveal ? {
+        onHoverIn: () => setRevealed(true), onHoverOut: () => setRevealed(false),
+        onPressIn: () => setRevealed(true), onPressOut: () => setRevealed(false),
+      } : {})}
+      onPress={readOnly ? undefined : () => {
         if (selectionMode) { if (!owned) onToggleSelect?.(); return; }
+        if (primaryAction === 'zoom') { onZoom?.(); return; }
         if (!owned) hapticCardAdded();
-        onToggle();
+        onToggle?.();
       }}
-      onLongPress={onZoom}
+      onLongPress={primaryAction === 'zoom' ? undefined : onZoom}
       delayLongPress={350}
       style={({ pressed }) => [
         styles.row,
+        isFlat && owned && styles.rowFlatOwned,
         pressed && !readOnly && { opacity: 0.7 },
       ]}>
       <View style={styles.thumbWrap}>
-        {owned ? (
+        {owned && !isFlat && !isReveal ? (
           <View style={isDexCard ? styles.dexHalo : undefined}>
             <LinearGradient
               colors={
                 isDexCard ? [CHASE_GOLD, colors.warning, CHASE_GOLD]
                 : primaryFinish && FINISH_GRADIENT[primaryFinish] ? FINISH_GRADIENT[primaryFinish]!
-                : [colors.primary, colors.warning, colors.primary]
+                : [colors.primary, colors.primarySoft]
               }
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={styles.holoBorder}>
@@ -118,6 +146,11 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
                 {!isDexCard && primaryFinish === 'reverse_holo' && <ReverseHoloShimmer />}
               </View>
             </LinearGradient>
+          </View>
+        ) : owned ? (
+          <View style={styles.plainInner}>
+            <Image source={{ uri: card.image_small }} style={styles.thumb} resizeMode="contain" />
+            {primaryFinish === 'reverse_holo' && <ReverseHoloShimmer />}
           </View>
         ) : (
           <View style={styles.plainInner}>
@@ -146,10 +179,17 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
             {priceLabel != null && (
               <Text style={styles.price} numberOfLines={1}>{priceLabel}</Text>
             )}
+            {alertTriggered && (
+              <View style={styles.alertTriggeredBadge}>
+                <Text style={styles.alertTriggeredBadgeText}>{t('wishlist.alertTriggeredBadge')}</Text>
+              </View>
+            )}
           </>
         )}
       </View>
-      <View style={styles.actions}>
+      <Animated.View
+        style={[styles.actions, isReveal && { opacity: revealed ? 1 : 0 }]}
+        pointerEvents={isReveal && !revealed ? 'none' : 'auto'}>
         {owned && onIncrement && onDecrement ? (
           <View style={styles.quantityPill}>
             <Pressable hitSlop={6} disabled={!quantity} onPress={(e) => { e.stopPropagation(); onDecrement(); }}>
@@ -173,7 +213,17 @@ export function CardListRow({ card, owned, wished, readOnly, isDexCard, quantity
             <Text style={[styles.heart, wished && styles.heartFilled]}>{wished ? '♥' : '♡'}</Text>
           </Pressable>
         )}
-      </View>
+        {onTogglePriority && (
+          <Pressable hitSlop={8} accessibilityLabel={t('wishlist.a11yTogglePriority')} onPress={(e) => { e.stopPropagation(); onTogglePriority(); }}>
+            <Ionicons name={isPriority ? 'star' : 'star-outline'} size={20} color={isPriority ? colors.warning : colors.textDim} />
+          </Pressable>
+        )}
+        {onSetPriceAlert && (
+          <Pressable hitSlop={8} accessibilityLabel={t('wishlist.a11yPriceAlert')} onPress={(e) => { e.stopPropagation(); onSetPriceAlert(); }}>
+            <Ionicons name={hasPriceAlert ? 'notifications' : 'notifications-outline'} size={20} color={alertTriggered ? colors.success : colors.textDim} />
+          </Pressable>
+        )}
+      </Animated.View>
     </Pressable>
   );
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, Image, StyleSheet, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
@@ -19,6 +19,8 @@ import { EmptyState } from '@/components/EmptyState';
 import { WishlistFilterBar } from '@/components/WishlistFilterBar';
 import { RefreshButton } from '@/components/RefreshButton';
 import { FriendSetGalleryModal, type FriendSetGalleryTarget } from '@/components/FriendSetGalleryModal';
+import { CardGallery } from '@/components/CardGallery';
+import type { TcgCardRow } from '@/lib/tcg';
 import { CardZoomModal } from '@/components/CardZoomModal';
 import { useHudDensity, HUD_DENSITY_ICON } from '@/lib/hud-density';
 import { PokedexSectionTabs, sectionIndex, hrefToSection, useSectionSwipeGesture } from '@/components/PokedexSectionTabs';
@@ -28,7 +30,6 @@ import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { getName } from '@/lib/i18n';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useLocale, useT } from '@/lib/locale';
-import { formatCardPriceRange } from '@/lib/trades';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useHideOnScrollProps } from '@/lib/tab-bar-visibility';
 import type { Pokemon, PokemonType } from '@/lib/types';
@@ -38,12 +39,6 @@ const POKEDEX = pokedexData as Pokemon[];
 const TYPES_BY_DEX = new Map<number, PokemonType[]>(POKEDEX.map(p => [p.num, p.types]));
 const POKEDEX_BY_DEX = new Map<number, Pokemon>(POKEDEX.map(p => [p.num, p]));
 
-function numColsFor(width: number): number {
-  if (width < 600) return 2;
-  if (width < 1024) return 4;
-  return 6;
-}
-
 // Hoisted to module scope so these stay referentially identical across every
 // render — an inline `{...}`/`(g) => ...` prop is a fresh object/function on
 // every render, and FlashList treats that as "the list changed" and resets
@@ -52,7 +47,6 @@ function numColsFor(width: number): number {
 const LIST_CONTENT_STYLE = { paddingBottom: TAB_BAR_CLEARANCE };
 const MAINTAIN_VISIBLE_DISABLED = { disabled: true };
 function dexGroupKeyExtractor(g: WishlistGroup): string { return String(g.dexNum); }
-function cardKeyExtractor(c: WishlistCard): string { return c.id; }
 
 export default function WishlistScreen() {
   const router = useRouter();
@@ -78,7 +72,6 @@ export default function WishlistScreen() {
     setShowAlertsOnly(true);
     router.setParams({ alerts: undefined });
   }, [alerts, router]);
-  const { width } = useWindowDimensions();
   const { colors, heroGradient, heroText, heroSurface, heroSurfaceActive, heroSurfaceActiveText } = useTheme();
   const { refreshing, onRefresh } = usePullToRefresh();
   const hideOnScrollProps = useHideOnScrollProps();
@@ -179,6 +172,24 @@ export default function WishlistScreen() {
   );
   const zoomedCard = zoomedCardIndex !== -1 ? filtered[zoomedCardIndex] : null;
 
+  // CardGallery/CardTile expect TcgCardRow — WishlistCard carries everything
+  // that shape needs except release_date/series (never read by CardTile, just
+  // defaulted here to satisfy the type) plus wishlist-only fields (is_priority,
+  // price_alert_eur, wished_at) that TcgCardRow doesn't know about and doesn't
+  // need to — those are threaded separately below, the same way ownedSet/
+  // wishedSet/quantities already are for every other CardGallery caller.
+  const galleryCards: TcgCardRow[] = useMemo(
+    () => filtered.map(c => ({ ...c, release_date: null, series: null, region: c.region ?? 'global' })),
+    [filtered],
+  );
+  const filteredById = useMemo(() => new Map(filtered.map(c => [c.id, c])), [filtered]);
+  // Every card in this screen is wished by definition — CardTile's heart still
+  // needs an explicit Set to know to render itself filled.
+  const wishedIdSet = useMemo(() => new Set(filtered.map(c => c.id)), [filtered]);
+  const priorityIds = useMemo(() => new Set(filtered.filter(c => c.is_priority).map(c => c.id)), [filtered]);
+  const priceAlertsByCard = useMemo(() => new Map(filtered.map(c => [c.id, c.price_alert_eur ?? null])), [filtered]);
+  const alertTriggeredIds = useMemo(() => new Set(filtered.filter(isPriceAlertTriggered).map(c => c.id)), [filtered]);
+
   const reset = () => { setStatus('all'); setType(null); setSet(null); setRarity(null); setGeneration(null); setPriceMin(null); setPriceMax(null); };
 
   const styles = useThemedStyles((colors, shadow) => ({
@@ -194,36 +205,6 @@ export default function WishlistScreen() {
     heroToggle: { flexDirection: 'row' as const, gap: 6 },
     viewBtn: { width: 30, height: 30, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: heroSurface },
     viewBtnActive: { backgroundColor: heroSurfaceActive },
-    tile: { flex: 1, padding: spacing.sm, borderRadius: radius.bubble, ...shadow.sm, backgroundColor: colors.surface, margin: 4 },
-    imgWrap: { position: 'relative' as const },
-    holoBorder: { borderRadius: radius.bubble, padding: 2 },
-    holoInner: { borderRadius: radius.bubble - 2, overflow: 'hidden' as const, backgroundColor: colors.surfaceAlt },
-    plainInner: { borderRadius: radius.bubble, overflow: 'hidden' as const, backgroundColor: colors.surfaceAlt },
-    img: { width: '100%' as const, aspectRatio: 0.72 },
-    set: { fontSize: 12, fontFamily: fonts.bodyBold, marginTop: 4, color: colors.text },
-    rarity: { fontSize: 11, fontFamily: fonts.body, color: colors.textMuted },
-    price: { fontSize: 11, fontFamily: fonts.monoBold, color: colors.success },
-    pokeballOverlay: { position: 'absolute' as const, top: 4, left: 4, backgroundColor: colors.overlay, borderRadius: radius.pill, padding: 2 },
-    heartBtn: {
-      position: 'absolute' as const, top: 4, right: 4, width: 28, height: 28,
-      borderRadius: radius.pill, backgroundColor: colors.overlay,
-      alignItems: 'center' as const, justifyContent: 'center' as const,
-    },
-    priorityBtn: {
-      position: 'absolute' as const, bottom: 4, left: 4, width: 26, height: 26,
-      borderRadius: radius.pill, backgroundColor: colors.overlay,
-      alignItems: 'center' as const, justifyContent: 'center' as const,
-    },
-    alertBtn: {
-      position: 'absolute' as const, bottom: 4, right: 4, width: 26, height: 26,
-      borderRadius: radius.pill, backgroundColor: colors.overlay,
-      alignItems: 'center' as const, justifyContent: 'center' as const,
-    },
-    alertTriggeredBadge: {
-      marginTop: 2, alignSelf: 'flex-start' as const, paddingHorizontal: 6, paddingVertical: 2,
-      borderRadius: radius.pill, backgroundColor: colors.success,
-    },
-    alertTriggeredBadgeText: { fontSize: 10, fontFamily: fonts.bodyBold, color: 'white' },
     // A compact, self-sized pill (not a full-bleed banner) — an important
     // heads-up, deliberately not the first/dominant thing on the screen.
     alertPillRow: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, alignItems: 'flex-start' as const },
@@ -258,7 +239,6 @@ export default function WishlistScreen() {
       backgroundColor: colors.danger, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
     pokemonThumbRemoveText: { fontSize: 9, fontFamily: fonts.bodyBold, color: 'white', lineHeight: 11 },
-    heartFilled: { fontSize: 18, color: colors.danger, lineHeight: 22 },
   }));
 
   // Stable across re-renders triggered by unrelated state (e.g. opening the
@@ -322,79 +302,6 @@ export default function WishlistScreen() {
   // .mutate is stable across renders (react-query), unlike togglePriority
   // itself — same useCallback-stability reasoning as wishMutate above.
   const priorityMutate = togglePriority.mutate;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const renderCardTile = useCallback(({ item }: { item: WishlistCard }) => {
-    if (!item) return null;
-    const owned = ownedIds.has(item.id);
-    const triggered = isPriceAlertTriggered(item);
-    return (
-      <Pressable
-        onPress={() => setZoomedCardId(item.id)}
-        style={({ pressed }) => [styles.tile, pressed && { transform: [{ scale: 0.97 }] }]}>
-        <View style={styles.imgWrap}>
-          {owned ? (
-            <LinearGradient
-              colors={[colors.primary, colors.warning, colors.primary]}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={styles.holoBorder}>
-              <View style={styles.holoInner}>
-                <Image source={{ uri: item.image_small }} style={styles.img} resizeMode="contain" />
-              </View>
-            </LinearGradient>
-          ) : (
-            <View style={styles.plainInner}>
-              <Image source={{ uri: item.image_small }} style={styles.img} resizeMode="contain" />
-            </View>
-          )}
-          {owned && (
-            <View style={styles.pokeballOverlay}>
-              <Pokeball size={22} />
-            </View>
-          )}
-          <Pressable
-            hitSlop={8}
-            onPress={(e) => {
-              e.stopPropagation();
-              wishMutate({ cardId: item.id, currentlyWished: true, dexNum: item.dex_num });
-            }}
-            style={styles.heartBtn}>
-            <Text style={styles.heartFilled}>♥</Text>
-          </Pressable>
-          <Pressable
-            hitSlop={8}
-            accessibilityLabel={t('wishlist.a11yTogglePriority')}
-            onPress={(e) => {
-              e.stopPropagation();
-              priorityMutate({ cardId: item.id, currentlyPriority: !!item.is_priority });
-            }}
-            style={styles.priorityBtn}>
-            <Ionicons name={item.is_priority ? 'star' : 'star-outline'} size={15} color={item.is_priority ? colors.warning : 'white'} />
-          </Pressable>
-          <Pressable
-            hitSlop={8}
-            accessibilityLabel={t('wishlist.a11yPriceAlert')}
-            onPress={(e) => { e.stopPropagation(); setPriceAlertTarget(item); }}
-            style={styles.alertBtn}>
-            <Ionicons name={item.price_alert_eur != null ? 'notifications' : 'notifications-outline'} size={15} color={triggered ? colors.success : 'white'} />
-          </Pressable>
-        </View>
-        {density !== 'minimal' && (
-          <>
-            <Text style={styles.set} numberOfLines={1}>{item.set_name} · {item.card_number}</Text>
-            {item.rarity && <Text style={styles.rarity} numberOfLines={1}>{item.rarity}</Text>}
-            {formatCardPriceRange(item.cardmarket_low_eur, item.cardmarket_trend_eur, locale) != null && (
-              <Text style={styles.price} numberOfLines={1}>{formatCardPriceRange(item.cardmarket_low_eur, item.cardmarket_trend_eur, locale)}</Text>
-            )}
-            {triggered && (
-              <View style={styles.alertTriggeredBadge}>
-                <Text style={styles.alertTriggeredBadgeText}>{t('wishlist.alertTriggeredBadge')}</Text>
-              </View>
-            )}
-          </>
-        )}
-      </Pressable>
-    );
-  }, [ownedIds, locale, styles, colors, wishMutate, priorityMutate, density]);
 
   if (isLoading) {
     return (
@@ -486,15 +393,25 @@ export default function WishlistScreen() {
           renderItem={renderPokemonRow}
         />
       ) : (
-        <FlashList
-          data={filtered}
-          numColumns={numColsFor(width)}
-          contentContainerStyle={LIST_CONTENT_STYLE}
-          maintainVisibleContentPosition={MAINTAIN_VISIBLE_DISABLED}
+        <CardGallery
+          cards={galleryCards}
+          ownedSet={ownedIds}
+          wishedSet={wishedIdSet}
+          primaryAction="zoom"
+          onZoom={card => setZoomedCardId(card.id)}
+          onToggleWish={card => wishMutate({ cardId: card.id, currentlyWished: true, dexNum: card.dex_num! })}
+          priorityIds={priorityIds}
+          onTogglePriority={card => {
+            const wc = filteredById.get(card.id);
+            if (wc) priorityMutate({ cardId: card.id, currentlyPriority: !!wc.is_priority });
+          }}
+          priceAlertsByCard={priceAlertsByCard}
+          alertTriggeredIds={alertTriggeredIds}
+          onSetPriceAlert={card => {
+            const wc = filteredById.get(card.id);
+            if (wc) setPriceAlertTarget(wc);
+          }}
           refreshControl={refreshControlEl}
-          {...hideOnScrollProps}
-          keyExtractor={cardKeyExtractor}
-          renderItem={renderCardTile}
         />
       )}
       </SlideTransition>

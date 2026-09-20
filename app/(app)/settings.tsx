@@ -12,9 +12,17 @@ import { QRCodeModal } from '@/components/QRCodeModal';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE, PALETTE_ORDER, PALETTE_META } from '@/lib/theme';
 import { useMotion } from '@/lib/motion';
+import { useCardStyle, CARD_STYLE_ORDER, type CardStyle } from '@/lib/card-style';
 import { useLocale, useT } from '@/lib/locale';
 import { useIsAdmin } from '@/lib/feedback';
 import { toast } from '@/lib/toast';
+import type { StringKey } from '@/lib/strings';
+
+const CARD_STYLE_LABEL_KEY: Record<CardStyle, StringKey> = {
+  badge: 'settings.cardStyleBadge',
+  reveal: 'settings.cardStyleReveal',
+  flat: 'settings.cardStyleFlat',
+};
 
 export default function Settings() {
   const router = useRouter();
@@ -25,6 +33,7 @@ export default function Settings() {
   const userId = session?.user.id;
   const { colors, mode, toggleMode, palette, setPalette, heroGradient, heroText, heroTextMuted, heroSurface } = useTheme();
   const { animationsEnabled, setAnimationsEnabled } = useMotion();
+  const { cardStyle, setCardStyle } = useCardStyle();
   const { locale, setLocale } = useLocale();
   const t = useT();
   const styles = useThemedStyles((colors, shadow) => ({
@@ -66,6 +75,15 @@ export default function Settings() {
     },
     paletteDotSelected: { borderColor: colors.text },
     paletteName: { fontSize: 12, fontFamily: fonts.body, color: colors.textDim, marginTop: 2 },
+    cardStyleOptions: { gap: 6, marginTop: 2 },
+    cardStyleOption: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
+      paddingHorizontal: spacing.sm, paddingVertical: 10, borderRadius: radius.md,
+      backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: 'transparent',
+    },
+    cardStyleOptionSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+    cardStyleOptionText: { fontSize: 14, fontFamily: fonts.body, color: colors.text },
+    cardStyleOptionTextSelected: { fontFamily: fonts.bodyBold },
     langPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
     langPillSelected: { backgroundColor: colors.primary },
     langPillText: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.textMuted },
@@ -221,6 +239,31 @@ export default function Settings() {
             })}
           </View>
           <Text style={styles.paletteName}>{PALETTE_META[palette].label}</Text>
+        </View>
+
+        <View style={styles.row}>
+          <View style={styles.rowHead}>
+            <IconBubble size={28} color={colors.primarySoft}>
+              <Ionicons name="grid-outline" size={14} color={colors.primary} />
+            </IconBubble>
+            <Text style={styles.label}>{t('settings.cardStyleLabel')}</Text>
+          </View>
+          <View style={styles.cardStyleOptions}>
+            {CARD_STYLE_ORDER.map(id => {
+              const selected = cardStyle === id;
+              return (
+                <Pressable
+                  key={id}
+                  onPress={() => setCardStyle(id)}
+                  style={[styles.cardStyleOption, selected && styles.cardStyleOptionSelected]}>
+                  <Text style={[styles.cardStyleOptionText, selected && styles.cardStyleOptionTextSelected]}>
+                    {t(CARD_STYLE_LABEL_KEY[id])}
+                  </Text>
+                  {selected && <Ionicons name="checkmark" size={16} color={colors.primary} />}
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
         <View style={styles.rowInline}>

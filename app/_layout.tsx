@@ -12,6 +12,7 @@ import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fon
 import { ThemeProvider } from '@/lib/theme';
 import { MotionProvider } from '@/lib/motion';
 import { HudDensityProvider } from '@/lib/hud-density';
+import { CardStyleProvider } from '@/lib/card-style';
 import { LocaleProvider } from '@/lib/locale';
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -105,17 +106,19 @@ function RootLayout() {
         <ThemeProvider>
           <MotionProvider>
             <HudDensityProvider>
-              <LocaleProvider>
-                <ThemedStatusBar />
-                <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: PERSIST_MAX_AGE }}>
-                  <RootSiblingParent>
-                    <ErrorBoundary>
-                      <OfflineBanner />
-                      <Stack screenOptions={{ headerShown: false }} />
-                    </ErrorBoundary>
-                  </RootSiblingParent>
-                </PersistQueryClientProvider>
-              </LocaleProvider>
+              <CardStyleProvider>
+                <LocaleProvider>
+                  <ThemedStatusBar />
+                  <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: PERSIST_MAX_AGE }}>
+                    <RootSiblingParent>
+                      <ErrorBoundary>
+                        <OfflineBanner />
+                        <Stack screenOptions={{ headerShown: false }} />
+                      </ErrorBoundary>
+                    </RootSiblingParent>
+                  </PersistQueryClientProvider>
+                </LocaleProvider>
+              </CardStyleProvider>
             </HudDensityProvider>
           </MotionProvider>
         </ThemeProvider>
