@@ -9,9 +9,11 @@ import { useFriends, type FriendProfile } from '@/lib/friends';
 import { useFriendNewsHistory, useReactToFriendNews, type FriendNewsItem } from '@/lib/friend-news';
 import { useMyAdditionsHistory } from '@/lib/collection';
 import { useFriendLeaderboard } from '@/lib/leaderboard';
+import { useUpcomingSets } from '@/lib/upcoming-sets';
 import { Avatar } from '@/components/Avatar';
 import { NewsRow, NewsGroupRow, groupConsecutiveByAuthor } from '@/components/NewsRow';
 import { MyAdditionRow } from '@/components/MyAdditionRow';
+import { UpcomingSetsBanner } from '@/components/UpcomingSetsBanner';
 import { NewsCommentSheet } from '@/components/NewsCommentSheet';
 import { FriendCardReveal } from '@/components/FriendCardReveal';
 import { EmptyState } from '@/components/EmptyState';
@@ -39,6 +41,7 @@ export default function NewsScreen() {
   );
   const { data: leaderboard = [] } = useFriendLeaderboard(leaderboardIds);
   const friendById = useMemo(() => new Map(friends.map(f => [f.id, f])), [friends]);
+  const { data: upcomingSets = [] } = useUpcomingSets();
 
   const {
     data: historyPages, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading,
@@ -126,14 +129,18 @@ export default function NewsScreen() {
         isLoading ? (
           <View style={styles.center}><ActivityIndicator /></View>
         ) : groups.length === 0 ? (
-          <View style={styles.center}>
-            <EmptyState icon="sparkles-outline" hint={t('friends.newsEmpty')} />
+          <View style={styles.list}>
+            <UpcomingSetsBanner sets={upcomingSets} />
+            <View style={styles.center}>
+              <EmptyState icon="sparkles-outline" hint={t('friends.newsEmpty')} />
+            </View>
           </View>
         ) : (
           <FlatList
             data={groups}
             keyExtractor={g => g.items[0].id}
             contentContainerStyle={styles.list}
+            ListHeaderComponent={<UpcomingSetsBanner sets={upcomingSets} />}
             renderItem={({ item: g }) =>
               g.items.length === 1 ? (
                 <NewsRow
@@ -156,14 +163,18 @@ export default function NewsScreen() {
         mineLoading ? (
           <View style={styles.center}><ActivityIndicator /></View>
         ) : mine.length === 0 ? (
-          <View style={styles.center}>
-            <EmptyState icon="albums-outline" hint={t('news.mineEmpty')} />
+          <View style={styles.list}>
+            <UpcomingSetsBanner sets={upcomingSets} />
+            <View style={styles.center}>
+              <EmptyState icon="albums-outline" hint={t('news.mineEmpty')} />
+            </View>
           </View>
         ) : (
           <FlatList
             data={mine}
             keyExtractor={item => `${item.cardId}-${item.acquiredAt}`}
             contentContainerStyle={styles.list}
+            ListHeaderComponent={<UpcomingSetsBanner sets={upcomingSets} />}
             renderItem={({ item }) => (
               <MyAdditionRow
                 item={item}
