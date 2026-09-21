@@ -214,6 +214,7 @@ export default function DashboardScreen() {
       position: 'absolute' as const, bottom: -2, right: -2, width: 22, height: 22, borderRadius: 11,
       backgroundColor: colors.primary, alignItems: 'center' as const, justifyContent: 'center' as const,
       borderWidth: 2, borderColor: colors.bg,
+      shadowColor: colors.primaryGlint, shadowOpacity: 0.9, shadowRadius: 6, shadowOffset: { width: 0, height: 0 }, elevation: 4,
     },
   }));
 

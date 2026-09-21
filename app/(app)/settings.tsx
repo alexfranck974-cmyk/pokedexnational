@@ -234,7 +234,10 @@ export default function Settings() {
                 <Pressable
                   key={id}
                   onPress={() => setPalette(id)}
-                  style={[styles.paletteDot, { backgroundColor: meta.swatch }, selected && styles.paletteDotSelected]}
+                  style={[
+                    styles.paletteDot, { backgroundColor: meta.swatch }, selected && styles.paletteDotSelected,
+                    selected && { shadowColor: meta.glint, shadowOpacity: 0.9, shadowRadius: 8, shadowOffset: { width: 0, height: 0 }, elevation: 6 },
+                  ]}
                   accessibilityLabel={meta.label}>
                   {selected && <Ionicons name="checkmark" size={16} color="white" />}
                 </Pressable>
