@@ -29,7 +29,6 @@ import {
 import { useFavorites, useToggleFavorite, useShowcase, useToggleShowcase, VITRINE_LIMIT } from '@/lib/favorites';
 import { toast } from '@/lib/toast';
 import { useBackTo, withReturnTo, safeDecodeURIComponent } from '@/lib/navigation';
-import { useHistoryBackGuard } from '@/lib/history-back-guard';
 import { useLocale, useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { BackButton } from '@/components/BackButton';
@@ -112,10 +111,6 @@ export default function PokemonDetail() {
   // can play the "new card" celebration on arrival (see lib/navigation.ts).
   const [justCapturedDex, setJustCapturedDex] = useState<number | null>(null);
   const goBack = useBackTo('/pokedex', justCapturedDex != null ? { newCard: String(justCapturedDex) } : undefined);
-
-  // See lib/history-back-guard.ts for why this is needed and why it's capped
-  // to one shared guard instead of pushing a fresh history entry per screen.
-  useHistoryBackGuard(goBack);
 
   // Prev/next reuses this same route (router.replace), so reset per-Pokémon transient
   // filters/state on num change — viewMode is kept as a persistent user preference.

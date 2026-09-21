@@ -22,7 +22,6 @@ import { useFriendsWantedCards } from '@/lib/trades';
 import { TradeMatchPopup, type TradeMatch } from '@/components/TradeMatchPopup';
 import { TradeProposalModal, type TradeTarget, type PickedCard } from '@/components/TradeProposalModal';
 import { useBackTo } from '@/lib/navigation';
-import { useHistoryBackGuard } from '@/lib/history-back-guard';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { currentSetTier } from '@/lib/set-tiers';
 import { classifyRarity } from '@/lib/rarity-tiers';
@@ -35,10 +34,6 @@ export default function PinnedSetDetail() {
   const { setId } = useLocalSearchParams<{ setId: string }>();
   const router = useRouter();
   const goBack = useBackTo('/dashboard');
-
-  // See lib/history-back-guard.ts for why this is needed and why it's capped
-  // to one shared guard instead of pushing a fresh history entry per screen.
-  useHistoryBackGuard(goBack);
 
   const qc = useQueryClient();
   const { session } = useSession();

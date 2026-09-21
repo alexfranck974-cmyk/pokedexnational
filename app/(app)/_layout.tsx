@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Redirect, Tabs, useRouter, usePathname } from 'expo-router';
+import { Redirect, Stack, useRouter, usePathname } from 'expo-router';
 import { useSession } from '@/lib/auth';
 import { useIncomingRequests, useFriends } from '@/lib/friends';
 import { useFriendNewsFeed } from '@/lib/friend-news';
@@ -8,7 +8,6 @@ import { useAllWishedCards, useOwnedCardQuantities } from '@/lib/collection';
 import { useSocialRealtime } from '@/lib/realtime';
 import { Animated, Easing, View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { PokedexDeviceIcon } from '@/components/PokedexDeviceIcon';
 import { FloatingTabBar } from '@/components/FloatingTabBar';
 import { TradeIcon } from '@/components/TradeIcon';
 import { TradeInProgressPopup } from '@/components/TradeInProgressPopup';
@@ -42,12 +41,32 @@ export default function AppLayout() {
 
   return (
     <TabBarVisibilityProvider>
-      <AppLayoutTabs />
+      <AppLayoutStack />
     </TabBarVisibilityProvider>
   );
 }
 
-function AppLayoutTabs() {
+// Everything below used to be rendered once inside a flat <Tabs> alongside 3
+// visible tabs (dashboard/pokedex/friends) AND 10 hidden (href:null)
+// Tabs.Screen siblings (wishlist, a Pokémon's detail, an extension page,
+// ...). React Navigation's hide-on-blur/back-gesture semantics never
+// reliably applied to those hidden siblings on web — 3 separate targeted
+// workarounds were needed for the same root cause this session
+// (PokedexSectionTabs' own useIsFocused+pointerEvents guard, the
+// useIsFocused+display:none guards on pokedex/wishlist/favorites.tsx, and
+// the whole lib/history-back-guard.ts + lib/useModalBackClose.ts saga).
+//
+// Restructured 2026-09-21: only the 3 real tabs live inside the inner
+// (tabs) Tabs navigator now (app/(app)/(tabs)/_layout.tsx) — every other
+// screen is a plain Stack.Screen pushed on top of it here, which is what
+// Stack navigators are actually for (proper mount/unmount, native back-
+// gesture, no collapsed-history tricks needed). The persistent chrome
+// (tab bar, FABs, trade popup, notification banner) moved up to this outer
+// level so it stays visible on all 13 screens, not just the 3 real tabs —
+// FloatingTabBar itself is now driven by pathname instead of react-
+// navigation's tabBar render-prop contract, since it no longer has a single
+// enclosing Tabs navigator to read state from.
+function AppLayoutStack() {
   const router = useRouter();
   const pathname = usePathname();
   const { session } = useSession();
@@ -80,6 +99,7 @@ function AppLayoutTabs() {
   const spinDeg = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   useSocialRealtime(userId);
   const { current: notification, dismiss: dismissNotification } = useAppNotifications(userId);
+  const hasSocialBadge = incomingRequests.length > 0 || friendNews.length > 0 || incomingTrades.length > 0;
 
   // Market-bubble badge: pending incoming offers + cross-friend duplicate/wishlist
   // matches (same one-directional-per-term logic as the Marché tab's own per-row
@@ -98,75 +118,8 @@ function AppLayoutTabs() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Tabs
-        tabBar={(props) => <FloatingTabBar {...props} />}
-        screenOptions={{
-          headerShown: false,
-          // SlideTransition (inside pokedex/favorites/wishlist) already
-          // handles the cross-tab transition — the navigator's own built-in
-          // fade was stacking on top of it, two opacity animations with
-          // different timings, which is what actually read as a flash.
-          animation: 'none',
-        }}
-      >
-        {/*
-          Dashboard listed first (its Tabs.Screen order = the navigator's implicit
-          initial route, no explicit initialRouteName is set). Tab-to-tab
-          navigation collapses via history.replaceState rather than pushing new
-          entries, so the mobile back gesture always bottoms out on whichever tab
-          is initial — putting Dashboard first makes that Dashboard, notably for
-          the pokemon/[num] hidden route reached from Pokédex/Wishlist/Favoris.
-        */}
-        <Tabs.Screen
-          name="dashboard"
-          options={{
-            title: 'Accueil',
-            tabBarIcon: ({ focused, color, size }) => (
-              <Ionicons name={focused ? 'trophy' : 'trophy-outline'} size={size} color={color} />
-            ),
-          }}
-        />
-        {/*
-          "Pokédex" now stands for the whole card-management group — the tab
-          itself lands on the National Pokédex, and PokedexSectionTabs (rendered
-          inside pokedex.tsx/wishlist.tsx/favorites.tsx) switches between it,
-          Collection (favorites route) and Wishlist via real navigation, not a
-          nested tab bar — see the restructuring plan for why.
-        */}
-        <Tabs.Screen
-          name="pokedex"
-          options={{
-            title: 'Pokédex',
-            tabBarIcon: ({ focused, size }) => (
-              <View style={[styles.iconWrap, focused && styles.iconWrapFocused]}>
-                <PokedexDeviceIcon size={size - 2} />
-              </View>
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="friends"
-          options={{
-            title: 'Social',
-            tabBarIcon: ({ focused, color, size }) => (
-              <View>
-                <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
-                {(incomingRequests.length > 0 || friendNews.length > 0 || incomingTrades.length > 0) && <View style={[styles.requestDot, { borderColor: colors.surface }]} />}
-              </View>
-            ),
-          }}
-        />
-        <Tabs.Screen name="wishlist" options={{ href: null }} />
-        <Tabs.Screen name="favorites" options={{ href: null }} />
-        <Tabs.Screen name="market" options={{ href: null }} />
-        <Tabs.Screen name="news" options={{ href: null }} />
-        <Tabs.Screen name="settings" options={{ href: null }} />
-        <Tabs.Screen name="feedback" options={{ href: null }} />
-        <Tabs.Screen name="pokemon/[num]" options={{ href: null }} />
-        <Tabs.Screen name="pinned-set/[setId]" options={{ href: null }} />
-        <Tabs.Screen name="binder/[binderId]" options={{ href: null }} />
-        <Tabs.Screen name="artist/[artist]" options={{ href: null }} />
-      </Tabs>
+      <Stack screenOptions={{ headerShown: false, animation: 'none', gestureEnabled: false }} />
+      <FloatingTabBar hasSocialBadge={hasSocialBadge} />
       {/* Right column: the search bubble is the only always-visible FAB on
           every screen now — everything else lives in the left column's
           "more" bubble. */}
@@ -253,12 +206,6 @@ function fabWrap(side: 'left' | 'right', slot: number) {
 }
 
 const styles = StyleSheet.create({
-  iconWrap: { alignItems: 'center', justifyContent: 'center' },
-  iconWrapFocused: { transform: [{ scale: 1.1 }] },
-  requestDot: {
-    position: 'absolute', top: -1, right: -3, width: 9, height: 9, borderRadius: 5,
-    backgroundColor: '#ef4444', borderWidth: 1.5,
-  },
   settingsFab: {
     width: 44, height: 44, borderRadius: radius.pill,
     borderWidth: 1, alignItems: 'center', justifyContent: 'center',

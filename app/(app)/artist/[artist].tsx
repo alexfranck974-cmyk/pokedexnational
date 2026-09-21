@@ -15,7 +15,6 @@ import { useSession } from '@/lib/auth';
 import { useAllOwnedCardIds, useToggleOwnedCard, useOwnedCardQuantities, useAdjustOwnedCardQuantity, useAllWishedCards, useToggleWish, useOwnedCardFinishes } from '@/lib/collection';
 import { useBackTo, withReturnTo } from '@/lib/navigation';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
-import { useHistoryBackGuard } from '@/lib/history-back-guard';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 
 const COLUMN_CYCLE: (3 | 4 | null)[] = [null, 3, 4];
@@ -29,8 +28,6 @@ export default function ArtistGallery() {
   const artist = decodeURIComponent(artistParam ?? '');
   const goBack = useBackTo('/favorites');
   const router = useRouter();
-
-  useHistoryBackGuard(goBack);
 
   const { session } = useSession();
   const userId = session?.user.id;
