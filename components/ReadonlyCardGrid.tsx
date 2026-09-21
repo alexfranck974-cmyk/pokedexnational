@@ -42,9 +42,9 @@ export function ReadonlyCardGrid({ cards, onZoom, onRemove }: Props) {
     price: { fontSize: 10, fontFamily: fonts.monoBold, color: colors.success, textAlign: 'center' as const, marginTop: 2 },
     removeBadge: {
       position: 'absolute' as const, top: 4, right: 4, width: 22, height: 22, borderRadius: 11,
-      backgroundColor: colors.danger, alignItems: 'center' as const, justifyContent: 'center' as const,
+      backgroundColor: colors.dangerBg, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
-    removeBadgeText: { fontSize: 12, fontFamily: fonts.bodyBold, color: 'white', lineHeight: 14 },
+    removeBadgeText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.danger, lineHeight: 14 },
   }));
 
   return (

@@ -17,16 +17,16 @@ export function OfflineBanner() {
     wrap: {
       position: 'absolute' as const, top: insets.top, left: 0, right: 0, zIndex: 2000,
       flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'center' as const, gap: 6,
-      paddingVertical: 6, backgroundColor: colors.warning,
+      paddingVertical: 6, backgroundColor: colors.warningBg,
     },
-    text: { fontSize: 12, fontFamily: fonts.bodyBold, color: '#3b2a06' },
+    text: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.warning },
   }));
 
   if (isOnline) return null;
 
   return (
     <View style={styles.wrap} pointerEvents="none">
-      <Ionicons name="cloud-offline-outline" size={14} color="#3b2a06" />
+      <Ionicons name="cloud-offline-outline" size={14} color={styles.text.color} />
       <Text style={styles.text}>{t('common.offlineBanner')}</Text>
     </View>
   );

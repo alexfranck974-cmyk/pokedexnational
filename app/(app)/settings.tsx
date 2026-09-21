@@ -62,8 +62,9 @@ export default function Settings() {
     btnSecondary: { flexDirection: 'row' as const, gap: 4, backgroundColor: colors.surfaceAlt, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.sm, alignSelf: 'flex-start' as const, alignItems: 'center' as const },
     shareBtnRow: { flexDirection: 'row' as const, gap: spacing.sm },
     btnSecondaryText: { fontFamily: fonts.body, color: colors.text, fontSize: 13 },
-    btnDanger: { flexDirection: 'row' as const, gap: 6, backgroundColor: colors.danger, padding: spacing.md, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const },
+    btnDanger: { flexDirection: 'row' as const, gap: 6, backgroundColor: colors.dangerBg, padding: spacing.md, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const },
     btnText: { fontFamily: fonts.bodyBold, color: 'white' },
+    btnDangerText: { fontFamily: fonts.bodyBold, color: colors.danger },
     // Deliberately quieter than btnDanger — irreversible and destroys every
     // bit of data, so it shouldn't read as equally "easy to tap" as sign out.
     deleteAccountLink: { alignItems: 'center' as const, padding: spacing.sm },
@@ -324,8 +325,8 @@ export default function Settings() {
         </Pressable>
 
         <Pressable onPress={() => signOut()} style={styles.btnDanger}>
-          <Ionicons name="log-out-outline" size={18} color="white" />
-          <Text style={styles.btnText}>{t('settings.logout')}</Text>
+          <Ionicons name="log-out-outline" size={18} color={colors.danger} />
+          <Text style={styles.btnDangerText}>{t('settings.logout')}</Text>
         </Pressable>
 
         <Pressable onPress={() => setDeleteConfirmOpen(true)} style={styles.deleteAccountLink}>

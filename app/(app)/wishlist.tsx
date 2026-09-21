@@ -240,9 +240,9 @@ export default function WishlistScreen() {
     pokemonThumb: { width: 28, height: 40 },
     pokemonThumbRemove: {
       position: 'absolute' as const, top: -4, right: 0, width: 16, height: 16, borderRadius: 8,
-      backgroundColor: colors.danger, alignItems: 'center' as const, justifyContent: 'center' as const,
+      backgroundColor: colors.dangerBg, alignItems: 'center' as const, justifyContent: 'center' as const,
     },
-    pokemonThumbRemoveText: { fontSize: 9, fontFamily: fonts.bodyBold, color: 'white', lineHeight: 11 },
+    pokemonThumbRemoveText: { fontSize: 9, fontFamily: fonts.bodyBold, color: colors.danger, lineHeight: 11 },
   }));
 
   // Stable across re-renders triggered by unrelated state (e.g. opening the

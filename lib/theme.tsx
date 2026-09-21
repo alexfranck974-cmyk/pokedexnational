@@ -64,6 +64,7 @@ export interface ColorTokens {
   dangerBg: string;
 
   warning: string;
+  warningBg: string;
 
   overlay: string;
   backdrop: string;
@@ -198,14 +199,14 @@ export const PALETTE_META: Record<PaletteId, { label: string; swatch: string }> 
 const semanticDark = {
   success: '#34d399', successBg: '#0b3d2e',
   danger: '#f2994a', dangerBg: '#4a2c12',
-  warning: '#fbbf24',
+  warning: '#fbbf24', warningBg: '#3d2f06',
   backdrop: 'rgba(0, 0, 0, 0.7)',
 };
 
 const semanticLight = {
   success: '#0f9d6e', successBg: '#dcf5ea',
   danger: '#a8560c', dangerBg: '#fbe9d6',
-  warning: '#b8790a',
+  warning: '#b8790a', warningBg: '#f9edd0',
   backdrop: 'rgba(0, 0, 0, 0.5)',
 };
 
