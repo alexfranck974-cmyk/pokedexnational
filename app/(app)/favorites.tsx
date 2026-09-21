@@ -9,7 +9,6 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useIsFocused } from '@react-navigation/native';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
@@ -119,9 +118,6 @@ const Chip = ({ label, active, onPress }: { label: string; active: boolean; onPr
 export default function FavoritesScreen() {
   const router = useRouter();
   const { from } = useLocalSearchParams<{ from?: string }>();
-  // See the matching comment in app/(app)/pokedex.tsx — same hidden-Tabs.Screen
-  // stale-content bug, same fix.
-  const isFocused = useIsFocused();
   const { session } = useSession();
   const { locale } = useLocale();
   const t = useT();
@@ -851,7 +847,7 @@ export default function FavoritesScreen() {
   }));
 
   return (
-    <SafeAreaView style={[styles.screen, !isFocused && { display: 'none' as const }]}>
+    <SafeAreaView style={styles.screen}>
       <PokedexSectionTabs active="collection" />
       <View style={styles.header}>
         <View style={styles.titleRow}>

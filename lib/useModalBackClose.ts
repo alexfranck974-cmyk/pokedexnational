@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { suppressNextBackGuardPop } from './history-back-guard';
 
 // Stack of currently-open modals' close callbacks, in open order. A single
 // module-level popstate listener pops only the top of this stack — without
@@ -19,17 +18,6 @@ import { suppressNextBackGuardPop } from './history-back-guard';
 const modalStack: Array<() => void> = [];
 let hasPendingEntry = false;
 let listenerAttached = false;
-
-// Read by history-back-guard.ts's own popstate listener, which mounts (and
-// so registers) earlier than this module's — a screen guarded by
-// useHistoryBackGuard mounts first, the user opens a modal on it after.
-// Window popstate listeners fire in registration order, so on a real
-// back-press while a modal is open, the guard's listener would otherwise
-// run BEFORE this module's and immediately navigate the guarded screen
-// away, never giving the modal a chance to just close first as intended.
-export function isAnyModalOpen(): boolean {
-  return modalStack.length > 0;
-}
 
 function ensureGlobalListener() {
   if (listenerAttached || Platform.OS !== 'web') return;
@@ -96,11 +84,6 @@ export function useModalBackClose(isOpen: boolean, onClose: () => void) {
         // synchronous pushState still in flight within it) has settled.
         setTimeout(() => {
           if (window.history.state?.modalOpen !== true) return;
-          // See history-back-guard.ts's comment: this history.back() is
-          // just consuming our own pushState entry, not a real navigation —
-          // flag it so a mounted useHistoryBackGuard on this screen doesn't
-          // treat it as the user pressing back and boot them off the screen.
-          suppressNextBackGuardPop();
           window.history.back();
           // history.back() assumes the entry directly beneath our pushState
           // is still the screen we opened from — true when that screen was

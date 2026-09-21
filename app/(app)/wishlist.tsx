@@ -6,7 +6,6 @@ import { FlashList } from '@shopify/flash-list';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useIsFocused } from '@react-navigation/native';
 import { useSession } from '@/lib/auth';
 import { useAllWishedCards, useAllOwnedCardIds, useToggleWish, useToggleWishPriority } from '@/lib/collection';
 import {
@@ -52,9 +51,6 @@ function dexGroupKeyExtractor(g: WishlistGroup): string { return String(g.dexNum
 export default function WishlistScreen() {
   const router = useRouter();
   const { from, alerts } = useLocalSearchParams<{ from?: string; alerts?: string }>();
-  // See the matching comment in app/(app)/pokedex.tsx — same hidden-Tabs.Screen
-  // stale-content bug, same fix.
-  const isFocused = useIsFocused();
   const { session } = useSession();
   const { locale } = useLocale();
   const t = useT();
@@ -309,7 +305,7 @@ export default function WishlistScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.screen, !isFocused && { display: 'none' as const }]}>
+      <SafeAreaView style={styles.screen}>
         <PokedexSectionTabs active="wishlist" />
         <View style={styles.center}><ActivityIndicator /></View>
       </SafeAreaView>
@@ -318,7 +314,7 @@ export default function WishlistScreen() {
 
   if (cards.length === 0) {
     return (
-      <SafeAreaView style={[styles.screen, !isFocused && { display: 'none' as const }]}>
+      <SafeAreaView style={styles.screen}>
         <PokedexSectionTabs active="wishlist" />
         <View style={styles.center}>
           <EmptyState icon="heart-outline" title={t('wishlist.emptyTitle')} hint={t('wishlist.emptyHint')} />
@@ -328,7 +324,7 @@ export default function WishlistScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.screen, !isFocused && { display: 'none' as const }]}>
+    <SafeAreaView style={styles.screen}>
       <PokedexSectionTabs active="wishlist" />
       <LinearGradient
         colors={heroGradient}

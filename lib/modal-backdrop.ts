@@ -11,7 +11,7 @@ import { useLayoutEffect, useState } from 'react';
 // per-Pokémon gallery sheet: dark mode's ~0.7-opacity backdrop rendered
 // twice comes out to ~0.91, visibly muddier than either alone. This is
 // platform-agnostic (a RN <Modal> rendering issue, not a web/history one),
-// unlike history-back-guard.ts/useModalBackClose.ts's web-only stack.
+// unlike useModalBackClose.ts's own web-only history stack.
 let openCount = 0;
 
 // Call with the same `isOpen` boolean already driving the component's
