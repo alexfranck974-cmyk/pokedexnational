@@ -12,6 +12,7 @@ import { getFinishLabel, type OwnedCardFinish } from '@/lib/collection';
 import { toast } from '@/lib/toast';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useLocale, useT } from '@/lib/locale';
+import { useBackdropDepth } from '@/lib/modal-backdrop';
 import { BackButton } from './BackButton';
 
 const POKEDEX = pokedexData as Pokemon[];
@@ -123,6 +124,7 @@ export function BinderSlotPicker({ visible, binderId, position, finishesByCardId
     }
   };
 
+  const hasBackdropBeneath = useBackdropDepth(visible);
   const styles = useThemedStyles((colors, shadow) => ({
     backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' as const, alignItems: 'center' as const },
     sheet: { width: '100%' as const, maxHeight: '85%' as const, backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
@@ -167,7 +169,7 @@ export function BinderSlotPicker({ visible, binderId, position, finishesByCardId
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={[styles.backdrop, hasBackdropBeneath && { backgroundColor: 'transparent' }]} onPress={onClose}>
         <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
             <View style={styles.header}>
               {selected ? (

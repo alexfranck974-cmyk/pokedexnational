@@ -10,6 +10,7 @@ import { useLocale, useT } from '@/lib/locale';
 import { useHudDensity, HUD_DENSITY_ICON } from '@/lib/hud-density';
 import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts, SCREEN_FAB_CLEARANCE } from '@/lib/theme';
 import { useTabBarVisibility, TAB_BAR_HIDE_OFFSET } from '@/lib/tab-bar-visibility';
+import { useBackdropDepth } from '@/lib/modal-backdrop';
 
 // Height of the page-mode top toolbar (see PAGE_TOOLBAR_HEIGHT usage below) —
 // PokedexPager pads its pages by this much so the first row of cards never
@@ -120,9 +121,10 @@ function PickerModal({
   const isDesktop = width >= 768;
   const styles = useThemedStyles(makeStyles);
   const t = useT();
+  const hasBackdropBeneath = useBackdropDepth(visible);
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={[styles.backdrop, hasBackdropBeneath && { backgroundColor: 'transparent' }]} onPress={onClose}>
         <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{title}</Text>
@@ -171,9 +173,10 @@ function MultiPickerModal({
   const isDesktop = width >= 768;
   const styles = useThemedStyles(makeStyles);
   const t = useT();
+  const hasBackdropBeneath = useBackdropDepth(visible);
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={[styles.backdrop, hasBackdropBeneath && { backgroundColor: 'transparent' }]} onPress={onClose}>
         <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{title}</Text>
@@ -214,6 +217,7 @@ export function SearchFilterBar(p: Props) {
   const [openPicker, setOpenPicker] = useState<null | 'type' | 'set' | 'rarity' | 'gen'>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const filterSheetHasBackdropBeneath = useBackdropDepth(filterSheetOpen);
   const [moreExpanded, setMoreExpanded] = useState(false);
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
@@ -366,7 +370,7 @@ export function SearchFilterBar(p: Props) {
       )}
 
       <Modal visible={filterSheetOpen} transparent animationType="slide" onRequestClose={() => setFilterSheetOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setFilterSheetOpen(false)}>
+        <Pressable style={[styles.backdrop, filterSheetHasBackdropBeneath && { backgroundColor: 'transparent' }]} onPress={() => setFilterSheetOpen(false)}>
           <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{t('search.filtersTitle')}</Text>

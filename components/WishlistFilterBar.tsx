@@ -8,6 +8,7 @@ import { GENERATIONS, getGenerationLabel } from '@/lib/generations';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useTheme, useThemedStyles, type ColorTokens, type ShadowTokens, radius, spacing, fonts, SCREEN_FAB_CLEARANCE } from '@/lib/theme';
 import { useLocale, useT } from '@/lib/locale';
+import { useBackdropDepth } from '@/lib/modal-backdrop';
 
 interface Props {
   search: string;                       onSearch: (v: string) => void;
@@ -95,9 +96,10 @@ function PickerModal({
   const isDesktop = width >= 768;
   const styles = useThemedStyles(makeStyles);
   const t = useT();
+  const hasBackdropBeneath = useBackdropDepth(visible);
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={[styles.backdrop, hasBackdropBeneath && { backgroundColor: 'transparent' }]} onPress={onClose}>
         <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{title}</Text>
@@ -135,6 +137,7 @@ export function WishlistFilterBar(p: Props) {
   const [openPicker, setOpenPicker] = useState<null | 'type' | 'set' | 'rarity' | 'gen'>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const filterSheetHasBackdropBeneath = useBackdropDepth(filterSheetOpen);
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
   const { colors } = useTheme();
@@ -185,7 +188,7 @@ export function WishlistFilterBar(p: Props) {
       </View>
 
       <Modal visible={filterSheetOpen} transparent animationType="slide" onRequestClose={() => setFilterSheetOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setFilterSheetOpen(false)}>
+        <Pressable style={[styles.backdrop, filterSheetHasBackdropBeneath && { backgroundColor: 'transparent' }]} onPress={() => setFilterSheetOpen(false)}>
           <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{t('wishlist.filtersAndSort')}</Text>

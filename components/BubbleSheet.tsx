@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Modal, View, Text, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useT } from '@/lib/locale';
+import { useBackdropDepth } from '@/lib/modal-backdrop';
 
 interface Props {
   visible: boolean;
@@ -26,6 +27,7 @@ export function BubbleSheet({ visible, onClose, tint, title, sizing = 'standard'
   const t = useT();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
+  const hasBackdropBeneath = useBackdropDepth(visible);
   const styles = useThemedStyles((colors) => ({
     backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' as const, alignItems: 'center' as const },
     sheet: {
@@ -51,7 +53,7 @@ export function BubbleSheet({ visible, onClose, tint, title, sizing = 'standard'
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={[styles.backdrop, hasBackdropBeneath && { backgroundColor: 'transparent' }]} onPress={onClose}>
         <Pressable style={[styles.sheet, mobileSize, desktopSize]} onPress={() => {}}>
           <View style={styles.seam} />
           {title && (

@@ -5,6 +5,7 @@ import * as Clipboard from 'expo-clipboard';
 import { toast } from '@/lib/toast';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useT } from '@/lib/locale';
+import { useBackdropDepth } from '@/lib/modal-backdrop';
 
 interface Props {
   visible: boolean;
@@ -15,6 +16,7 @@ interface Props {
 
 export function QRCodeModal({ visible, value, label, onClose }: Props) {
   const t = useT();
+  const hasBackdropBeneath = useBackdropDepth(visible);
   const styles = useThemedStyles((colors, shadow) => ({
     backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center' as const, justifyContent: 'center' as const, padding: spacing.xl },
     card: {
@@ -53,7 +55,7 @@ export function QRCodeModal({ visible, value, label, onClose }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={[styles.backdrop, hasBackdropBeneath && { backgroundColor: 'transparent' }]} onPress={onClose}>
         <Pressable style={styles.card} onPress={() => {}}>
           <Pressable onPress={onClose} style={styles.close} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('common.close')}>
             <Ionicons name="close" size={18} color="#171717" />

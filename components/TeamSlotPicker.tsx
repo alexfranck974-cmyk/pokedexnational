@@ -2,6 +2,7 @@ import { View, Text, Image, Pressable, Modal, FlatList, StyleSheet, useWindowDim
 import type { Pokemon } from '@/lib/types';
 import { getName } from '@/lib/i18n';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useBackdropDepth } from '@/lib/modal-backdrop';
 
 interface OwnedOption {
   pokemon: Pokemon;
@@ -18,6 +19,7 @@ interface Props {
 export function TeamSlotPicker({ visible, options, onSelect, onClose }: Props) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
+  const hasBackdropBeneath = useBackdropDepth(visible);
   const styles = useThemedStyles((colors) => ({
     backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' as const, alignItems: 'center' as const },
     sheet: { width: '100%' as const, maxHeight: '75%' as const, backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
@@ -34,7 +36,7 @@ export function TeamSlotPicker({ visible, options, onSelect, onClose }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={[styles.backdrop, hasBackdropBeneath && { backgroundColor: 'transparent' }]} onPress={onClose}>
         <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Choisir un Pokémon</Text>

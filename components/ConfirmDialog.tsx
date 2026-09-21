@@ -1,6 +1,7 @@
 import { View, Text, Pressable, Modal } from 'react-native';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useT } from '@/lib/locale';
+import { useBackdropDepth } from '@/lib/modal-backdrop';
 
 export interface ConfirmTarget {
   title: string;
@@ -25,6 +26,7 @@ export function ConfirmDialog({ target, confirmLabel, cancelLabel, tone = 'dange
   const t = useT();
   const resolvedConfirmLabel = confirmLabel ?? t('common.delete');
   const resolvedCancelLabel = cancelLabel ?? t('common.cancel');
+  const hasBackdropBeneath = useBackdropDepth(target !== null);
   const styles = useThemedStyles((colors, shadow) => ({
     backdrop: { flex: 1, backgroundColor: colors.backdrop, alignItems: 'center' as const, justifyContent: 'center' as const, padding: spacing.xl },
     card: {
@@ -45,7 +47,7 @@ export function ConfirmDialog({ target, confirmLabel, cancelLabel, tone = 'dange
 
   return (
     <Modal visible={target !== null} transparent animationType="fade" onRequestClose={onCancel}>
-      <Pressable style={styles.backdrop} onPress={onCancel}>
+      <Pressable style={[styles.backdrop, hasBackdropBeneath && { backgroundColor: 'transparent' }]} onPress={onCancel}>
         <Pressable style={styles.card} onPress={() => {}}>
           {target && (
             <>

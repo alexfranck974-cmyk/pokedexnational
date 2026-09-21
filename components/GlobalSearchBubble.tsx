@@ -10,6 +10,7 @@ import { useTcgSets } from '@/lib/tcg-index';
 import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { useLocale, useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
+import { useBackdropDepth } from '@/lib/modal-backdrop';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -61,6 +62,7 @@ export function GlobalSearchBubble({ style }: { style?: object }) {
     router.push(withReturnTo(href, pathname) as never);
   };
 
+  const hasBackdropBeneath = useBackdropDepth(open);
   const styles = useThemedStyles((colors, shadow) => ({
     fab: {
       width: 44, height: 44, borderRadius: radius.pill,
@@ -97,7 +99,7 @@ export function GlobalSearchBubble({ style }: { style?: object }) {
         <Ionicons name="search" size={20} color={colors.text} />
       </Pressable>
       <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
-        <Pressable style={styles.backdrop} onPress={close}>
+        <Pressable style={[styles.backdrop, hasBackdropBeneath && { backgroundColor: 'transparent' }]} onPress={close}>
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
             <View style={styles.header}>
               <Text style={styles.title}>{t('globalSearch.title')}</Text>

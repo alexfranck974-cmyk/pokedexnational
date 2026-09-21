@@ -5,6 +5,7 @@ import { ReadonlyCardGrid } from './ReadonlyCardGrid';
 import { CardZoomModal } from './CardZoomModal';
 import { RemoveWishFooterButton } from './CardCopySheet';
 import { useModalBackClose } from '@/lib/useModalBackClose';
+import { useBackdropDepth } from '@/lib/modal-backdrop';
 import { withReturnTo } from '@/lib/navigation';
 import { useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { useT } from '@/lib/locale';
@@ -49,6 +50,7 @@ export function FriendSetGalleryModal({ target, onClose }: Props) {
   const t = useT();
   const router = useRouter();
   useModalBackClose(target !== null, onClose);
+  const hasBackdropBeneath = useBackdropDepth(target !== null);
 
   const styles = useThemedStyles((colors) => ({
     backdrop: { flex: 1, backgroundColor: colors.backdrop, justifyContent: 'flex-end' as const, alignItems: 'center' as const },
@@ -64,7 +66,7 @@ export function FriendSetGalleryModal({ target, onClose }: Props) {
 
   return (
     <Modal visible={target !== null} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={[styles.backdrop, hasBackdropBeneath && { backgroundColor: 'transparent' }]} onPress={onClose}>
         <Pressable style={[styles.sheet, isDesktop && styles.sheetDesktop]} onPress={() => {}}>
           {target && (
             <>

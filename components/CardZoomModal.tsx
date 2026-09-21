@@ -3,6 +3,7 @@ import { Modal, Image, Text, View, Pressable, PanResponder, useWindowDimensions 
 import { Ionicons } from '@expo/vector-icons';
 import { useThemedStyles, fonts, radius, spacing } from '@/lib/theme';
 import { useModalBackClose } from '@/lib/useModalBackClose';
+import { useBackdropDepth } from '@/lib/modal-backdrop';
 
 export interface ZoomableCard {
   image_small: string;
@@ -31,6 +32,10 @@ const TAP_TOLERANCE = 8;
 
 export function CardZoomModal({ card, caption, setLabel, onOpenSet, footer, onClose, onSwipeNext, onSwipePrev }: Props) {
   const { width, height } = useWindowDimensions();
+  // Keyed on isOpen (not `card` itself) so browsing between cards via swipe
+  // doesn't push/pop a history entry per card.
+  const isOpen = card !== null;
+  const hasBackdropBeneath = useBackdropDepth(isOpen);
   const styles = useThemedStyles((colors) => ({
     // touchAction (RNW-only, absent from RN's ViewStyle type — same cast
     // pattern as pokemon/[num].tsx's userSelect:'none' fix) stops a swipe
@@ -41,7 +46,8 @@ export function CardZoomModal({ card, caption, setLabel, onOpenSet, footer, onCl
     // ran alongside it, letting the same drag scroll the grid or trigger a
     // tile press through the modal (2026-09-06).
     backdrop: {
-      flex: 1, backgroundColor: colors.backdrop, alignItems: 'center' as const, justifyContent: 'center' as const,
+      flex: 1, backgroundColor: colors.backdrop,
+      alignItems: 'center' as const, justifyContent: 'center' as const,
       touchAction: 'none',
     } as any,
     caption: {
@@ -55,9 +61,6 @@ export function CardZoomModal({ card, caption, setLabel, onOpenSet, footer, onCl
     setLinkText: { fontSize: 13, fontFamily: fonts.bodyBold, color: 'white' },
   }));
 
-  // Keyed on isOpen (not `card` itself) so browsing between cards via swipe
-  // doesn't push/pop a history entry per card.
-  const isOpen = card !== null;
   useModalBackClose(isOpen, onClose);
 
   // Single responder handles both tap-to-close and swipe-to-browse — claiming it
@@ -89,7 +92,7 @@ export function CardZoomModal({ card, caption, setLabel, onOpenSet, footer, onCl
   if (renderH > maxH) { renderH = maxH; renderW = renderH * CARD_RATIO; }
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.backdrop} {...pan.panHandlers}>
+      <View style={[styles.backdrop, hasBackdropBeneath && { backgroundColor: 'transparent' }]} {...pan.panHandlers}>
         <Image
           source={{ uri: src }}
           style={{ width: renderW, height: renderH }}
