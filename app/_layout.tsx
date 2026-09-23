@@ -21,6 +21,7 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { toast } from '@/lib/toast';
 import { initSentry, wrapRoot } from '@/lib/sentry';
 import { createAppPersister, setupOnlineManager, PERSIST_MAX_AGE } from '@/lib/query-persist';
+import { checkReferenceDataVersion } from '@/lib/reference-data-version';
 
 initSentry();
 setupOnlineManager();
@@ -111,7 +112,10 @@ function RootLayout() {
                 <DashboardHeroStyleProvider>
                   <LocaleProvider>
                     <ThemedStatusBar />
-                    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: PERSIST_MAX_AGE }}>
+                    <PersistQueryClientProvider
+                      client={queryClient}
+                      persistOptions={{ persister, maxAge: PERSIST_MAX_AGE }}
+                      onSuccess={() => checkReferenceDataVersion(queryClient)}>
                       <RootSiblingParent>
                         <ErrorBoundary>
                           <OfflineBanner />
