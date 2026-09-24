@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, Image, ActivityIndicator, Pressable, ScrollView } from 'react-native';
+import { View, Text, Image, ActivityIndicator, Pressable, ScrollView, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,7 +26,11 @@ import { setFlagLabel } from '@/lib/tcg-set-labels';
 import { currentSetTier } from '@/lib/set-tiers';
 import { classifyRarity } from '@/lib/rarity-tiers';
 import { buildSetTypeGroups, typesCompletedByToggle } from '@/lib/set-type-completion';
+import { useTabBarVisibility } from '@/lib/tab-bar-visibility';
+import { usePinnedSetHint } from '@/lib/pinned-set-hint';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
+
+const TOOLBAR_HEIGHT = 56;
 
 const COLUMN_CYCLE: (3 | 4 | null)[] = [null, 3, 4];
 
@@ -62,6 +66,8 @@ export default function PinnedSetDetail() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [columns, setColumns] = useState<3 | 4 | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
+  const { translateY: toolbarTranslateY } = useTabBarVisibility();
+  const { dismissed: hintDismissed, dismiss: dismissHint } = usePinnedSetHint();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [zoomCard, setZoomCard] = useState<TcgCardRow | null>(null);
   const [detailsCard, setDetailsCard] = useState<TcgCardRow | null>(null);
@@ -114,20 +120,13 @@ export default function PinnedSetDetail() {
   const tier = currentSetTier(pct);
   const year = set?.releaseDate ? new Date(set.releaseDate).getFullYear() : null;
 
-  const { colors, heroGradient, heroText, heroTextMuted, heroSurface, heroSurfaceActive, heroSurfaceActiveText, heroTrack } = useTheme();
+  const { colors, heroGradient, heroText, heroTextMuted, heroSurfaceActive, heroTrack } = useTheme();
   const styles = useThemedStyles((colors, shadow) => ({
     screen: { flex: 1, backgroundColor: colors.bg },
     hero: { padding: spacing.md, gap: spacing.sm, ...shadow.sm },
-    heroTopRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
+    heroTopRow: { flexDirection: 'row' as const, alignItems: 'center' as const },
     back: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 2, padding: 4 },
     backText: { color: heroText, fontSize: 14, fontFamily: fonts.body },
-    heroViewToggle: { flexDirection: 'row' as const, gap: 6 },
-    viewBtn: {
-      width: 30, height: 30, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const,
-      backgroundColor: heroSurface,
-    },
-    viewBtnActive: { backgroundColor: heroSurfaceActive },
-    columnsLabel: { fontSize: 12, fontFamily: fonts.monoBold, color: heroText },
     heroMain: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md },
     heroLogo: { height: 64, width: '100%' as const, alignSelf: 'center' as const },
     heroName: { fontSize: 20, fontFamily: fonts.display, color: heroText },
@@ -139,8 +138,26 @@ export default function PinnedSetDetail() {
       backgroundColor: colors.primarySoft, borderRadius: radius.md,
     },
     bannerText: { flex: 1, fontSize: 11, fontFamily: fonts.body, color: colors.text, lineHeight: 15 },
+    bannerClose: { padding: 2 },
+    // Purely informational hero now (Retour + logo + progress ring + caption)
+    // — the view/selection/columns/density controls that used to crowd the
+    // hero's top row live here instead, in their own bottom toolbar that
+    // hides on scroll same as the floating tab bar (shared translateY from
+    // useTabBarVisibility — CardGallery already drives it via its own
+    // onScroll, nothing extra to wire for that part).
+    toolbarWrap: { position: 'absolute' as const, left: 0, right: 0, bottom: TAB_BAR_CLEARANCE },
+    toolbar: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'center' as const, gap: spacing.sm,
+      height: TOOLBAR_HEIGHT, backgroundColor: colors.surface, borderTopWidth: 1, borderColor: colors.border,
+    },
+    toolbarBtn: {
+      width: 34, height: 34, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const,
+      backgroundColor: colors.surfaceAlt,
+    },
+    toolbarBtnActive: { backgroundColor: colors.primary },
+    columnsLabel: { fontSize: 13, fontFamily: fonts.monoBold, color: colors.text },
     bulkBar: {
-      position: 'absolute' as const, left: spacing.md, right: spacing.md, bottom: TAB_BAR_CLEARANCE + spacing.sm,
+      position: 'absolute' as const, left: spacing.md, right: spacing.md, bottom: TAB_BAR_CLEARANCE + TOOLBAR_HEIGHT + spacing.sm,
       flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const,
       backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.sm, gap: spacing.sm,
       ...shadow.md,
@@ -165,41 +182,6 @@ export default function PinnedSetDetail() {
             <Ionicons name="chevron-back" size={18} color={heroText} />
             <Text style={styles.backText}>Retour</Text>
           </Pressable>
-          <View style={styles.heroViewToggle}>
-            <Pressable
-              onPress={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
-              style={[styles.viewBtn, selectionMode && styles.viewBtnActive]}>
-              <Ionicons name={selectionMode ? 'close' : 'checkbox-outline'} size={15} color={selectionMode ? heroSurfaceActiveText : heroText} />
-            </Pressable>
-            <Pressable
-              onPress={() => setViewMode('grid')}
-              style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>
-              <Ionicons name="grid" size={15} color={viewMode === 'grid' ? heroSurfaceActiveText : heroText} />
-            </Pressable>
-            <Pressable
-              onPress={() => setViewMode('list')}
-              style={[styles.viewBtn, viewMode === 'list' && styles.viewBtnActive]}>
-              <Ionicons name="list" size={15} color={viewMode === 'list' ? heroSurfaceActiveText : heroText} />
-            </Pressable>
-            {viewMode === 'grid' && (
-              <Pressable
-                onPress={() => setColumns(c => COLUMN_CYCLE[(COLUMN_CYCLE.indexOf(c) + 1) % COLUMN_CYCLE.length])}
-                style={styles.viewBtn}>
-                {columns ? (
-                  <Text style={styles.columnsLabel}>×{columns}</Text>
-                ) : (
-                  <Ionicons name="grid-outline" size={15} color={heroText} />
-                )}
-              </Pressable>
-            )}
-            <Pressable
-              onPress={cycleDensity}
-              accessibilityRole="button"
-              accessibilityLabel="Changer la densité d'affichage"
-              style={styles.viewBtn}>
-              <Ionicons name={HUD_DENSITY_ICON[density]} size={15} color={density !== 'standard' ? heroSurfaceActiveText : heroText} />
-            </Pressable>
-          </View>
         </View>
         {set?.logo && (
           <Image source={{ uri: set.logo }} style={styles.heroLogo} resizeMode="contain" accessibilityLabel={setName} />
@@ -221,14 +203,19 @@ export default function PinnedSetDetail() {
         </View>
       </LinearGradient>
 
-      <View style={styles.banner}>
-        <Ionicons name="information-circle" size={16} color={colors.primary} />
-        <Text style={styles.bannerText}>
-          Cocher une carte ici l'ajoute à ta collection de cartes possédées, sans changer ta carte
-          choisie du Pokédex national — rends-toi sur sa fiche pour l'utiliser comme carte choisie
-          si tu le souhaites.
-        </Text>
-      </View>
+      {!hintDismissed && (
+        <View style={styles.banner}>
+          <Ionicons name="information-circle" size={16} color={colors.primary} />
+          <Text style={styles.bannerText}>
+            Cocher une carte ici l'ajoute à ta collection de cartes possédées, sans changer ta carte
+            choisie du Pokédex national — rends-toi sur sa fiche pour l'utiliser comme carte choisie
+            si tu le souhaites.
+          </Text>
+          <Pressable onPress={dismissHint} hitSlop={8} style={styles.bannerClose} accessibilityRole="button" accessibilityLabel="Fermer">
+            <Ionicons name="close" size={16} color={colors.textMuted} />
+          </Pressable>
+        </View>
+      )}
 
       {cardsLoading ? (
         <ActivityIndicator style={{ marginTop: 24 }} />
@@ -242,6 +229,7 @@ export default function PinnedSetDetail() {
           readOnly={false}
           viewMode={viewMode}
           columnsOverride={columns}
+          extraBottomInset={TOOLBAR_HEIGHT}
           quantities={quantities}
           onIncrement={c => {
             const currentQuantity = quantities.get(c.id) ?? 0;
@@ -302,6 +290,48 @@ export default function PinnedSetDetail() {
             return next;
           })}
         />
+      )}
+      {!cardsLoading && cards.length > 0 && (
+        <Animated.View style={[styles.toolbarWrap, { transform: [{ translateY: toolbarTranslateY }] }]}>
+          <View style={styles.toolbar}>
+            <Pressable
+              onPress={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
+              style={[styles.toolbarBtn, selectionMode && styles.toolbarBtnActive]}
+              accessibilityRole="button" accessibilityLabel="Sélection multiple">
+              <Ionicons name={selectionMode ? 'close' : 'checkbox-outline'} size={17} color={selectionMode ? 'white' : colors.text} />
+            </Pressable>
+            <Pressable
+              onPress={() => setViewMode('grid')}
+              style={[styles.toolbarBtn, viewMode === 'grid' && styles.toolbarBtnActive]}
+              accessibilityRole="button" accessibilityLabel="Vue grille">
+              <Ionicons name="grid" size={17} color={viewMode === 'grid' ? 'white' : colors.text} />
+            </Pressable>
+            <Pressable
+              onPress={() => setViewMode('list')}
+              style={[styles.toolbarBtn, viewMode === 'list' && styles.toolbarBtnActive]}
+              accessibilityRole="button" accessibilityLabel="Vue liste">
+              <Ionicons name="list" size={17} color={viewMode === 'list' ? 'white' : colors.text} />
+            </Pressable>
+            {viewMode === 'grid' && (
+              <Pressable
+                onPress={() => setColumns(c => COLUMN_CYCLE[(COLUMN_CYCLE.indexOf(c) + 1) % COLUMN_CYCLE.length])}
+                style={styles.toolbarBtn}
+                accessibilityRole="button" accessibilityLabel="Changer le nombre de colonnes">
+                {columns ? (
+                  <Text style={styles.columnsLabel}>×{columns}</Text>
+                ) : (
+                  <Ionicons name="grid-outline" size={17} color={colors.text} />
+                )}
+              </Pressable>
+            )}
+            <Pressable
+              onPress={cycleDensity}
+              style={styles.toolbarBtn}
+              accessibilityRole="button" accessibilityLabel="Changer la densité d'affichage">
+              <Ionicons name={HUD_DENSITY_ICON[density]} size={17} color={colors.text} />
+            </Pressable>
+          </View>
+        </Animated.View>
       )}
       {selectionMode && selectedIds.size > 0 && (
         <View style={styles.bulkBar}>

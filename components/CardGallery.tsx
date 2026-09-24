@@ -46,6 +46,11 @@ interface Props {
   onSetPriceAlert?: (card: TcgCardRow) => void;
   /** Pull-to-refresh — omit where the screen doesn't wire refresh (most callers). */
   refreshControl?: ReactElement<RefreshControlProps>;
+  /** Extra bottom padding on top of the standard TAB_BAR_CLEARANCE — for a
+   * screen with its own floating toolbar overlaying the bottom of the list
+   * (e.g. pinned-set/[setId].tsx), so the last row doesn't render underneath
+   * it. Omit to keep the standard clearance only. */
+  extraBottomInset?: number;
 }
 
 function numColsFor(width: number): number {
@@ -54,14 +59,15 @@ function numColsFor(width: number): number {
   return 6;
 }
 
-export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, viewMode = 'grid', columnsOverride, quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails, finishesByCard, selectionMode, selectedIds, onToggleSelect, priorityIds, onTogglePriority, priceAlertsByCard, alertTriggeredIds, onSetPriceAlert, primaryAction, refreshControl }: Props) {
+export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, viewMode = 'grid', columnsOverride, quantities, onIncrement, onDecrement, onToggle, onToggleWish, onZoom, onOpenDetails, finishesByCard, selectionMode, selectedIds, onToggleSelect, priorityIds, onTogglePriority, priceAlertsByCard, alertTriggeredIds, onSetPriceAlert, primaryAction, refreshControl, extraBottomInset }: Props) {
   const { width } = useWindowDimensions();
   const hideOnScrollProps = useHideOnScrollProps();
+  const bottomPadding = TAB_BAR_CLEARANCE + (extraBottomInset ?? 0);
   if (viewMode === 'list') {
     return (
       <FlashList
         data={cards}
-        contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
+        contentContainerStyle={{ paddingBottom: bottomPadding }}
         maintainVisibleContentPosition={{ disabled: true }}
         keyExtractor={c => c.id}
         refreshControl={refreshControl}
@@ -99,7 +105,7 @@ export function CardGallery({ cards, ownedSet, wishedSet, dexCardId, readOnly, v
     <FlashList
       data={cards}
       numColumns={columnsOverride ?? numColsFor(width)}
-      contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
+      contentContainerStyle={{ paddingBottom: bottomPadding }}
       maintainVisibleContentPosition={{ disabled: true }}
       keyExtractor={c => c.id}
       refreshControl={refreshControl}
