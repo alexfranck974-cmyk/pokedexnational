@@ -37,6 +37,10 @@ interface Props {
    * meaning, avoids growing the FAB stack further. Omit to keep scroll-only. */
   viewMode?: 'scroll' | 'page';         onToggleViewMode?: () => void;
   pageLayout?: 9 | 12 | 16;             onCyclePageLayout?: () => void;
+  /** Page mode only: hides this toolbar (tap anywhere on a page to bring it
+   * back — see pokedex.tsx) for a "contemplation" reading mode with no
+   * chrome. Omit/true to keep it always visible, matching every other mode. */
+  pageChromeVisible?: boolean;
   /** National Pokédex only: the standalone in-grid search FAB is dropped
    * (GlobalSearchBubble in app/(app)/_layout.tsx replaces it — two magnifying
    * glasses on the same screen read as redundant) and filter/columns/values/
@@ -254,7 +258,9 @@ export function SearchFilterBar(p: Props) {
   return (
     <>
       {p.viewMode === 'page' ? (
-        <View style={styles.toolbarWrap} pointerEvents="box-none">
+        <View
+          style={[styles.toolbarWrap, p.pageChromeVisible === false && { opacity: 0 }]}
+          pointerEvents={p.pageChromeVisible === false ? 'none' : 'box-none'}>
           <View style={styles.toolbar}>
             {searchOpen ? (
               <View style={styles.toolbarSearchRow}>

@@ -1,12 +1,20 @@
 import { createContext, useContext, useMemo, useRef, type ReactNode } from 'react';
 import { Animated, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useMotion } from './motion';
+import { SCREEN_FAB_CLEARANCE } from './theme';
 
-// Slide distance for the floating tab bar / settings FAB — clears the pill's
-// own height + its bottom inset + a little extra so no sliver stays visible.
-// Matches BAR_HEIGHT (62) + BAR_BOTTOM_OFFSET (16, = spacing.lg) from
-// app/(app)/_layout.tsx, kept as a literal here to avoid a circular import.
-export const TAB_BAR_HIDE_OFFSET = 62 + 16 + 20;
+// Slide distance for the floating tab bar AND the global search/"more" FABs
+// (app/(app)/_layout.tsx) — all three share this same translateY. Used to be
+// tuned only for the tab bar's own extent (62 tall + 16 bottom inset = 78),
+// which quietly under-cleared the FABs (86 bottom inset + 44 tall = 130) by
+// ~32px — invisible while hiding was only ever transient (mid-scroll, no one
+// looks closely at a fraction-of-a-second sliver), but a real visible gap
+// once something hides them permanently (the national Pokédex's page-view
+// "contemplation" mode, confirmed live 2026-09-24). SCREEN_FAB_CLEARANCE
+// (lib/theme.tsx) already clears this exact same FAB stack for a different
+// purpose (screen-level FABs stacking above it) — reusing it here instead of
+// a second hand-tuned literal that could drift out of sync with it again.
+export const TAB_BAR_HIDE_OFFSET = SCREEN_FAB_CLEARANCE + 20;
 
 const SCROLL_JITTER_PX = 4;
 const BOTTOM_EPSILON_PX = 24;
@@ -17,6 +25,7 @@ const ANIM_MS = 220;
 interface TabBarVisibilityValue {
   translateY: Animated.Value;
   show: () => void;
+  hide: () => void;
   handleScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
 }
 
@@ -48,6 +57,16 @@ export function TabBarVisibilityProvider({ children }: { children: ReactNode }) 
     animateTo(false);
   };
 
+  // For screens that want the bar (and the FABs sharing this same
+  // translateY, see app/(app)/_layout.tsx) fully out of the way on demand —
+  // the "contemplation" page-view mode of the national Pokédex, not driven
+  // by scroll at all. Also clears any pending idle-timer re-show so it
+  // doesn't immediately undo this a moment later.
+  const hide = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    animateTo(true);
+  };
+
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const y = contentOffset.y;
@@ -67,7 +86,7 @@ export function TabBarVisibilityProvider({ children }: { children: ReactNode }) 
     }
   };
 
-  const value = useMemo<TabBarVisibilityValue>(() => ({ translateY, show, handleScroll }), [translateY]);
+  const value = useMemo<TabBarVisibilityValue>(() => ({ translateY, show, hide, handleScroll }), [translateY]);
   return <TabBarVisibilityContext.Provider value={value}>{children}</TabBarVisibilityContext.Provider>;
 }
 

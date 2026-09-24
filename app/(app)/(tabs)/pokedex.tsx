@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon, PokemonType } from '@/lib/types';
@@ -31,6 +32,7 @@ import { getName } from '@/lib/i18n';
 import { useLocale, useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
+import { useTabBarVisibility } from '@/lib/tab-bar-visibility';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -141,6 +143,35 @@ export default function PokedexScreen() {
   const [columns, setColumns]       = useState<2 | 3 | 4 | null>(null);
   const { viewMode, toggleViewMode, pageLayout, cyclePageLayout } = usePokedexViewMode();
 
+  // Page/binder mode is meant as a chrome-free "contemplation" view — hero,
+  // section tabs, the page toolbar/nav arrows, and the global tab bar + FABs
+  // (app/(app)/_layout.tsx, sharing the same translateY) all hide the moment
+  // it's entered, brought back with a tap anywhere on the page.
+  const [pageChromeVisible, setPageChromeVisible] = useState(false);
+  const { hide: hideTabBar, show: showTabBar } = useTabBarVisibility();
+  // The inner (tabs) navigator (dashboard/pokedex/friends) keeps every tab
+  // mounted when switching between them (no unmountOnBlur) — this screen
+  // never actually unmounts just because the user tapped "Social", so a
+  // plain useEffect(() => () => showTabBar(), []) cleanup here would never
+  // fire, leaving the global bar/FABs stuck hidden on every other screen
+  // (confirmed live 2026-09-24). useFocusEffect's cleanup fires on losing
+  // focus specifically, mount/unmount or not — always restore on the way
+  // out; re-sync (and reset to hidden, restarting the "contemplation" feel)
+  // on the way back in if still in page mode.
+  useFocusEffect(
+    useCallback(() => {
+      if (viewMode === 'page') {
+        setPageChromeVisible(false);
+        hideTabBar();
+      } else {
+        setPageChromeVisible(true);
+        showTabBar();
+      }
+      return () => showTabBar();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [viewMode]),
+  );
+
   // Debounced: search can shrink the grid (FlashList, numColumns > 1) drastically
   // on every keystroke — see lib/use-debounced-value.ts for why that's unsafe.
   const debouncedSearch = useDebouncedValue(search, 200);
@@ -180,22 +211,28 @@ export default function PokedexScreen() {
     );
   }
 
+  const showChrome = viewMode !== 'page' || pageChromeVisible;
+
   return (
     <SafeAreaView style={styles.screen}>
-      <LinearGradient
-        colors={heroGradient}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={styles.hero}>
-        <ProgressRing pct={pct} size={56} strokeWidth={7} color={heroSurfaceActive} trackColor={heroTrack} centerLabel={`${pct}%`} />
-        <View style={styles.heroText}>
-          <Text style={styles.heroTitle}>{t('pokedex.heroTitle')}</Text>
-          <Text style={styles.heroCount}>{ownedCount} / {items.length}</Text>
-          <Text style={styles.heroValue}>≈ {eurFormatter(locale).format(nationalDexValue)}</Text>
-          {filterHint && <Text style={styles.heroFilter}>{t('pokedex.filterHint', { hint: filterHint })}</Text>}
-        </View>
-        <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={heroTextColor} />
-      </LinearGradient>
-      <PokedexSectionTabs active="pokedex" />
+      {showChrome && (
+        <>
+          <LinearGradient
+            colors={heroGradient}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={styles.hero}>
+            <ProgressRing pct={pct} size={56} strokeWidth={7} color={heroSurfaceActive} trackColor={heroTrack} centerLabel={`${pct}%`} />
+            <View style={styles.heroText}>
+              <Text style={styles.heroTitle}>{t('pokedex.heroTitle')}</Text>
+              <Text style={styles.heroCount}>{ownedCount} / {items.length}</Text>
+              <Text style={styles.heroValue}>≈ {eurFormatter(locale).format(nationalDexValue)}</Text>
+              {filterHint && <Text style={styles.heroFilter}>{t('pokedex.filterHint', { hint: filterHint })}</Text>}
+            </View>
+            <RefreshButton refreshing={refreshing} onRefresh={onRefresh} color={heroTextColor} />
+          </LinearGradient>
+          <PokedexSectionTabs active="pokedex" />
+        </>
+      )}
       {/* flex:1 wrapper establishes its own positioning context for
           SearchFilterBar's absolute overlay/toolbar, so it anchors below the
           hero + section tabs instead of covering them (its parent would
@@ -214,6 +251,12 @@ export default function PokedexScreen() {
               ownedImages={ownedImages}
               wishedInDexSet={wishedInDexSet}
               cardPrices={dexPrices}
+              chromeVisible={pageChromeVisible}
+              onBackgroundPress={() => setPageChromeVisible(v => {
+                const next = !v;
+                if (next) showTabBar(); else hideTabBar();
+                return next;
+              })}
               onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
               onLongSelect={num => {
                 const idx = ownedItems.findIndex(p => p.num === num);
@@ -269,6 +312,7 @@ export default function PokedexScreen() {
           columns={columns} onColumns={setColumns}
           viewMode={viewMode} onToggleViewMode={toggleViewMode}
           pageLayout={pageLayout} onCyclePageLayout={cyclePageLayout}
+          pageChromeVisible={pageChromeVisible}
           collapsible
         />
       </View>

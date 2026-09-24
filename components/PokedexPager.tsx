@@ -15,6 +15,12 @@ interface Props {
   cardPrices?: Map<number, number | null>;
   onSelect: (num: number) => void;
   onLongSelect?: (num: number) => void;
+  /** Hides the page-turn arrows + page-count badge for a chrome-free
+   * "contemplation" reading mode — tapping anywhere on the page (outside a
+   * tile) calls onBackgroundPress to bring them back. Omit/true for the
+   * normal always-visible controls. */
+  chromeVisible?: boolean;
+  onBackgroundPress?: () => void;
 }
 
 // Binder-style paged view over the *whole* filtered/sorted dex, continuous
@@ -26,7 +32,7 @@ interface Props {
 // pages that's not viable here, so only pageIndex±1 render their real grid;
 // everything else is an empty width-only placeholder (keeps pagingEnabled's
 // scroll math correct without mounting hundreds of tile grids at once).
-export function PokedexPager({ items, pageLayout, ownedImages, wishedInDexSet, cardPrices, onSelect, onLongSelect }: Props) {
+export function PokedexPager({ items, pageLayout, ownedImages, wishedInDexSet, cardPrices, onSelect, onLongSelect, chromeVisible = true, onBackgroundPress }: Props) {
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
   const cols = BINDER_LAYOUT_COLS[pageLayout as BinderLayout];
@@ -71,6 +77,22 @@ export function PokedexPager({ items, pageLayout, ownedImages, wishedInDexSet, c
     // paddingTop clears SearchFilterBar's page-mode top toolbar (this
     // component only ever renders in page mode, so it's unconditional here).
     page: { justifyContent: 'center' as const, padding: spacing.md, paddingTop: spacing.md + PAGE_TOOLBAR_HEIGHT },
+    // Absolutely-positioned sibling of the grid, not a flex-wrapping parent
+    // around it — confirmed live 2026-09-24 that wrapping the grid in a
+    // Pressable here broke BOTH swipe-to-turn-the-page and the tap itself on
+    // web: `styles.page` has no explicit height (sized by the horizontal
+    // pagingEnabled ScrollView's own scroll-snap machinery), so a flex:1
+    // child collapsed to the grid's own content size instead of the full
+    // page, and nesting inside a paging ScrollView's content changed its
+    // touch/responder negotiation for swipes too. As an absolute `inset:0`
+    // sibling instead, it resolves against the nearest ancestor that DOES
+    // have a real size (the ScrollView itself) regardless of `page`'s own
+    // auto height, and doesn't sit in the swipe gesture's path at all. Given
+    // BEFORE the grid in JSX (not after), so the grid's own tile Pressables
+    // — later siblings, painted on top — still win hit-testing wherever a
+    // tile actually covers; this one only ever receives a tap that lands on
+    // truly empty page space.
+    backgroundPress: { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0 },
     grid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, justifyContent: 'center' as const },
     slot: { padding: 6 },
     // Bottom row (same height as pageBadge below, flanking it left/right)
@@ -125,6 +147,7 @@ export function PokedexPager({ items, pageLayout, ownedImages, wishedInDexSet, c
             <Animated.View
               key={page}
               style={[styles.page, { width, opacity, transform: [{ perspective: 800 }, { rotateY }, { scale }] }]}>
+              <Pressable style={styles.backgroundPress} onPress={onBackgroundPress} />
               <View style={styles.grid}>
                 {pageItems.map(item => (
                   <View key={item.num} style={[styles.slot, { width: slotWidth + 12 }]}>
@@ -146,7 +169,7 @@ export function PokedexPager({ items, pageLayout, ownedImages, wishedInDexSet, c
         })}
       </Animated.ScrollView>
 
-      {pageCount > 1 && (
+      {chromeVisible && pageCount > 1 && (
         <>
           {pageIndex > 0 && (
             <Pressable onPress={() => goToPage(pageIndex - 1)} style={[styles.navBtn, styles.navBtnLeft]} hitSlop={8}>
@@ -160,9 +183,11 @@ export function PokedexPager({ items, pageLayout, ownedImages, wishedInDexSet, c
           )}
         </>
       )}
-      <View style={styles.pageBadge} pointerEvents="none">
-        <Text style={styles.pageBadgeText}>{pageIndex + 1}/{pageCount}</Text>
-      </View>
+      {chromeVisible && (
+        <View style={styles.pageBadge} pointerEvents="none">
+          <Text style={styles.pageBadgeText}>{pageIndex + 1}/{pageCount}</Text>
+        </View>
+      )}
     </View>
   );
 }
