@@ -164,7 +164,7 @@ export default function FavoritesScreen() {
   const insertBinderSlot = useInsertBinderSlot();
   const deleteBinderSlot = useDeleteBinderSlot();
 
-  const { data: goals = [] } = useSetGoals(userId);
+  const { data: goals = [], isLoading: goalsLoading } = useSetGoals(userId);
   const toggleGoal = useToggleSetGoal();
   const { data: allSets = [] } = useTcgSets();
   const { data: sealedProducts = new Map<string, Map<SealedProductType, number>>() } = useSealedProducts(userId);
@@ -228,6 +228,68 @@ export default function FavoritesScreen() {
   // collapsing "Mega Evolution" among your pinned sets shouldn't also
   // collapse it in the full catalog below.
   const [collapsedSeries, setCollapsedSeries] = useState<Set<string>>(new Set());
+  // Seeds the collapse defaults once real data is in: every region collapsed
+  // except the one holding the single most-recently-released set, and (only
+  // meaningful for global, the only region with real series subgrouping)
+  // every series in the CATALOG collapsed except the newest one — the
+  // pinned section's own series keys are prefixed ("pinned:...", see above)
+  // so they're untouched and always expanded, since that's the "what I'm
+  // actively working on" section, not the thing being decluttered here.
+  // ~173 sets all expanded at once on first load read as a wall of headers/
+  // rows before you'd even start scrolling — confirmed with the user
+  // 2026-09-24. Guarded to run only once (not every catalogGroups identity
+  // change from an unrelated refetch), and only reads from catalogGroups
+  // (not the raw allSets) so a just-pinned newest set doesn't leave the
+  // catalog's own newest-*remaining* series collapsed by mistake.
+  //
+  // Region collapse is shared state with the pinned section by original
+  // design (see collapsedRegions' own comment) — QA'd live 2026-09-24 that
+  // defaulting to "only the newest region expanded" silently hid a pinned
+  // goal in any OTHER region (e.g. a pinned JP set, with Global holding the
+  // newest release) until manually expanded once. Also excluding every
+  // region that holds at least one pinned set keeps that "what I'm actively
+  // working on" promise intact without touching the shared-toggle semantics
+  // itself — a region the user *manually* collapses later still hides a
+  // pinned goal there too, same as before this change, just no longer a
+  // surprise on first load.
+  const collapseDefaultsSetRef = useRef(false);
+  useEffect(() => {
+    // goals (pinned sets) loads as a separate query from allSets — catalogGroups
+    // itself only depends on allSets+pinnedSetIds, so it can already be non-empty
+    // while goals is still mid-flight and pinnedSetIds is still the empty-set
+    // default. Locking in defaults off THAT would silently skip excluding any
+    // pinned region at all (caught live 2026-09-24: a pinned JP set stayed
+    // hidden behind a collapsed region despite the exclusion logic below).
+    // !userId isn't enough on its own either — useSetGoals is `enabled: !!userId`,
+    // and react-query reports a *disabled* query's isLoading as false (it's not
+    // "loading", it just never started), so without also requiring userId itself
+    // this still fires while the session is still resolving, before goals has
+    // had any chance to actually fetch.
+    if (collapseDefaultsSetRef.current || catalogGroups.length === 0 || !userId || goalsLoading) return;
+    const newestPerRegion = catalogGroups
+      .map(g => g.subgroups[0]?.sets[0])
+      .filter((s): s is TcgSetInfo => !!s);
+    if (newestPerRegion.length === 0) return;
+    collapseDefaultsSetRef.current = true;
+
+    const newest = newestPerRegion.reduce((a, b) => ((b.releaseDate ?? '') > (a.releaseDate ?? '') ? b : a));
+    const newestRegion = newest.region || 'global';
+    const pinnedRegionIds = new Set(
+      pinnedGroups.filter(g => g.subgroups.some(sg => sg.sets.length > 0)).map(g => g.id),
+    );
+    setCollapsedRegions(new Set(
+      REGION_ORDER.map(r => r.id).filter(id => id !== newestRegion && !pinnedRegionIds.has(id)),
+    ));
+
+    const globalGroup = catalogGroups.find(g => g.id === 'global');
+    const newestSeriesKey = globalGroup?.subgroups[0]?.id;
+    if (globalGroup && newestSeriesKey != null) {
+      setCollapsedSeries(new Set(
+        globalGroup.subgroups.map(sg => sg.id).filter((id): id is string => id !== newestSeriesKey),
+      ));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogGroups, userId, goalsLoading]);
   const toggleSeriesCollapsed = (seriesId: string) => setCollapsedSeries(prev => {
     const next = new Set(prev);
     if (next.has(seriesId)) next.delete(seriesId); else next.add(seriesId);
