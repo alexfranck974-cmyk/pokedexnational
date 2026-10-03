@@ -25,6 +25,7 @@ import { CardZoomModal, type ZoomableCard } from '@/components/CardZoomModal';
 import { TradeProposalModal, type TradeTarget, type PickedCard } from '@/components/TradeProposalModal';
 import { TradeIcon } from '@/components/TradeIcon';
 import { BubbleSheet } from '@/components/BubbleSheet';
+import { CardScanSheet } from '@/components/CardScanSheet';
 import { Pokeball } from '@/components/Pokeball';
 import { IconBubble } from '@/components/IconBubble';
 import { getName } from '@/lib/i18n';
@@ -106,6 +107,8 @@ function PublicProfileInner() {
   const [tradePreset, setTradePreset] = useState<PickedCard | undefined>(undefined);
   const [comparePromptOpen, setComparePromptOpen] = useState(false);
   const [compareInput, setCompareInput] = useState('');
+  const [scanOpen, setScanOpen] = useState(false);
+  const wishedCardIds = useMemo(() => new Set((wishedCards as WishlistCard[]).map(c => c.id)), [wishedCards]);
 
   const ownedCardsByDex = useMemo(() => new Map(ownedCardsDetailed.map(c => [c.dexNum, c])), [ownedCardsDetailed]);
   const vitrineCards = useMemo(() => Array.from(showcase)
@@ -169,12 +172,19 @@ function PublicProfileInner() {
     friendBtnSecondary: { backgroundColor: colors.surfaceAlt },
     friendBtnText: { fontSize: 12, fontFamily: fonts.bodyBold, color: 'white' },
     friendBtnTextSecondary: { color: colors.text },
+    bannerActionsRow: { flexDirection: 'row' as const, gap: spacing.sm, alignItems: 'center' as const },
     compareBtn: {
       flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6,
       paddingHorizontal: spacing.sm, paddingVertical: 8, borderRadius: radius.pill,
       backgroundColor: colors.surfaceAlt, alignSelf: 'flex-start' as const,
     },
     compareBtnText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.text },
+    scanBtn: {
+      flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6,
+      paddingHorizontal: spacing.sm, paddingVertical: 8, borderRadius: radius.pill,
+      backgroundColor: colors.primary, alignSelf: 'flex-start' as const,
+    },
+    scanBtnText: { fontSize: 12, fontFamily: fonts.bodyBold, color: 'white' },
     compareSheetBody: { padding: spacing.md, gap: spacing.md },
     compareSheetHint: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted },
     compareInput: {
@@ -285,10 +295,16 @@ function PublicProfileInner() {
           )}
         </View>
         <ProgressCounter owned={ownedCount} total={items.length} />
-        <Pressable onPress={() => setComparePromptOpen(true)} style={styles.compareBtn}>
-          <Ionicons name="git-compare-outline" size={14} color={colors.text} />
-          <Text style={styles.compareBtnText}>{t('profile.compareButton')}</Text>
-        </Pressable>
+        <View style={styles.bannerActionsRow}>
+          <Pressable onPress={() => setComparePromptOpen(true)} style={styles.compareBtn}>
+            <Ionicons name="git-compare-outline" size={14} color={colors.text} />
+            <Text style={styles.compareBtnText}>{t('profile.compareButton')}</Text>
+          </Pressable>
+          <Pressable onPress={() => setScanOpen(true)} style={styles.scanBtn}>
+            <Ionicons name="camera-outline" size={14} color="white" />
+            <Text style={styles.scanBtnText}>{t('profile.scanButton')}</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.tabRow}>
@@ -509,6 +525,14 @@ function PublicProfileInner() {
           </Pressable>
         </View>
       </BubbleSheet>
+      <CardScanSheet
+        visible={scanOpen}
+        onClose={() => setScanOpen(false)}
+        mode="readonly"
+        ownerDisplayName={profile.display_name}
+        ownedCardIds={ownedCardIds}
+        wishedCardIds={wishedCardIds}
+      />
     </SafeAreaView>
   );
 }

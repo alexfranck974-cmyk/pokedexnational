@@ -16,6 +16,7 @@ import { NotificationBanner } from '@/components/NotificationBanner';
 import { useAppNotifications } from '@/lib/notifications';
 import { TabBarVisibilityProvider, useTabBarVisibility } from '@/lib/tab-bar-visibility';
 import { GlobalSearchBubble } from '@/components/GlobalSearchBubble';
+import { CardScanSheet } from '@/components/CardScanSheet';
 import { withAlpha } from '@/lib/color-utils';
 import { withReturnTo } from '@/lib/navigation';
 import { useTheme, radius, spacing, fonts } from '@/lib/theme';
@@ -79,6 +80,7 @@ function AppLayoutStack() {
   // separate floating buttons felt fine everywhere else); generalized since
   // every other screen had the exact same clutter, just less visibly so.
   const [moreExpanded, setMoreExpanded] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   useEffect(() => { setMoreExpanded(false); }, [pathname]);
   const userId = session?.user.id;
   const { data: incomingRequests = [] } = useIncomingRequests(userId);
@@ -171,8 +173,17 @@ function AppLayoutStack() {
               )}
             </Pressable>
           </Animated.View>
+          <Animated.View style={[fabWrap('left', 3), { transform: [{ translateY }] }]}>
+            <Pressable
+              onPress={() => { setMoreExpanded(false); setScanOpen(true); }}
+              style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}
+              accessibilityRole="button"
+              accessibilityLabel={t('appLayout.a11yScanCard')}>
+              <Ionicons name="camera-outline" size={20} color={colors.text} />
+            </Pressable>
+          </Animated.View>
           {inProgressOffers.length > 0 && (
-            <Animated.View style={[fabWrap('left', 3), { transform: [{ translateY }] }]}>
+            <Animated.View style={[fabWrap('left', 4), { transform: [{ translateY }] }]}>
               <Pressable
                 onPress={() => { setMoreExpanded(false); setOpenInProgress(inProgressOffers[0]); }}
                 style={[styles.settingsFab, { backgroundColor: withAlpha(colors.surface, 0.86), borderColor: withAlpha(colors.border, 0.6) }]}
@@ -193,6 +204,7 @@ function AppLayoutStack() {
       )}
       <TradeInProgressPopup item={openInProgress} onClose={() => setOpenInProgress(null)} />
       <NotificationBanner event={notification} onDone={dismissNotification} />
+      <CardScanSheet visible={scanOpen} onClose={() => setScanOpen(false)} mode="self" />
     </View>
   );
 }
