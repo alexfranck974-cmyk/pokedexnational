@@ -17,11 +17,20 @@ interface Props {
   /** Shown instead of cardCount when the value toggle (SearchFilterBar) is on. */
   priceEur?: number | null;
   wishedInDex?: boolean;
+  /** Binder/"page" view only (PokedexPager) — strips the per-tile padding,
+   * shadow, and num/name/count text so neighboring tiles sit edge-to-edge
+   * instead of reading as separate floating bubbles, and the card art fills
+   * as much of the slot as possible. Plain (theme-independent) style object
+   * below, applied at the JSX level rather than inside useThemedStyles, per
+   * the memoization gotcha (factory only recomputes on [colors, shadow]). */
+  dense?: boolean;
   onPress: () => void;
   onZoom?: () => void;
 }
 
-export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCount, priceEur, wishedInDex, onPress, onZoom }: Props) {
+const DENSE_TILE_OVERRIDE = { padding: 1, aspectRatio: 0.72 };
+
+export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCount, priceEur, wishedInDex, dense, onPress, onZoom }: Props) {
   const useCard = owned && !!ownedCardImage;
   // "In color" reflects owning ANY card for this species (the ledger); the card-art
   // swap / Pokéball badge / count below stay gated on `owned` — the one specifically
@@ -75,7 +84,7 @@ export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCou
       onPress={onPress}
       onLongPress={owned ? onZoom : undefined}
       delayLongPress={350}
-      style={({ pressed }) => [styles.tile, owned && styles.tileOwned, pressed && styles.pressed]}>
+      style={({ pressed }) => [styles.tile, dense && DENSE_TILE_OVERRIDE, owned && !dense && styles.tileOwned, pressed && styles.pressed]}>
       {useCard ? (
         // Real owned card art gets a foil-style gradient edge — a sprite alone doesn't.
         <LinearGradient
@@ -97,7 +106,7 @@ export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCou
           {badges}
         </View>
       )}
-      {density !== 'minimal' && (
+      {!dense && density !== 'minimal' && (
         <>
           <Text style={[styles.num, !inColor && styles.textDim]}>
             #{String(pokemon.num).padStart(4, '0')}
@@ -107,7 +116,7 @@ export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCou
           </Text>
         </>
       )}
-      {density !== 'minimal' && (
+      {!dense && density !== 'minimal' && (
         density === 'detailed' && owned && priceEur !== undefined ? (
           <Text style={styles.cardCount} numberOfLines={1}>{priceEur == null ? '—' : eurFormatter(locale).format(priceEur)}</Text>
         ) : (

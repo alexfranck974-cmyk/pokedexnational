@@ -33,6 +33,7 @@ import { useLocale, useT } from '@/lib/locale';
 import { useTheme, useThemedStyles, radius, spacing, fonts } from '@/lib/theme';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useTabBarVisibility } from '@/lib/tab-bar-visibility';
+import { getPokedexViewState, setPokedexViewState } from '@/lib/pokedex-view-state';
 
 const POKEDEX = pokedexData as Pokemon[];
 
@@ -133,14 +134,23 @@ export default function PokedexScreen() {
     router.setParams({ from: undefined });
   }, [from, router]);
 
-  const [search, setSearch]         = useState('');
-  const [statusFilter, setStatus]   = useState<StatusFilter>('all');
-  const [typeFilter, setType]       = useState<PokemonType[]>([]);
-  const [setFilter, setSet]         = useState<string | null>(null);
-  const [rarityFilter, setRarity]   = useState<string | null>(null);
-  const [generationFilter, setGeneration] = useState<number[]>([]);
-  const [sort, setSort]             = useState<SortKey>('num-asc');
-  const [columns, setColumns]       = useState<2 | 3 | 4 | null>(null);
+  // Lazily seeded from the last known view (lib/pokedex-view-state.ts) rather
+  // than hardcoded defaults — useBackTo's router.replace (lib/navigation.ts)
+  // recreates this screen on the way back from a Pokémon's detail page
+  // instead of popping back to the existing instance, which would otherwise
+  // silently drop every filter/search/sort/scroll choice made before diving in.
+  const savedView = useRef(getPokedexViewState()).current;
+  const [search, setSearch]         = useState(savedView.search);
+  const [statusFilter, setStatus]   = useState<StatusFilter>(savedView.statusFilter);
+  const [typeFilter, setType]       = useState<PokemonType[]>(savedView.typeFilter);
+  const [setFilter, setSet]         = useState<string | null>(savedView.setFilter);
+  const [rarityFilter, setRarity]   = useState<string | null>(savedView.rarityFilter);
+  const [generationFilter, setGeneration] = useState<number[]>(savedView.generationFilter);
+  const [sort, setSort]             = useState<SortKey>(savedView.sort);
+  const [columns, setColumns]       = useState<2 | 3 | 4 | null>(savedView.columns);
+  useEffect(() => {
+    setPokedexViewState({ search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort, columns });
+  }, [search, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort, columns]);
   const { viewMode, toggleViewMode, pageLayout, cyclePageLayout } = usePokedexViewMode();
 
   // Page/binder mode is meant as a chrome-free "contemplation" view — hero,
@@ -257,6 +267,7 @@ export default function PokedexScreen() {
                 if (next) showTabBar(); else hideTabBar();
                 return next;
               })}
+              onExit={toggleViewMode}
               onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
               onLongSelect={num => {
                 const idx = ownedItems.findIndex(p => p.num === num);
@@ -277,6 +288,8 @@ export default function PokedexScreen() {
                 columnsOverride={columns}
                 cardPrices={dexPrices}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+                initialScrollOffset={savedView.scrollOffset}
+                onScrollOffsetChange={y => setPokedexViewState({ scrollOffset: y })}
                 onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
                 onLongSelect={num => {
                   const idx = ownedItems.findIndex(p => p.num === num);

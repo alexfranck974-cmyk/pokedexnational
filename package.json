@@ -61,6 +61,7 @@
     "web": "expo start --web",
     "test": "jest",
     "build:pokedex": "ts-node --project tsconfig.scripts.json scripts/build-pokemon-data.ts",
+    "build:name-aliases": "ts-node --project tsconfig.scripts.json scripts/build-name-aliases.ts",
     "sync:tcg": "ts-node --project tsconfig.scripts.json scripts/sync-tcg-cards.ts",
     "sync:tcg:prices": "ts-node --project tsconfig.scripts.json scripts/sync-tcg-prices.ts",
     "sync:tcg:finishes": "ts-node --project tsconfig.scripts.json scripts/sync-tcg-finishes.ts",

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Animated, useWindowDimensions, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PokemonTile } from './PokemonTile';
+import { BackButton } from './BackButton';
 import type { PokemonWithState } from '@/lib/pokedex-list';
 import { BINDER_LAYOUT_COLS, type BinderLayout } from '@/lib/binders';
 import { useTheme, useThemedStyles, radius, spacing, fonts, TAB_BAR_CLEARANCE } from '@/lib/theme';
@@ -21,6 +22,11 @@ interface Props {
    * normal always-visible controls. */
   chromeVisible?: boolean;
   onBackgroundPress?: () => void;
+  /** Exits the binder view back to the regular grid — shown as a floating
+   * back button alongside the nav arrows/page badge (same chromeVisible
+   * guard), since this chrome-free view has no header of its own to put one
+   * in otherwise. */
+  onExit?: () => void;
 }
 
 // Binder-style paged view over the *whole* filtered/sorted dex, continuous
@@ -32,7 +38,7 @@ interface Props {
 // pages that's not viable here, so only pageIndex±1 render their real grid;
 // everything else is an empty width-only placeholder (keeps pagingEnabled's
 // scroll math correct without mounting hundreds of tile grids at once).
-export function PokedexPager({ items, pageLayout, ownedImages, wishedInDexSet, cardPrices, onSelect, onLongSelect, chromeVisible = true, onBackgroundPress }: Props) {
+export function PokedexPager({ items, pageLayout, ownedImages, wishedInDexSet, cardPrices, onSelect, onLongSelect, chromeVisible = true, onBackgroundPress, onExit }: Props) {
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
   const cols = BINDER_LAYOUT_COLS[pageLayout as BinderLayout];
@@ -94,7 +100,12 @@ export function PokedexPager({ items, pageLayout, ownedImages, wishedInDexSet, c
     // truly empty page space.
     backgroundPress: { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0 },
     grid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, justifyContent: 'center' as const },
-    slot: { padding: 6 },
+    // Tight on purpose — a real binder page has cards sitting edge-to-edge in
+    // their sleeves, not floating with daylight between them. Paired with
+    // PokemonTile's dense=true (no padding/shadow/text) here specifically;
+    // this is still 6 elsewhere (the slot gap alone isn't what read as
+    // "distinct bubbles", the tile's own padding+shadow+text block was).
+    slot: { padding: 1 },
     // Bottom row (same height as pageBadge below, flanking it left/right)
     // instead of vertically centered over the grid — centered arrows sat on
     // top of the middle row of Pokémon tiles, right where thumbs naturally
@@ -112,6 +123,14 @@ export function PokedexPager({ items, pageLayout, ownedImages, wishedInDexSet, c
     },
     navBtnLeft: { left: 76 },
     navBtnRight: { right: 76 },
+    // Top-left, below the (always space-reserved, opacity-faded) page
+    // toolbar — the only way out of this chrome-free view, so it shares the
+    // same visible-on-tap guard as the nav arrows/page badge rather than
+    // being permanently on-screen over the art.
+    exitBtn: {
+      position: 'absolute' as const, top: spacing.md + PAGE_TOOLBAR_HEIGHT, left: spacing.md, width: 44, height: 44, borderRadius: 22,
+      backgroundColor: colors.surface, alignItems: 'center' as const, justifyContent: 'center' as const, opacity: 0.92, ...shadow.md,
+    },
     // Clears the floating tab bar (same TAB_BAR_CLEARANCE the FlashList grid
     // uses as contentContainerStyle padding) — sitting at spacing.md like the
     // binder viewer's badge does would land underneath it on this screen.
@@ -158,6 +177,7 @@ export function PokedexPager({ items, pageLayout, ownedImages, wishedInDexSet, c
                       ownedCardImage={ownedImages?.get(item.num)}
                       priceEur={cardPrices?.get(item.num)}
                       wishedInDex={wishedInDexSet?.has(item.num)}
+                      dense
                       onPress={() => onSelect(item.num)}
                       onZoom={onLongSelect ? () => onLongSelect(item.num) : undefined}
                     />
@@ -169,6 +189,9 @@ export function PokedexPager({ items, pageLayout, ownedImages, wishedInDexSet, c
         })}
       </Animated.ScrollView>
 
+      {chromeVisible && onExit && (
+        <BackButton onPress={onExit} style={styles.exitBtn} color={colors.text} size={22} />
+      )}
       {chromeVisible && pageCount > 1 && (
         <>
           {pageIndex > 0 && (

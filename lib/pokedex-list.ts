@@ -2,6 +2,17 @@ import type { Pokemon, PokemonType } from './types';
 import { getName } from './i18n';
 import { GENERATIONS } from './generations';
 import type { Locale } from './locale';
+import nameAliasesData from '@/data/pokemon-name-aliases.json';
+
+// Every non-fr/non-en PokeAPI species name (de, es, it, ja-Hrkt, ko, ...) —
+// name_fr/name_en already cover the app's own two display locales directly
+// on the Pokemon object, this is purely a search-matching supplement so
+// "chercher un Pokémon, qu'importe la langue de son nom" isn't limited to
+// those two (see scripts/build-name-aliases.ts for why this is a separate
+// file instead of a new field on Pokemon itself).
+const NAME_ALIASES_BY_NUM = new Map<number, string[]>(
+  Object.entries(nameAliasesData as Record<string, string[]>).map(([num, names]) => [Number(num), names]),
+);
 
 export type StatusFilter = 'all' | 'owned' | 'missing';
 export type SortKey = 'num-asc' | 'num-desc' | 'name-asc' | 'name-desc';
@@ -68,7 +79,8 @@ export function applyPokedexPipeline(
       if (paddedMatch) return true;
       const nameMatches =
         (p.name_fr && normalize(p.name_fr).includes(searchN)) ||
-        normalize(p.name_en).includes(searchN);
+        normalize(p.name_en).includes(searchN) ||
+        (NAME_ALIASES_BY_NUM.get(p.num) ?? []).some(alias => normalize(alias).includes(searchN));
       if (!nameMatches) return false;
     }
 

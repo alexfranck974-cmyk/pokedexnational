@@ -89,6 +89,13 @@ describe('applyPokedexPipeline', () => {
     expect(r.map(x => x.num)).toEqual([4]);
   });
 
+  it('search matches a German name via data/pokemon-name-aliases.json (Charmander = Glumanda)', () => {
+    const r = applyPokedexPipeline(sample, owned, index, {
+      search: 'glumanda', statusFilter: 'all', typeFilter: [], setFilter: null, rarityFilter: null, sort: 'num-asc',
+    });
+    expect(r.map(x => x.num)).toEqual([4]);
+  });
+
   it('sort name asc/desc, insensitive to accents', () => {
     const asc = applyPokedexPipeline(sample, owned, index, {
       search: '', statusFilter: 'all', typeFilter: [], setFilter: null, rarityFilter: null, sort: 'name-asc',

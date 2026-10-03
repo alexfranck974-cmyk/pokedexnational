@@ -1,7 +1,7 @@
-import { useMemo, type ReactElement } from 'react';
-import { View, Text, Image, StyleSheet, useWindowDimensions, type RefreshControlProps } from 'react-native';
+import { useMemo, useRef, type ReactElement } from 'react';
+import { View, Text, Image, StyleSheet, useWindowDimensions, type RefreshControlProps, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { PokemonTile } from './PokemonTile';
 import pokedexData from '@/data/pokedex.json';
 import type { Pokemon } from '@/lib/types';
@@ -29,6 +29,14 @@ interface Props {
   refreshControl?: ReactElement<RefreshControlProps>;
   onSelect: (num: number) => void;
   onLongSelect?: (num: number) => void;
+  /** Restores the scroll position once the list has drawn its initial items
+   * (FlashList's onLoad, not a timing guess) — paired with
+   * onScrollOffsetChange below so a parent screen can remember "where the
+   * user was" across a remount (e.g. the national Pokédex's back-navigation
+   * case, see lib/pokedex-view-state.ts). Omit both on screens that don't
+   * need this (e.g. the public profile view). */
+  initialScrollOffset?: number;
+  onScrollOffsetChange?: (offsetY: number) => void;
 }
 
 type GridRow =
@@ -51,11 +59,17 @@ function numColsFor(width: number): number {
   return 8;
 }
 
-export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, columnsOverride, ListHeaderComponent, refreshControl, onSelect, onLongSelect }: Props) {
+export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, columnsOverride, ListHeaderComponent, refreshControl, onSelect, onLongSelect, initialScrollOffset, onScrollOffsetChange }: Props) {
   const { width } = useWindowDimensions();
   const { locale } = useLocale();
   const hideOnScrollProps = useHideOnScrollProps();
   const cols = columnsOverride ?? numColsFor(width);
+  const listRef = useRef<FlashListRef<GridRow>>(null);
+
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    hideOnScrollProps.onScroll(e);
+    onScrollOffsetChange?.(e.nativeEvent.contentOffset.y);
+  };
 
   const styles = useThemedStyles((colors) => ({
     headerRow: {
@@ -97,6 +111,7 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, co
 
   return (
     <FlashList
+      ref={listRef}
       data={rows}
       numColumns={cols}
       keyExtractor={row => row?.key ?? 'missing'}
@@ -106,8 +121,11 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, co
       contentContainerStyle={{ paddingBottom: TAB_BAR_CLEARANCE }}
       maintainVisibleContentPosition={{ disabled: true }}
       stickyHeaderIndices={stickyHeaderIndices}
-      onScroll={hideOnScrollProps.onScroll}
+      onScroll={onScroll}
       scrollEventThrottle={hideOnScrollProps.scrollEventThrottle}
+      onLoad={() => {
+        if (initialScrollOffset) listRef.current?.scrollToOffset({ offset: initialScrollOffset, animated: false });
+      }}
       overrideItemLayout={(layout, row, _index, maxColumns) => {
         if (row?.type === 'header') layout.span = maxColumns;
       }}
