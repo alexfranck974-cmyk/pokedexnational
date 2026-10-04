@@ -1,4 +1,4 @@
-import { useMemo, useRef, type ReactElement } from 'react';
+import { useMemo, useRef, useEffect, type ReactElement } from 'react';
 import { View, Text, Image, StyleSheet, useWindowDimensions, type RefreshControlProps, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
@@ -37,6 +37,13 @@ interface Props {
    * need this (e.g. the public profile view). */
   initialScrollOffset?: number;
   onScrollOffsetChange?: (offsetY: number) => void;
+  /** A search that uniquely identifies one Pokémon doesn't filter it into
+   * isolation (pokedex.tsx keeps `items` as the full, non-search-narrowed
+   * list in that case) — instead this scrolls to it and highlights its tile,
+   * so it reads "here it is, relative to the rest of the dex" rather than
+   * hiding every neighbor. Added for convention use: glance at a Pokémon's
+   * card next to its generation instead of searching it into a lone result. */
+  locateNum?: number | null;
 }
 
 type GridRow =
@@ -59,7 +66,7 @@ function numColsFor(width: number): number {
   return 8;
 }
 
-export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, columnsOverride, ListHeaderComponent, refreshControl, onSelect, onLongSelect, initialScrollOffset, onScrollOffsetChange }: Props) {
+export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, columnsOverride, ListHeaderComponent, refreshControl, onSelect, onLongSelect, initialScrollOffset, onScrollOffsetChange, locateNum }: Props) {
   const { width } = useWindowDimensions();
   const { locale } = useLocale();
   const hideOnScrollProps = useHideOnScrollProps();
@@ -108,6 +115,17 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, co
     () => rows.reduce<number[]>((acc, row, i) => { if (row.type === 'header') acc.push(i); return acc; }, []),
     [rows],
   );
+
+  const locateIndex = useMemo(
+    () => (locateNum == null ? -1 : rows.findIndex(r => r.type === 'pokemon' && r.item.num === locateNum)),
+    [rows, locateNum],
+  );
+  // Re-fires whenever locateIndex changes to a real row (a new unique search
+  // match) — not on every render, so scrolling to it doesn't fight the user
+  // manually scrolling away afterwards while the same match stays typed in.
+  useEffect(() => {
+    if (locateIndex >= 0) listRef.current?.scrollToIndex({ index: locateIndex, animated: true, viewPosition: 0.4 });
+  }, [locateIndex]);
 
   return (
     <FlashList
@@ -163,6 +181,7 @@ export function PokedexGrid({ items, ownedImages, wishedInDexSet, cardPrices, co
             ownedCardImage={ownedImages?.get(row.item.num)}
             priceEur={cardPrices?.get(row.item.num)}
             wishedInDex={wishedInDexSet?.has(row.item.num)}
+            highlighted={row.item.num === locateNum}
             onPress={() => onSelect(row.item.num)}
             onZoom={onLongSelect ? () => onLongSelect(row.item.num) : undefined}
           />

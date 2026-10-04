@@ -9,7 +9,7 @@ import type { Pokemon, PokemonType } from '@/lib/types';
 import { useSession } from '@/lib/auth';
 import { useUserDex, useOwnedCardImages, useWishedDexNums, useAllOwnedCardsDetailed, useOwnedDexNums } from '@/lib/collection';
 import { useTcgIndex, useTcgSets, useTcgRarities } from '@/lib/tcg-index';
-import { applyPokedexPipeline } from '@/lib/pokedex-list';
+import { applyPokedexPipeline, pokemonLocateMatch } from '@/lib/pokedex-list';
 import { withReturnTo, safeDecodeURIComponent } from '@/lib/navigation';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import type { StatusFilter, SortKey } from '@/lib/pokedex-list';
@@ -192,6 +192,28 @@ export default function PokedexScreen() {
     [owned, tcgIndex, debouncedSearch, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort, collectedDex, locale],
   );
 
+  // Same pipeline, search left out — honors every other active filter but
+  // never narrows the grid down by name/number. Lets a search that uniquely
+  // identifies one Pokémon "locate" it (scroll to + highlight, see
+  // PokedexGrid's locateNum) instead of hiding every other tile, which is
+  // the whole point at a convention: glance at where it sits amid the rest
+  // of the dex and what's around it, not just see it in isolation.
+  const itemsNoSearch = useMemo(
+    () => applyPokedexPipeline(POKEDEX, owned, tcgIndex, {
+      search: '', statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort,
+    }, collectedDex, locale),
+    [owned, tcgIndex, statusFilter, typeFilter, setFilter, rarityFilter, generationFilter, sort, collectedDex, locale],
+  );
+  // Only when the search text narrows to exactly one Pokémon (among the
+  // other active filters) — 0 or 2+ matches fall back to the normal
+  // filtered `items` list below, same as before this feature existed.
+  const locateNum = useMemo(() => {
+    if (!debouncedSearch.trim()) return null;
+    const matches = itemsNoSearch.filter(p => pokemonLocateMatch(p, debouncedSearch));
+    return matches.length === 1 ? matches[0].num : null;
+  }, [itemsNoSearch, debouncedSearch]);
+  const displayItems = locateNum != null ? itemsNoSearch : items;
+
   const filterHintParts: string[] = [];
   if (generationFilter.length) filterHintParts.push(generationFilter.map(g => `Gen ${g}`).join(' + '));
   if (typeFilter.length) filterHintParts.push(typeFilter.map(ty => getTypeLabel(ty, locale)).join(locale === 'en' ? ' or ' : ' ou '));
@@ -202,9 +224,9 @@ export default function PokedexScreen() {
   if (rarityFilter) filterHintParts.push(rarityFilter);
   const filterHint = filterHintParts.length ? filterHintParts.join(' + ') : undefined;
 
-  const ownedItems = useMemo(() => items.filter(p => p.owned), [items]);
+  const ownedItems = useMemo(() => displayItems.filter(p => p.owned), [displayItems]);
   const ownedCount = ownedItems.length;
-  const pct = items.length > 0 ? Math.round((ownedCount / items.length) * 100) : 0;
+  const pct = displayItems.length > 0 ? Math.round((ownedCount / displayItems.length) * 100) : 0;
 
   const zoomPokemon = zoomIndex !== null ? ownedItems[zoomIndex] : null;
   const zoomCard = zoomPokemon ? ownedCardsByDex.get(zoomPokemon.num) : null;
@@ -234,7 +256,7 @@ export default function PokedexScreen() {
             <ProgressRing pct={pct} size={56} strokeWidth={7} color={heroSurfaceActive} trackColor={heroTrack} centerLabel={`${pct}%`} />
             <View style={styles.heroText}>
               <Text style={styles.heroTitle}>{t('pokedex.heroTitle')}</Text>
-              <Text style={styles.heroCount}>{ownedCount} / {items.length}</Text>
+              <Text style={styles.heroCount}>{ownedCount} / {displayItems.length}</Text>
               <Text style={styles.heroValue}>≈ {eurFormatter(locale).format(nationalDexValue)}</Text>
               {filterHint && <Text style={styles.heroFilter}>{t('pokedex.filterHint', { hint: filterHint })}</Text>}
             </View>
@@ -282,7 +304,7 @@ export default function PokedexScreen() {
                 select, which would otherwise eat the gesture first. */}
             <SlideTransition transitionKey={navToken} direction={sectionDirection} style={{ flex: 1, userSelect: 'none' } as any}>
               <PokedexGrid
-                items={items}
+                items={displayItems}
                 ownedImages={ownedImages}
                 wishedInDexSet={wishedInDexSet}
                 columnsOverride={columns}
@@ -290,6 +312,7 @@ export default function PokedexScreen() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
                 initialScrollOffset={savedView.scrollOffset}
                 onScrollOffsetChange={y => setPokedexViewState({ scrollOffset: y })}
+                locateNum={locateNum}
                 onSelect={num => router.push(withReturnTo(wishedInDexSet.has(num) ? `/pokemon/${num}?wishes=1` : `/pokemon/${num}`, '/pokedex') as never)}
                 onLongSelect={num => {
                   const idx = ownedItems.findIndex(p => p.num === num);

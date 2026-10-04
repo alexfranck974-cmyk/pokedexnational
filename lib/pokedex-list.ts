@@ -35,6 +35,44 @@ function normalize(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
+// Shared between the filter pipeline below and the national Pokédex's
+// "locate" search (app/(app)/(tabs)/pokedex.tsx — jumps to + highlights a
+// unique match in the full grid instead of filtering everything else out),
+// so both agree on what counts as a match.
+export function pokemonMatchesSearch(p: Pokemon, rawSearch: string): boolean {
+  const searchN = normalize(rawSearch.trim());
+  if (!searchN) return true;
+  const searchDigits = /^\d+$/.test(searchN) ? String(parseInt(searchN, 10)) : null;
+  if (searchDigits && String(p.num) === searchDigits) return true;
+  if (String(p.num).padStart(3, '0').includes(searchN)) return true;
+  return (
+    (!!p.name_fr && normalize(p.name_fr).includes(searchN)) ||
+    normalize(p.name_en).includes(searchN) ||
+    (NAME_ALIASES_BY_NUM.get(p.num) ?? []).some(alias => normalize(alias).includes(searchN))
+  );
+}
+
+// Stricter than pokemonMatchesSearch above on purpose — used only to decide
+// whether the national Pokédex's "locate" search has converged on a single
+// Pokémon yet (pokedex.tsx's locateNum). A plain substring match against
+// every alias across ~10 languages collides constantly on short prefixes
+// (e.g. "char" alone matches 14+ Pokémon — Medicham/Torkoal/Rampardos/... all
+// happen to contain "char" somewhere in some language's name), which kept
+// "locate" from kicking in until almost the whole name was typed. Prefix
+// matching converges immediately ("pika" → Pikachu uniquely after 4 letters)
+// since it's anchored to how an actual name starts, not an arbitrary substring.
+export function pokemonLocateMatch(p: Pokemon, rawSearch: string): boolean {
+  const searchN = normalize(rawSearch.trim());
+  if (!searchN) return false;
+  const searchDigits = /^\d+$/.test(searchN) ? String(parseInt(searchN, 10)) : null;
+  if (searchDigits && String(p.num) === searchDigits) return true;
+  return (
+    (!!p.name_fr && normalize(p.name_fr).startsWith(searchN)) ||
+    normalize(p.name_en).startsWith(searchN) ||
+    (NAME_ALIASES_BY_NUM.get(p.num) ?? []).some(alias => normalize(alias).startsWith(searchN))
+  );
+}
+
 export function applyPokedexPipeline(
   pokemons: Pokemon[],
   owned: Set<number>,
@@ -44,7 +82,6 @@ export function applyPokedexPipeline(
   locale: Locale = 'fr',
 ): PokemonWithState[] {
   const searchN = normalize(opts.search.trim());
-  const searchDigits = /^\d+$/.test(searchN) ? String(parseInt(searchN, 10)) : null;
 
   const merged: PokemonWithState[] = pokemons.map(p => ({
     ...p, owned: owned.has(p.num), collected: collectedDex.has(p.num),
@@ -73,15 +110,8 @@ export function applyPokedexPipeline(
       if (!matches) return false;
     }
 
-    if (searchN) {
-      if (searchDigits && String(p.num) === searchDigits) return true;
-      const paddedMatch = String(p.num).padStart(3, '0').includes(searchN);
-      if (paddedMatch) return true;
-      const nameMatches =
-        (p.name_fr && normalize(p.name_fr).includes(searchN)) ||
-        normalize(p.name_en).includes(searchN) ||
-        (NAME_ALIASES_BY_NUM.get(p.num) ?? []).some(alias => normalize(alias).includes(searchN));
-      if (!nameMatches) return false;
+    if (searchN && !pokemonMatchesSearch(p, opts.search)) {
+      return false;
     }
 
     return true;

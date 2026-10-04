@@ -1,4 +1,4 @@
-import { applyPokedexPipeline } from '../lib/pokedex-list';
+import { applyPokedexPipeline, pokemonMatchesSearch, pokemonLocateMatch } from '../lib/pokedex-list';
 import type { Pokemon } from '../lib/types';
 
 const TEST_STATS = { hp: 0, attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0 };
@@ -129,6 +129,28 @@ describe('applyPokedexPipeline', () => {
       search: '', statusFilter: 'all', typeFilter: [], setFilter: null, rarityFilter: null, generationFilter: [9], sort: 'num-asc',
     });
     expect(r.map(x => x.num)).toEqual([906, 1025]);
+  });
+
+  it('pokemonMatchesSearch: a unique name match identifies exactly one Pokémon (national Pokédex "locate" search)', () => {
+    const charmander = sample.find(p => p.num === 4)!;
+    const squirtle = sample.find(p => p.num === 7)!;
+    expect(pokemonMatchesSearch(charmander, 'glumanda')).toBe(true); // German alias
+    expect(pokemonMatchesSearch(squirtle, 'glumanda')).toBe(false);
+    const uniqueMatches = sample.filter(p => pokemonMatchesSearch(p, 'glumanda'));
+    expect(uniqueMatches.map(p => p.num)).toEqual([4]);
+  });
+
+  it('pokemonLocateMatch: prefix match converges before the full name is typed, unlike the broader filter search', () => {
+    // 'char' matches many Pokémon via pokemonMatchesSearch's cross-language
+    // substring search (coincidental "char" inside other species' aliases) —
+    // pokemonLocateMatch is prefix-anchored so it isn't fooled by that.
+    const bigSample: Pokemon[] = [
+      ...sample,
+      { num: 6, name_fr: 'Dracaufeu', name_en: 'Charizard', types: ['fire', 'flying'], sprite_url: '', evolvesFromNum: null, evolvesToNums: [], stats: TEST_STATS, description_fr: null, description_en: null },
+    ];
+    expect(bigSample.filter(p => pokemonLocateMatch(p, 'char')).map(p => p.num)).toEqual([4, 6]);
+    expect(bigSample.filter(p => pokemonLocateMatch(p, 'charma')).map(p => p.num)).toEqual([4]);
+    expect(bigSample.filter(p => pokemonLocateMatch(p, 'pika')).map(p => p.num)).toEqual([25]);
   });
 
   it('filters by generation, multi-select is OR', () => {

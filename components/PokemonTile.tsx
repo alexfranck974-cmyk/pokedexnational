@@ -17,6 +17,10 @@ interface Props {
   /** Shown instead of cardCount when the value toggle (SearchFilterBar) is on. */
   priceEur?: number | null;
   wishedInDex?: boolean;
+  /** National Pokédex "locate" search (PokedexGrid's locateNum) — a ring
+   * around the art so the tile reads at a glance against its neighbors,
+   * without filtering them out of view. */
+  highlighted?: boolean;
   /** Binder/"page" view only (PokedexPager) — strips the per-tile padding,
    * shadow, and num/name/count text so neighboring tiles sit edge-to-edge
    * instead of reading as separate floating bubbles, and the card art fills
@@ -30,7 +34,7 @@ interface Props {
 
 const DENSE_TILE_OVERRIDE = { padding: 1, aspectRatio: 0.72 };
 
-export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCount, priceEur, wishedInDex, dense, onPress, onZoom }: Props) {
+export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCount, priceEur, wishedInDex, highlighted, dense, onPress, onZoom }: Props) {
   const useCard = owned && !!ownedCardImage;
   // "In color" reflects owning ANY card for this species (the ledger); the card-art
   // swap / Pokéball badge / count below stay gated on `owned` — the one specifically
@@ -49,6 +53,9 @@ export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCou
     pressed: { transform: [{ scale: 0.95 }] },
     spriteWrap: { width: '100%' as const, aspectRatio: 0.72, position: 'relative' as const, backgroundColor: colors.surfaceAlt, borderRadius: radius.md },
     spriteMissing: { opacity: 0.55 },
+    // "Locate" search ring — layered on top of either art style (sprite or
+    // real owned card) rather than two separate variants, see highlighted prop.
+    highlightRing: { borderWidth: 3, borderColor: colors.primary, ...shadow.md },
     holoBorder: { width: '100%' as const, aspectRatio: 0.72, borderRadius: radius.md, padding: 2 },
     holoInner: {
       flex: 1, borderRadius: radius.md - 2, backgroundColor: colors.surfaceAlt,
@@ -90,14 +97,14 @@ export function PokemonTile({ pokemon, owned, collected, ownedCardImage, cardCou
         <LinearGradient
           colors={[colors.primary, colors.warning, colors.primary]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={styles.holoBorder}>
+          style={[styles.holoBorder, highlighted && styles.highlightRing]}>
           <View style={styles.holoInner}>
             <Image source={{ uri: ownedCardImage }} style={styles.sprite} resizeMode="contain" />
             {badges}
           </View>
         </LinearGradient>
       ) : (
-        <View style={[styles.spriteWrap, !inColor && styles.spriteMissing]}>
+        <View style={[styles.spriteWrap, !inColor && styles.spriteMissing, highlighted && styles.highlightRing]}>
           <Image
             source={{ uri: pokemon.sprite_url }}
             style={[styles.sprite, !inColor && { tintColor: colors.textDim }]}
